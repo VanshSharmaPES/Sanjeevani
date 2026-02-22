@@ -340,6 +340,73 @@ def _call_analysis_model(extracted_text: str, system_prompt: str, user_prompt: s
     return _extract_json_from_text(raw)
 
 
+def _call_prescription_analysis(extracted_text: str, target_language: str, lang_code: str) -> dict:
+    """
+    Dedicated prescription analysis call.
+    Keeps the OCR text and JSON schema in a single message to avoid double-embedding.
+    Drug dictionary is in the system prompt; everything else is in one user message.
+    """
+    schema = f"""
+You are given the transcribed text of a handwritten Indian prescription. Extract ALL medicines and return ONLY valid JSON.
+Return ALL fields in English.
+
+Prescription text:
+\"\"\"
+{extracted_text}
+\"\"\"
+
+Return ONLY this JSON structure — no markdown, no prose outside the JSON:
+{{
+    "patient_info": {{"name": null, "age": null, "date": null}},
+    "doctor_info": {{"name": null, "qualification": null}},
+    "diagnosis": null,
+    "medicines": [
+        {{
+            "order": 1,
+            "name": "Full generic + brand name e.g. Paracetamol (Dolo 650)",
+            "dosage": "e.g. 500mg",
+            "form": "Tablet",
+            "frequency": "e.g. twice a day",
+            "timing": "e.g. after meals",
+            "duration": "e.g. 5 days",
+            "meal_relation": "after meals",
+            "active_salts": ["salt1"],
+            "alternatives": ["Brand A", "Brand B"],
+            "purpose": "What this medicine treats and why prescribed",
+            "side_effects": ["side effect 1", "side effect 2"],
+            "food_interaction": "e.g. Take with food.",
+            "warnings": "e.g. Complete the full course.",
+            "is_antibiotic": false,
+            "special_instructions": ""
+        }}
+    ],
+    "overall_advice": "Daily medication schedule in English. Format: MORNING: ... AFTERNOON: ... NIGHT: ... AS NEEDED: ... then general advice.",
+    "diet_advice": "Dietary advice for the condition in English",
+    "follow_up": "Follow-up recommendation in English"
+}}
+
+RULES:
+1. Include EVERY medicine — no exceptions.
+2. Use the drug dictionary in your system prompt to resolve abbreviated Indian brand/generic names.
+3. Expand ALL shorthand: OD=once daily, BD=twice daily, TDS=thrice daily, 1-0-1=morning+night, AC=before meals, PC=after meals.
+4. If duration is missing, infer: antibiotics=5-7 days, analgesics=3-5 days, antacids=14 days.
+5. Set is_antibiotic=true for any antibiotic class drug.
+6. ALL text fields must be in English.
+"""
+    response = client.chat.completions.create(
+        model=ANALYSIS_MODEL,
+        messages=[
+            {"role": "system", "content": PRESCRIPTION_ANALYSIS_INSTRUCTION},
+            {"role": "user", "content": schema}
+        ],
+        temperature=0.1,
+        response_format={"type": "json_object"}
+    )
+    raw = response.choices[0].message.content.strip()
+    return _extract_json_from_text(raw)
+
+
+
 def _cap_text(text: str, max_chars: int = MAX_AUDIO_CHARS) -> str:
     """Trim text to max_chars at the nearest sentence boundary."""
     if len(text) <= max_chars:
@@ -367,6 +434,38 @@ def _generate_audio(text: str, lang_code: str) -> str | None:
         return None
 
 
+def _translate_text(text: str, target_language: str) -> str:
+    """
+    Translate an English medical summary to target_language.
+    Returns original text unchanged if target is English or translation fails.
+    """
+    if target_language == "English" or not text.strip():
+        return text
+    try:
+        response = client.chat.completions.create(
+            model=ANALYSIS_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        f"You are a certified medical translator. "
+                        f"Translate the following medical text to {target_language}. "
+                        f"Keep all medicine names, dosages, and medical terms accurate. "
+                        f"Return ONLY the translated text — no explanations, no English labels."
+                    )
+                },
+                {"role": "user", "content": text}
+            ],
+            temperature=0.1,
+            max_tokens=1200,
+        )
+        translated = response.choices[0].message.content.strip()
+        return translated if translated else text
+    except Exception as te:
+        _safe_print(f"[WARN] Translation failed: {te}")
+        return text
+
+
 # ─────────────────────────────────────────────────────────────
 # PUBLIC API
 # ─────────────────────────────────────────────────────────────
@@ -383,12 +482,13 @@ def analyze_medicine_image(image_bytes: bytes, target_language: str = "English")
                 "error": "Could not read text from the image. Please ensure the medicine label is clearly visible and well-lit."
             }, None
 
-        # Stage 2: Analysis
-        analysis_prompt = f"""
+        # Stage 2: Analysis — generate ALL fields in English for accuracy
+        analysis_prompt = """
 Based on the extracted medicine text below, provide a detailed medical analysis.
+Return ALL fields in English.
 
 Return JSON structure:
-{{
+{
     "is_medicine": true,
     "medicine_name": "Name of the medicine",
     "active_salts": ["salt1", "salt2"],
@@ -398,11 +498,11 @@ Return JSON structure:
     "conditions": ["list of medical conditions this medicine is used for"],
     "what_it_does": "A clear explanation of what this medicine does in the body and how it works",
     "suitable_age_group": "e.g. Adults (18+), Children (6-12), All ages, etc.",
-    "advice": "Comprehensive safety advice including dosage level, conditions, what it does, and age group suitability. Write this advice in {target_language} language."
-}}
+    "advice": "Comprehensive safety advice including dosage level, conditions, what it does, and age group suitability. Write in English."
+}
 
 If the image does not appear to be a medicine, return:
-{{
+{
     "is_medicine": false,
     "medicine_name": "Unknown",
     "active_salts": [],
@@ -413,7 +513,7 @@ If the image does not appear to be a medicine, return:
     "what_it_does": "N/A",
     "suitable_age_group": "N/A",
     "advice": "This does not appear to be a medicine."
-}}
+}
 """
         data = _call_analysis_model(extracted_text, MEDICINE_ANALYSIS_INSTRUCTION, analysis_prompt)
 
@@ -435,28 +535,37 @@ If the image does not appear to be a medicine, return:
         if isinstance(data.get("conditions"), str):
             data["conditions"] = [s.strip() for s in data["conditions"].split(",") if s.strip()]
 
-        # Build audio
+        # ── Build English summary from the validated structured fields ──
+        # This is the single source of truth — both displayed text and audio come from this.
         name = data.get("medicine_name", "Unknown")
+        conditions_str = ", ".join(data.get("conditions", []))
         what_it_does = data.get("what_it_does", "")
         dosage_info = data.get("dosage_info", "")
-        conditions = ", ".join(data.get("conditions", []))
         age_group = data.get("suitable_age_group", "")
-        advice = data.get("advice", "")
+        advice_en = data.get("advice", "")
 
-        parts = [f"Medicine: {name}."]
-        if what_it_does and what_it_does != "N/A":
-            parts.append(f"What it does: {what_it_does}.")
+        parts_en = [f"{name}."]  
+        if conditions_str:
+            parts_en.append(f"Used for: {conditions_str}.")  
         if dosage_info and dosage_info != "N/A":
-            parts.append(f"{dosage_info}.")
-        if conditions:
-            parts.append(f"Used for: {conditions}.")
+            parts_en.append(f"{dosage_info}.")
+        if what_it_does and what_it_does != "N/A":
+            parts_en.append(f"{what_it_does}.")
         if age_group and age_group != "N/A":
-            parts.append(f"Suitable for: {age_group}.")
-        if advice:
-            parts.append(advice)
-        audio_text = " ".join(parts)
+            parts_en.append(f"Suitable for: {age_group}.")
+        if advice_en:
+            parts_en.append(advice_en)
+        english_summary = _cap_text(" ".join(parts_en))
 
-        audio_path = _generate_audio(audio_text, LANG_MAP.get(target_language, "en"))
+        # ── Translate once → used for BOTH displayed advice text and TTS audio ──
+        translated_summary = _translate_text(english_summary, target_language)
+        lang_code = LANG_MAP.get(target_language, "en")
+
+        # Store both versions so the frontend can display them
+        data["advice"] = translated_summary        # shown in selected language
+        data["advice_en"] = english_summary        # shown in English for reference
+
+        audio_path = _generate_audio(translated_summary, lang_code)
         return data, audio_path
 
     except Exception as e:
@@ -485,63 +594,9 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
                 "error": "Could not read text from the prescription image. Please upload a clearer, well-lit photo with good contrast."
             }, None
 
-        # ── Stage 2: Structured Medical Analysis ──
-        analysis_prompt = f"""
-The following text was transcribed from a handwritten Indian doctor's prescription.
-Analyse it carefully and extract every medicine with full clinical details.
-
-Transcribed prescription text:
-\"\"\"
-{extracted_text}
-\"\"\"
-
-Return ONLY a valid JSON object in this EXACT structure (no extra text outside the JSON):
-{{
-    "patient_info": {{
-        "name": "Patient name if visible, else null",
-        "age": "Age if visible, else null",
-        "date": "Prescription date if visible, else null"
-    }},
-    "doctor_info": {{
-        "name": "Doctor name if visible, else null",
-        "qualification": "Qualification if visible, else null"
-    }},
-    "diagnosis": "Doctor's diagnosis or complaint if written, else null",
-    "medicines": [
-        {{
-            "order": 1,
-            "name": "Full generic name + brand name e.g. Paracetamol (Dolo 650)",
-            "dosage": "Strength e.g. 500mg, 650mg, 10ml",
-            "form": "Tablet / Capsule / Syrup / Injection / Ointment etc.",
-            "frequency": "Plain English: e.g. twice a day, three times a day, once at night",
-            "timing": "Plain English: e.g. after meals, before meals, at bedtime, empty stomach",
-            "duration": "e.g. 5 days, 7 days, 10 days, as needed, ongoing — extract from prescription",
-            "meal_relation": "one of: before breakfast, after breakfast, before lunch, after lunch, before dinner, after dinner, before meals, after meals, with food, empty stomach, at bedtime, anytime",
-            "active_salts": ["Active ingredient 1", "Active ingredient 2"],
-            "alternatives": ["Brand 1 (same salt)", "Brand 2 (same salt)", "Brand 3 (same salt)"],
-            "purpose": "Clear explanation: what this medicine does, what condition it treats, why the doctor likely prescribed it for this patient",
-            "side_effects": ["Common side effect 1", "Common side effect 2", "Common side effect 3"],
-            "food_interaction": "e.g. Avoid alcohol. Take with food to reduce stomach upset. No specific food restrictions.",
-            "warnings": "Important warnings e.g. Do not drive. Complete the full antibiotic course. Avoid in pregnancy.",
-            "is_antibiotic": true or false,
-            "special_instructions": "Any special instruction e.g. Shake well before use. Store in refrigerator. Do not crush."
-        }}
-    ],
-    "overall_advice": "A practical daily medication schedule in {target_language}. Format it clearly by time slot: MORNING: [list medicines + dose + when]. AFTERNOON: [list]. NIGHT: [list]. AS NEEDED: [list]. Then add 2-3 lines of general advice. Be specific and humanised.",
-    "diet_advice": "Any dietary advice mentioned by doctor or standard advice for the diagnosed condition",
-    "follow_up": "Follow-up instruction if visible, else standard guidance"
-}}
-
-CRITICAL RULES:
-- Include EVERY medicine from the prescription without exception.
-- Use the drug name reference dictionary provided to expand abbreviated names to full generic + brand names.
-- If duration is not stated, infer a reasonable duration (e.g. antibiotics: 5-7 days, analgesics: 3-5 days, antacids: 14 days).
-- is_antibiotic must be true for any antibiotic (amoxicillin, azithromycin, cefixime, ciprofloxacin, metronidazole, doxycycline, etc.).
-- overall_advice MUST be written in {target_language} language.
-- All fields are required. Use null only for patient_info/doctor_info fields not visible in the image.
-"""
-        data = _call_analysis_model(extracted_text, PRESCRIPTION_ANALYSIS_INSTRUCTION, analysis_prompt)
-        _safe_print(f"[INFO] Prescription analysis returned keys: {list(data.keys())}")
+        # ── Stage 2: Structured Medical Analysis (dedicated call — text passed exactly once) ──
+        lang_code = LANG_MAP.get(target_language, "en")
+        data = _call_prescription_analysis(extracted_text, target_language, lang_code)
 
         # ── Normalise medicines list ──
         medicines = data.get("medicines", []) or []
@@ -586,34 +641,52 @@ CRITICAL RULES:
 
         _safe_print(f"[INFO] Final medicine count: {len(medicines_sorted)}")
 
-        # ── Build audio ──
-        audio_parts = []
+        # ── Build English summary from validated structured fields ──
+        # Single source of truth — both overall_advice display text and TTS audio come from this.
+        med_parts_en = []
         for med in medicines_sorted:
-            name = med.get("name", "Unknown")
-            dosage = med.get("dosage", "")
-            freq = med.get("frequency", "")
-            meal_rel = med.get("meal_relation", "")
-            purpose = med.get("purpose", "")
+            m_name = med.get("name", "Unknown")
+            m_dosage = med.get("dosage", "")
+            m_freq = med.get("frequency", "")
+            m_meal = med.get("meal_relation", "")
+            m_duration = med.get("duration", "")
+            m_purpose = med.get("purpose", "")
 
-            part = f"Medicine: {name}."
-            if dosage:
-                part += f" Dose: {dosage}."
-            if freq or meal_rel:
-                part += f" Take {freq} {meal_rel}.".replace("  ", " ")
-            # Only first sentence of purpose to keep audio concise
-            if purpose and purpose != "Not available":
-                first = purpose.split(".")[0]
+            sentence = m_name
+            if m_dosage:
+                sentence += f", {m_dosage}"
+            if m_freq:
+                sentence += f". Take {m_freq}"
+            if m_meal:
+                sentence += f" {m_meal}"
+            if m_duration:
+                sentence += f" for {m_duration}"
+            sentence += "."
+            # First sentence of purpose only
+            if m_purpose and m_purpose != "Not available":
+                first = m_purpose.split(".")[0].strip()
                 if first:
-                    part += f" {first}."
-            audio_parts.append(part)
+                    sentence += f" {first}."
+            med_parts_en.append(sentence)
 
-        full_audio_text = " ".join(audio_parts)
-        overall = data.get("overall_advice", "")
-        if overall and len(full_audio_text) < MAX_AUDIO_CHARS - 100:
-            remaining = MAX_AUDIO_CHARS - len(full_audio_text) - 1
-            full_audio_text += " " + overall[:remaining]
+        english_med_summary = _cap_text(" ".join(med_parts_en))
 
-        audio_path = _generate_audio(full_audio_text, LANG_MAP.get(target_language, "en"))
+        # ── Translate once → used for BOTH overall_advice display and TTS audio ──
+        lang_code = LANG_MAP.get(target_language, "en")
+        translated_summary = _translate_text(english_med_summary, target_language)
+
+        # Store English summary so the frontend can render bilingual output
+        data["overall_advice_en"] = english_med_summary
+
+        # Translate overall_advice (daily schedule), diet_advice, follow_up for display
+        if target_language != "English":
+            for field in ("overall_advice", "diet_advice", "follow_up"):
+                val = data.get(field, "")
+                if val:
+                    data[field] = _translate_text(val, target_language)
+
+        audio_text = _cap_text(translated_summary)
+        audio_path = _generate_audio(audio_text, lang_code)
         return data, audio_path
 
     except Exception as e:
