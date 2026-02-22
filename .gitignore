@@ -1,5 +1,6 @@
 .env
 __pycache__/
+*.mp3
 
 REQUIREMENTS.md
 ARCHITECTURE.md

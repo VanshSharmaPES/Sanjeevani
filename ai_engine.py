@@ -1,4 +1,5 @@
-# ai_engine.py
+#!/usr/bin/env python3
+# ai_engine_fixed.py
 import os
 from dotenv import load_dotenv
 from groq import Groq
@@ -6,6 +7,7 @@ from gtts import gTTS
 import json
 import base64
 from datetime import datetime
+
 
 load_dotenv()
 
@@ -25,6 +27,7 @@ Language Rule: Translate the 'overall_advice' field into the requested target la
 
 client = Groq(api_key=os.getenv("API_KEY"))
 
+
 def analyze_medicine_image(image_bytes, target_language="Hindi"):
     today = datetime.now()
     today_str = today.strftime("%Y-%m-%d")
@@ -34,12 +37,12 @@ def analyze_medicine_image(image_bytes, target_language="Hindi"):
     Extract text exactly as seen. Do not guess.
     
     Return JSON structure:
-    {{
+    {
         "is_medicine": bool,
         "extracted_expiry_text": "The raw date text found after 'EXP' or 'Expiry'",
         "medicine_name": "string",
         "advice": "Safety advice translated into {target_language}"
-    }}
+    }
     """
 
     image_base64 = base64.b64encode(image_bytes).decode("utf-8")
@@ -74,13 +77,14 @@ def analyze_medicine_image(image_bytes, target_language="Hindi"):
         
         audio_file = "medicine_advice.mp3"
         lang_map = {'Hindi': 'hi', 'Kannada': 'kn', 'Tamil': 'ta', 'Telugu': 'te', 'English': 'en'}
-        tts = gTTS(text=data["advice"], lang=lang_map.get(target_language, 'hi'))
+        tts = gTTS(text=data.get("advice", ""), lang=lang_map.get(target_language, 'hi'))
         tts.save(audio_file)
         
         return data, audio_file
 
     except Exception as e:
         return {"error": f"Scan Failed: {str(e)}"}, None
+
 
 
 def analyze_prescription_image(image_bytes, target_language="Hindi"):

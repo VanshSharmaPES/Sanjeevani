@@ -66,6 +66,7 @@ if image_to_process:
                 st.write(data.get('advice'))
                 if audio_path:
                     st.audio(audio_path, format="audio/mp3")
+                    os.remove(audio_path)
 
     elif app_mode == "Read Prescription":
         with st.spinner("🔍 AI is reading the prescription..."):
@@ -113,6 +114,7 @@ if image_to_process:
             st.info(data.get("overall_advice"))
             if audio_path:
                 st.audio(audio_path, format="audio/mp3")
+                os.remove(audio_path)
 
 st.divider()
 st.caption("Sanjeevani AI v3.0 | 2026 Edition")
