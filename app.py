@@ -4,8 +4,72 @@ import streamlit as st
 import os
 import pandas as pd
 from ai_engine import analyze_medicine_image, analyze_prescription_image
+import time
 
-st.set_page_config(page_title="Sanjeevani AI", page_icon="💊", layout="centered")
+# ========== PAGE CONFIG ==========
+st.set_page_config(
+    page_title="Sanjeevani AI",
+    page_icon="💊",
+    layout="wide",
+    initial_sidebar_state="expanded"
+    
+)
+
+# ========== CUSTOM CSS ==========
+st.markdown("""
+<style>
+    :root {
+        --primary-color: #004a99;
+        --secondary-color: #00A8FF;
+        --success-color: #28a745;
+        --warning-color: #ffc107;
+        --danger-color: #dc3545;
+    }
+    
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f8f9fa;
+    }
+    
+    .stTabs [data-baseweb="tab-list"] button {
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-weight: 600;
+        background-color: #f0f2f6;
+        border: 2px solid transparent;
+        transition: all 0.3s ease;
+    }
+    
+    .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
+        background-color: #004a99;
+        color: white;
+        border-color: #004a99;
+    }
+    
+    .stCameraInput {
+        border: 3px solid #004a99 !important;
+        border-radius: 12px !important;
+        padding: 20px !important;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    }
+    
+    .stFileUploadDropzone {
+        border: 2px dashed #004a99 !important;
+        border-radius: 12px !important;
+        padding: 30px !important;
+    }
+    
+    .header-title {
+        background: linear-gradient(135deg, #004a99 0%, #00a8ff 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 12px;
+        text-align: center;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 15px rgba(0,74,153,0.2);
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # --- Camera Permission JS for network URLs ---
 st.markdown("""
@@ -24,20 +88,56 @@ if (location.protocol === "https:" || location.hostname !== "localhost") {
 </script>
 """, unsafe_allow_html=True)
 
-# Custom UI
-st.markdown("<style>.stCameraInput { border: 2px solid #004a99; border-radius: 10px; }</style>", unsafe_allow_html=True)
+# ========== SIDEBAR ==========
+with st.sidebar:
+    st.markdown("### ⚙️ Settings & Preferences")
+    
+    # Initialize session state
+    if "app_mode" not in st.session_state:
+        st.session_state.app_mode = "Scan Medicine Strip"
+    if "language" not in st.session_state:
+        st.session_state.language = "English"
+    
+    st.session_state.app_mode = st.radio(
+        "Select Mode",
+        ["Scan Medicine Strip", "Read Prescription"],
+        index=0 if st.session_state.app_mode == "Scan Medicine Strip" else 1
+    )
+    
+    st.session_state.language = st.selectbox(
+        "Preferred Language",
+        ["English", "Hindi", "Kannada", "Tamil", "Telugu"]
+    )
+    
+    st.divider()
+    st.markdown("### 📋 About This Tool")
+    if st.session_state.app_mode == "Scan Medicine Strip":
+        st.info("""
+        **Scan Medicine Strip**: Upload or capture a medicine strip/box to:
+        - Identify the medicine and active ingredients
+        - Check dosage levels and suitability
+        - Learn about medical conditions it treats
+        - Get age group recommendations
+        """)
+    else:
+        st.info("""
+        **Read Prescription**: Upload or scan a doctor's prescription to:
+        - Extract all medicines in reading order
+        - Show dosage and timing information
+        - Suggest alternative medicines
+        - Play audio instructions
+        """)
+    
+    st.divider()
+    st.caption("🏥 Sanjeevani v4.0 | Made with ❤️ for India")
 
-st.title("💊 Sanjeevani")
-
-# SIDEBAR CONTROLS
-st.sidebar.header("Settings")
-app_mode = st.sidebar.radio("Select Mode", ["Scan Medicine Strip", "Read Prescription"])
-language = st.sidebar.selectbox("Preferred Language", ["English", "Hindi", "Kannada", "Tamil", "Telugu"])
-
-if app_mode == "Scan Medicine Strip":
-    st.write("Scan your medicine to learn about its usage, dosage, and suitability.")
-else:
-    st.write("Upload or scan a doctor's prescription to understand your dosage schedule and find alternatives.")
+# ========== MAIN CONTENT ==========
+st.markdown("""
+<div class="header-title">
+    <h1>💊 Sanjeevani AI</h1>
+    <p>Your Smart Medical Assistant</p>
+</div>
+""", unsafe_allow_html=True)
 
 # TABBED INTERFACE
 tab1, tab2 = st.tabs(["📸 Live Webcam", "📂 Upload Image"])
@@ -56,50 +156,78 @@ with tab2:
 
 # AUTO-PROCESSING LOGIC
 if image_to_process:
-    if app_mode == "Scan Medicine Strip":
+    if st.session_state.app_mode == "Scan Medicine Strip":
         with st.spinner("🔍 AI is analyzing the medicine..."):
-            data, audio_path = analyze_medicine_image(image_to_process, target_language=language)
+            data, audio_path = analyze_medicine_image(image_to_process, target_language=st.session_state.language)
 
         if "error" in data:
-            st.error(data['error'])
+            st.error(f"❌ **Error:** {data['error']}")
         else:
             st.success(f"✅ Medicine: {data.get('medicine_name')}")
 
-            col1, col2 = st.columns(2)
+            col1, col2 = st.columns([1.5, 1])
             with col1:
                 st.markdown("#### 💊 Medicine Details")
-                st.write(f"**Active Salts:** {', '.join(data.get('active_salts', [])) or 'N/A'}")
-                st.write(f"**Dosage Strength:** {data.get('dosage_strength', 'N/A')}")
+                
+                active_salts = data.get('active_salts', [])
+                if active_salts:
+                    salts_html = " · ".join([f"<code>{salt}</code>" for salt in active_salts])
+                    st.markdown(f"**Active Salts:**  {salts_html}", unsafe_allow_html=True)
+                else:
+                    st.write("**Active Salts:** N/A")
+                
+                dosage = data.get('dosage_strength', 'N/A')
+                st.write(f"**Dosage Strength:** `{dosage}`")
 
                 is_high = data.get("is_high_dosage", False)
                 if is_high:
-                    st.warning(f"⚠️ HIGH DOSAGE — {data.get('dosage_info', '')}")
+                    st.warning(f"⚠️ **HIGH DOSAGE** — {data.get('dosage_info', '')}")
                 else:
-                    st.info(f"✔️ Normal Dosage — {data.get('dosage_info', '')}")
+                    st.success(f"✔️ **Normal Dosage** — {data.get('dosage_info', '')}")
 
                 conditions = data.get("conditions", [])
                 if conditions:
-                    st.write(f"**Used for:** {', '.join(conditions)}")
+                    cond_text = ", ".join(conditions)
+                    st.info(f"**Used for:** {cond_text}")
+                else:
+                    st.write("**Used for:** Not specified")
 
-                st.write(f"**Suitable Age Group:** {data.get('suitable_age_group', 'N/A')}")
+                what_it_does = data.get('what_it_does', '')
+                if what_it_does and what_it_does != 'N/A':
+                    st.markdown(f"**How it works:** {what_it_does}")
+
+                age_group = data.get('suitable_age_group', 'N/A')
+                st.write(f"**Suitable Age Group:** `{age_group}`")
 
             with col2:
-                st.markdown("#### 💡 Advice")
-                st.write(data.get('advice'))
+                st.markdown("#### 💡 Safety Advice")
+                advice_text = data.get('advice')
+                if advice_text:
+                    st.info(advice_text)
+                else:
+                    st.warning("No advice available")
+                
                 if audio_path:
+                    st.markdown("---")
+                    st.markdown("🔊 **Audio Guide**")
                     st.audio(audio_path, format="audio/mp3")
-                    os.remove(audio_path)
+                    try:
+                        if os.path.exists(audio_path):
+                            os.remove(audio_path)
+                    except:
+                        pass
 
-    elif app_mode == "Read Prescription":
+    elif st.session_state.app_mode == "Read Prescription":
         with st.spinner("🔍 AI is reading the prescription..."):
-            data, audio_path = analyze_prescription_image(image_to_process, target_language=language)
+            data, audio_path = analyze_prescription_image(image_to_process, target_language=st.session_state.language)
 
         if "error" in data:
-            st.error(data['error'])
+            st.error(f"❌ **Error:** {data['error']}")
         else:
             st.success("✅ Prescription Analyzed Successfully")
 
-            st.markdown("#### 📝 Medication Schedule")
+            st.markdown("---")
+            st.markdown("### 📝 Medication Schedule (In Order)")
             medicines = data.get("medicines", [])
             if medicines:
                 medicines_sorted = sorted(medicines, key=lambda m: m.get("order", 999))
@@ -116,30 +244,59 @@ if image_to_process:
                         "Meal Relation": m.get("meal_relation", "anytime")
                     })
                 df = pd.DataFrame(display_rows)
-                st.table(df)
+                
+                st.dataframe(
+                    df.style.format(precision=0),
+                    use_container_width=True,
+                    hide_index=True
+                )
 
-                # Medicine alternatives only (no duplicate prescription details)
-                st.markdown("#### 🔄 Medicine Alternatives")
-                has_any_alt = False
+                st.markdown("---")
+                st.markdown("### 📋 Medicine Purpose & Alternatives")
+
+                # Create expandable sections for each medicine
                 for m in medicines_sorted:
                     name = m.get("name", "Unknown")
                     salts = m.get("active_salts", [])
                     alts = m.get("alternatives", [])
-                    if alts:
-                        has_any_alt = True
-                        salts_str = f" ({', '.join(salts)})" if salts else ""
-                        st.markdown(f"**{name}**{salts_str}")
-                        st.info(f"🔄 Alternatives: {', '.join(alts)}")
-                if not has_any_alt:
-                    st.caption("No alternatives found for any medicine.")
-            else:
-                st.warning("No medicines could be clearly extracted from the image.")
+                    purpose = m.get("purpose", "")
+                    
+                    with st.expander(f"💊 {name} (Order {m.get('order')})"):
+                        if purpose:
+                            st.markdown(f"**What it does:** {purpose}")
+                        
+                        if salts:
+                            st.write(f"**Active Ingredients:** {', '.join(salts)}")
+                        
+                        if alts:
+                            st.markdown("**🔄 Alternative Medicines (same salts):**")
+                            for alt in alts:
+                                st.write(f"  • {alt}")
+                        else:
+                            st.caption("No alternatives found")
 
-            st.markdown("#### 💡 Summary Advice")
-            st.info(data.get("overall_advice"))
+            else:
+                st.warning("⚠️ No medicines could be clearly extracted from the image. Please try again with a clearer image.")
+
+            st.markdown("---")
+            st.markdown("### 🎯 Overall Instructions")
+            overall_advice = data.get("overall_advice")
+            if overall_advice:
+                st.info(overall_advice)
             if audio_path:
+                st.markdown("---")
+                st.markdown("🔊 **Audio Instructions**")
                 st.audio(audio_path, format="audio/mp3")
-                os.remove(audio_path)
+                try:
+                    if os.path.exists(audio_path):
+                        os.remove(audio_path)
+                except:
+                    pass
 
 st.divider()
-st.caption("Sanjeevani AI v4.0 | 2026 Edition")
+st.markdown("""
+<div style="text-align: center; padding: 20px; color: #666;">
+    <p>💊 <strong>Sanjeevani AI v4.0</strong> | Your Digital Healthcare Assistant</p>
+    <p style="font-size: 0.9em;">Made with ❤️ | Secure • Fast • Accessible</p>
+</div>
+""", unsafe_allow_html=True)
