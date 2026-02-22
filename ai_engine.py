@@ -8,7 +8,8 @@ import sys
 import tempfile
 from dotenv import load_dotenv
 from groq import Groq
-from gtts import gTTS
+import asyncio
+import edge_tts
 import json
 import base64
 from PIL import Image
@@ -192,6 +193,32 @@ LANG_MAP = {
     'Bengali': 'bn',
     'Marathi': 'mr',
     'Malayalam': 'ml',
+}
+
+
+# Voice Mapping for Microsoft Edge TTS (Indian High-Fidelity Neural Voices)
+VOICE_MAP = {
+    "en": "en-IN-NeerjaNeural",     # Indian English
+    "hi": "hi-IN-MadhurNeural",     # Hindi
+    "kn": "kn-IN-GaganNeural",      # Kannada
+    "ta": "ta-IN-PallaviNeural",    # Tamil
+    "te": "te-IN-MohanNeural",      # Telugu
+    "bn": "bn-IN-BashkarNeural",    # Bengali
+    "mr": "mr-IN-ManoharNeural",    # Marathi
+    "ml": "ml-IN-MidhunNeural",     # Malayalam
+}
+
+
+# Mapping of display language name to code
+LANG_MAP = {
+    "English": "en",
+    "Hindi": "hi",
+    "Tamil": "ta",
+    "Telugu": "te",
+    "Bengali": "bn",
+    "Marathi": "mr",
+    "Kannada": "kn",
+    "Malayalam": "ml",
 }
 
 
@@ -419,18 +446,30 @@ def _cap_text(text: str, max_chars: int = MAX_AUDIO_CHARS) -> str:
 
 
 def _generate_audio(text: str, lang_code: str) -> str | None:
-    """Generate a TTS MP3 file. Returns absolute path or None on failure."""
+    """
+    Generate a TTS MP3 file using Microsoft Edge TTS (Azure Neural voices).
+    Returns absolute path or None on failure.
+    """
     try:
         capped = _cap_text(text)
         if not capped:
             return None
-        tts = gTTS(text=capped, lang=lang_code)
+
+        # Select the best voice for the language
+        voice = VOICE_MAP.get(lang_code, "hi-IN-MadhurNeural")
+        
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-        tts.save(tmp.name)
+        tmp_path = tmp.name
         tmp.close()
-        return tmp.name
+
+        async def _save_edge_tts():
+            communicate = edge_tts.Communicate(capped, voice)
+            await communicate.save(tmp_path)
+
+        asyncio.run(_save_edge_tts())
+        return tmp_path
     except Exception as tts_err:
-        _safe_print(f"[WARN] Audio generation failed: {tts_err}")
+        _safe_print(f"[WARN] Edge TTS generation failed: {tts_err}")
         return None
 
 
