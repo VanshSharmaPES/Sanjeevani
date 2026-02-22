@@ -48,20 +48,56 @@ function ScanUploadContent() {
   const startCamera = useCallback(async () => {
     setError(null);
     setCapturedImage(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 960 } },
-      });
+
+    // Camera API is only available on HTTPS or localhost
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError("Camera is not available. This feature requires HTTPS or localhost. Try the Upload tab instead.");
+      return;
+    }
+
+    const tryGetCamera = async (constraints: MediaStreamConstraints) => {
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+        // Wait for the video to be ready before playing (fixes "play() interrupted" race condition)
+        await new Promise<void>((resolve) => {
+          if (!videoRef.current) { resolve(); return; }
+          if (videoRef.current.readyState >= 1) { resolve(); return; }
+          videoRef.current.onloadedmetadata = () => resolve();
+        });
+        try {
+          await videoRef.current?.play();
+        } catch (playErr: any) {
+          // AbortError is harmless — it just means a re-render beat us to it; camera is still active
+          if (playErr?.name !== "AbortError") throw playErr;
+        }
       }
       setCameraActive(true);
+    };
+
+
+    try {
+      // Pass 1: prefer rear camera on phones; falls back automatically to front camera on laptops
+      await tryGetCamera({
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 960 } },
+      });
     } catch {
-      setError("Camera access denied. Please allow camera permission and try again.");
+      try {
+        // Pass 2: any available camera with no constraints
+        await tryGetCamera({ video: true });
+      } catch (err: any) {
+        const msg =
+          err?.name === "NotAllowedError"
+            ? "Camera permission denied. Please click the camera icon in your browser's address bar and allow access, then try again."
+            : err?.name === "NotFoundError"
+              ? "No camera detected on this device. Please use the Upload tab instead."
+              : `Camera unavailable: ${err?.message || "unknown error"}. Try the Upload tab instead.`;
+        setError(msg);
+      }
     }
   }, []);
+
 
   // Start camera when switching to camera mode
   useEffect(() => {
@@ -212,11 +248,10 @@ function ScanUploadContent() {
             <button
               key={m.id}
               onClick={() => { setMode(m.id); clearFile(); }}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-display font-semibold transition-all ${
-                mode === m.id
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-display font-semibold transition-all ${mode === m.id
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"
-              }`}
+                }`}
             >
               <m.icon size={16} />
               {m.label}
@@ -334,11 +369,10 @@ function ScanUploadContent() {
                     const f = e.dataTransfer.files?.[0];
                     if (f) handleFileSelect(f);
                   }}
-                  className={`aspect-[4/3] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer ${
-                    dragOver
+                  className={`aspect-[4/3] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer ${dragOver
                       ? "border-secondary bg-secondary/5"
                       : "border-border hover:border-primary/50 bg-card/50"
-                  }`}
+                    }`}
                 >
                   <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
                     <Upload size={28} className="text-muted-foreground" />

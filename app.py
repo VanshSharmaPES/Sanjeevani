@@ -397,15 +397,20 @@ else:
                     else:
                         st.warning("No advice available")
                     
-                    if audio_path:
+                    if audio_path and os.path.exists(audio_path):
                         st.markdown("---")
                         st.markdown("🔊 **Audio Guide**")
-                        st.audio(audio_path, format="audio/mp3")
                         try:
-                            if os.path.exists(audio_path):
+                            with open(audio_path, "rb") as af:
+                                audio_bytes = af.read()
+                            st.audio(audio_bytes, format="audio/mp3")
+                        except Exception as ae:
+                            st.warning(f"Could not load audio: {ae}")
+                        finally:
+                            try:
                                 os.remove(audio_path)
-                        except:
-                            pass
+                            except Exception:
+                                pass
 
         elif st.session_state.app_mode == "Read Prescription":
             with st.spinner("🔍 AI is reading the prescription..."):
@@ -476,15 +481,20 @@ else:
                 overall_advice = data.get("overall_advice")
                 if overall_advice:
                     st.info(overall_advice)
-                if audio_path:
+                if audio_path and os.path.exists(audio_path):
                     st.markdown("---")
                     st.markdown("🔊 **Audio Instructions**")
-                    st.audio(audio_path, format="audio/mp3")
                     try:
-                        if os.path.exists(audio_path):
+                        with open(audio_path, "rb") as af:
+                            audio_bytes = af.read()
+                        st.audio(audio_bytes, format="audio/mp3")
+                    except Exception as ae:
+                        st.warning(f"Could not load audio: {ae}")
+                    finally:
+                        try:
                             os.remove(audio_path)
-                    except:
-                        pass
+                        except Exception:
+                            pass
 
 st.divider()
 st.markdown("""

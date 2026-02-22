@@ -1,15 +1,32 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # server.py — Flask API server wrapping ai_engine.py and db.py
 """
 Start with: python server.py
 Runs on http://localhost:5000
 """
+import io
 import os
+import sys
 import json
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from ai_engine import analyze_medicine_image, analyze_prescription_image
 from db import register_user, authenticate_user, save_scan, get_user_history, delete_scan
+
+# Fix Windows charmap codec crashes when printing Unicode model output
+if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+if sys.stderr.encoding and sys.stderr.encoding.lower() not in ("utf-8", "utf8"):
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+
+
+def _safe_log(msg: str):
+    """Print log message safely, replacing any unencodable characters."""
+    try:
+        print(msg)
+    except (UnicodeEncodeError, UnicodeError):
+        print(msg.encode("ascii", errors="replace").decode("ascii"))
 
 app = Flask(__name__)
 CORS(app)
@@ -67,7 +84,7 @@ def api_analyze_medicine():
     data, audio_path = analyze_medicine_image(image_bytes, target_language=language)
 
     if "error" in data:
-        print(f"[ERROR] Medicine analysis failed: {data['error']}")
+        _safe_log(f"[ERROR] Medicine analysis failed: {data['error']}")
         return jsonify(data), 500
 
     # Save to history if user is logged in
@@ -75,7 +92,7 @@ def api_analyze_medicine():
         try:
             save_scan(int(user_id), "medicine", language_code, data)
         except Exception as e:
-            print(f"[WARN] Could not save medicine scan to history: {e}")
+            _safe_log(f"[WARN] Could not save medicine scan to history: {e}")
 
     response = {"success": True, "data": data}
     if audio_path and os.path.exists(audio_path):
@@ -100,7 +117,7 @@ def api_analyze_prescription():
     data, audio_path = analyze_prescription_image(image_bytes, target_language=language)
 
     if "error" in data:
-        print(f"[ERROR] Prescription analysis failed: {data['error']}")
+        _safe_log(f"[ERROR] Prescription analysis failed: {data['error']}")
         return jsonify(data), 500
 
     # Save to history if user is logged in
@@ -108,7 +125,7 @@ def api_analyze_prescription():
         try:
             save_scan(int(user_id), "prescription", language_code, data)
         except Exception as e:
-            print(f"[WARN] Could not save prescription scan to history: {e}")
+            _safe_log(f"[WARN] Could not save prescription scan to history: {e}")
 
     response = {"success": True, "data": data}
     if audio_path and os.path.exists(audio_path):
