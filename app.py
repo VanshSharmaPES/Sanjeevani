@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # app.py
 import streamlit as st
 import os
@@ -6,7 +7,24 @@ from ai_engine import analyze_medicine_image, analyze_prescription_image
 
 st.set_page_config(page_title="Sanjeevani AI", page_icon="💊", layout="centered")
 
-# Custom UI for a cleaner feel
+# --- Camera Permission JS for network URLs ---
+st.markdown("""
+<script>
+async function requestCameraPermission() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        stream.getTracks().forEach(track => track.stop());
+    } catch (err) {
+        console.log("Camera permission denied or unavailable:", err);
+    }
+}
+if (location.protocol === "https:" || location.hostname !== "localhost") {
+    requestCameraPermission();
+}
+</script>
+""", unsafe_allow_html=True)
+
+# Custom UI
 st.markdown("<style>.stCameraInput { border: 2px solid #004a99; border-radius: 10px; }</style>", unsafe_allow_html=True)
 
 st.title("💊 Sanjeevani")
@@ -14,14 +32,14 @@ st.title("💊 Sanjeevani")
 # SIDEBAR CONTROLS
 st.sidebar.header("Settings")
 app_mode = st.sidebar.radio("Select Mode", ["Scan Medicine Strip", "Read Prescription"])
-language = st.sidebar.selectbox("Preferred Language", ["Hindi", "English", "Kannada", "Tamil", "Telugu"])
+language = st.sidebar.selectbox("Preferred Language", ["English", "Hindi", "Kannada", "Tamil", "Telugu"])
 
 if app_mode == "Scan Medicine Strip":
-    st.write("Scan your medicine strip for instant safety verification.")
+    st.write("Scan your medicine to learn about its usage, dosage, and suitability.")
 else:
-    st.write("Upload or scan a doctor's prescription to understand your dosage schedule.")
+    st.write("Upload or scan a doctor's prescription to understand your dosage schedule and find alternatives.")
 
-# TABBED INTERFACE: Choose between Webcam and Upload
+# TABBED INTERFACE
 tab1, tab2 = st.tabs(["📸 Live Webcam", "📂 Upload Image"])
 
 image_to_process = None
@@ -39,27 +57,31 @@ with tab2:
 # AUTO-PROCESSING LOGIC
 if image_to_process:
     if app_mode == "Scan Medicine Strip":
-        with st.spinner("🔍 AI is reading the strip..."):
+        with st.spinner("🔍 AI is analyzing the medicine..."):
             data, audio_path = analyze_medicine_image(image_to_process, target_language=language)
 
         if "error" in data:
             st.error(data['error'])
         else:
             st.success(f"✅ Medicine: {data.get('medicine_name')}")
-            
+
             col1, col2 = st.columns(2)
             with col1:
-                st.markdown("#### 📅 Expiry Status")
-                status = data.get('is_expired')
-                exp_date = data.get('expiry_date')
+                st.markdown("#### 💊 Medicine Details")
+                st.write(f"**Active Salts:** {', '.join(data.get('active_salts', [])) or 'N/A'}")
+                st.write(f"**Dosage Strength:** {data.get('dosage_strength', 'N/A')}")
 
-                if status is None or exp_date == "Not Found":
-                    st.warning("⚖️ UNKNOWN")
-                    st.info("Expiry date not found. **Warning: Medicine might be expired.**")
-                elif status is True:
-                    st.error(f"⛔ EXPIRED ({exp_date})")
+                is_high = data.get("is_high_dosage", False)
+                if is_high:
+                    st.warning(f"⚠️ HIGH DOSAGE — {data.get('dosage_info', '')}")
                 else:
-                    st.success(f"✔️ VALID ({exp_date})")
+                    st.info(f"✔️ Normal Dosage — {data.get('dosage_info', '')}")
+
+                conditions = data.get("conditions", [])
+                if conditions:
+                    st.write(f"**Used for:** {', '.join(conditions)}")
+
+                st.write(f"**Suitable Age Group:** {data.get('suitable_age_group', 'N/A')}")
 
             with col2:
                 st.markdown("#### 💡 Advice")
@@ -76,14 +98,13 @@ if image_to_process:
             st.error(data['error'])
         else:
             st.success("✅ Prescription Analyzed Successfully")
-            
+
             st.markdown("#### 📝 Medication Schedule")
             medicines = data.get("medicines", [])
             if medicines:
-                # Ensure predictable ordering
                 medicines_sorted = sorted(medicines, key=lambda m: m.get("order", 999))
 
-                # Create display DataFrame with explicit columns
+                # Display table
                 display_rows = []
                 for m in medicines_sorted:
                     display_rows.append({
@@ -94,19 +115,29 @@ if image_to_process:
                         "Timing": m.get("timing"),
                         "Meal Relation": m.get("meal_relation", "anytime")
                     })
-
                 df = pd.DataFrame(display_rows)
                 st.table(df)
 
-                st.markdown("#### 🔢 Sequence & Friendly Schedule")
+                # Per-medicine detail cards
+                st.markdown("#### 💊 Medicine Details & Alternatives")
                 for m in medicines_sorted:
-                    order = m.get("order")
-                    name = m.get("name")
-                    dosage = m.get("dosage") or ""
+                    order = m.get("order", "")
+                    name = m.get("name", "Unknown")
+                    dosage = m.get("dosage", "")
+                    frequency = m.get("frequency", "")
                     meal = m.get("meal_relation", "anytime")
-                    frequency = m.get("frequency") or ""
-                    st.write(f"{order}. {name} {dosage} — {frequency} — {meal}")
+                    salts = m.get("active_salts", [])
+                    alts = m.get("alternatives", [])
 
+                    with st.expander(f"{order}. {name} — {dosage}"):
+                        st.write(f"**Frequency:** {frequency}")
+                        st.write(f"**When to take:** {meal}")
+                        if salts:
+                            st.write(f"**Active Salts:** {', '.join(salts)}")
+                        if alts:
+                            st.info(f"🔄 **Alternatives (same salts):** {', '.join(alts)}")
+                        else:
+                            st.caption("No alternatives found.")
             else:
                 st.warning("No medicines could be clearly extracted from the image.")
 
@@ -117,4 +148,4 @@ if image_to_process:
                 os.remove(audio_path)
 
 st.divider()
-st.caption("Sanjeevani AI v3.0 | 2026 Edition")
+st.caption("Sanjeevani AI v4.0 | 2026 Edition")
