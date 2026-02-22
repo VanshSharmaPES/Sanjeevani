@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   title: "Sanjeevani AI",
   description: "Your intelligent medical companion",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/favicon.svg",
   },
 };
 

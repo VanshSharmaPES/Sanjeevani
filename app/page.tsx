@@ -14,17 +14,53 @@ const Login = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Store name for dashboard greeting
-    if (!isLogin && name) {
-      localStorage.setItem("sanjeevani_user", name);
-    } else if (isLogin) {
-      localStorage.setItem("sanjeevani_user", email.split("@")[0]);
+    setError("");
+    setLoading(true);
+
+    try {
+      if (isLogin) {
+        // Login flow
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: email, password }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          localStorage.setItem("sanjeevani_user", data.username || email.split("@")[0]);
+          localStorage.setItem("sanjeevani_user_id", String(data.user_id));
+          router.push("/dashboard");
+        } else {
+          setError(data.message || "Invalid credentials");
+        }
+      } else {
+        // Register flow
+        const username = name || email.split("@")[0];
+        const res = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          localStorage.setItem("sanjeevani_user", username);
+          localStorage.setItem("sanjeevani_user_id", String(data.user_id));
+          router.push("/dashboard");
+        } else {
+          setError(data.message || "Registration failed");
+        }
+      }
+    } catch {
+      setError("Could not connect to server. Make sure the Python backend is running.");
+    } finally {
+      setLoading(false);
     }
-    router.push("/dashboard");
   };
 
   return (
@@ -80,6 +116,11 @@ const Login = () => {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-xl text-destructive text-sm text-center">
+                {error}
+              </div>
+            )}
             <AnimatePresence mode="wait">
               {!isLogin && (
                 <motion.div
@@ -131,11 +172,12 @@ const Login = () => {
 
             <motion.button
               type="submit"
+              disabled={loading}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="w-full py-3.5 bg-primary text-primary-foreground font-display font-bold rounded-xl glow-pulse-saffron transition-all text-lg tracking-wide"
+              className="w-full py-3.5 bg-primary text-primary-foreground font-display font-bold rounded-xl glow-pulse-saffron transition-all text-lg tracking-wide disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Enter Sanjeevani
+              {loading ? "Please wait..." : "Enter Sanjeevani"}
             </motion.button>
           </form>
 

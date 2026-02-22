@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Pill, FileText, LogOut, History, Globe, User, Menu, X } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -20,9 +20,41 @@ const languages = [
 
 const Dashboard = () => {
   const router = useRouter();
-  const userName = typeof window !== "undefined" ? localStorage.getItem("sanjeevani_user") || "User" : "User";
+  const [userName, setUserName] = useState("User");
   const [language, setLanguage] = useState("en");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [historyCount, setHistoryCount] = useState(0);
+
+  useEffect(() => {
+    const name = localStorage.getItem("sanjeevani_user") || "User";
+    setUserName(name);
+
+    const savedLang = localStorage.getItem("sanjeevani_language") || "en";
+    setLanguage(savedLang);
+
+    // Fetch history count
+    const userId = localStorage.getItem("sanjeevani_user_id");
+    if (userId) {
+      fetch(`/api/history/${userId}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.success) setHistoryCount((data.history || []).length);
+        })
+        .catch(() => {});
+    }
+  }, []);
+
+  const handleLanguageChange = (code: string) => {
+    setLanguage(code);
+    localStorage.setItem("sanjeevani_language", code);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("sanjeevani_user");
+    localStorage.removeItem("sanjeevani_user_id");
+    localStorage.removeItem("sanjeevani_language");
+    router.push("/");
+  };
 
   const stagger = {
     hidden: {},
@@ -72,7 +104,7 @@ const Dashboard = () => {
             </label>
             <select
               value={language}
-              onChange={(e) => setLanguage(e.target.value)}
+              onChange={(e) => handleLanguageChange(e.target.value)}
               className="w-full bg-sidebar-accent border border-sidebar-border rounded-lg px-3 py-2 text-sm text-sidebar-foreground outline-none focus:border-primary transition-colors"
             >
               {languages.map((l) => (
@@ -91,14 +123,16 @@ const Dashboard = () => {
             >
               <History size={18} />
               <span>Scan History</span>
-              <span className="ml-auto text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full font-semibold">3</span>
+              {historyCount > 0 && (
+                <span className="ml-auto text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full font-semibold">{historyCount}</span>
+              )}
             </button>
           </nav>
         </div>
 
         <div className="p-4 border-t border-sidebar-border">
           <button
-            onClick={() => router.push("/")}
+            onClick={handleLogout}
             className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors text-sm"
           >
             <LogOut size={18} />

@@ -1,35 +1,73 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Volume2, ChevronDown, ChevronUp, AlertTriangle, CheckCircle } from "lucide-react";
+import { ArrowLeft, Volume2, VolumeX, ChevronDown, ChevronUp, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import MandalaBackground from "@/components/MandalaBackground";
 
-const mockMedicine = {
-  name: "Paracetamol 500mg",
-  brand: "Crocin Advance",
-  salts: ["Paracetamol IP 500mg"],
-  dosageStrength: "normal" as const,
-  conditions: ["Fever", "Headache", "Body Pain", "Toothache", "Cold & Flu"],
-  howItWorks:
-    "Paracetamol works by blocking the production of prostaglandins, chemicals in the body that cause inflammation, pain, and fever. It acts on the brain's heat-regulating center to reduce fever.",
-  ageGroups: { children: "6+", adults: "12+", elderly: "Use with caution" },
-  sideEffects: ["Nausea", "Allergic reactions (rare)", "Liver damage (overdose)"],
-};
+interface MedicineData {
+  medicine_name: string;
+  active_salts: string[];
+  dosage_strength: string;
+  is_high_dosage: boolean;
+  dosage_info: string;
+  conditions: string[];
+  what_it_does: string;
+  suitable_age_group: string;
+  advice: string;
+  is_medicine: boolean;
+}
 
 const MedicineResult = () => {
   const router = useRouter();
+  const [medicine, setMedicine] = useState<MedicineData | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [playing, setPlaying] = useState(false);
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const stagger = {
-    hidden: {},
-    show: { transition: { staggerChildren: 0.1 } },
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("scanResult");
+      if (!raw) {
+        router.push("/dashboard");
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      const d = parsed.data || parsed;
+      setMedicine(d);
+      if (parsed.audio_url) setAudioUrl(parsed.audio_url);
+    } catch {
+      router.push("/dashboard");
+    }
+  }, [router]);
+
+  const toggleAudio = () => {
+    if (!audioUrl) return;
+    if (!audioRef.current) {
+      audioRef.current = new Audio(audioUrl);
+      audioRef.current.onended = () => setPlaying(false);
+    }
+    if (playing) {
+      audioRef.current.pause();
+      setPlaying(false);
+    } else {
+      audioRef.current.play();
+      setPlaying(true);
+    }
   };
-  const fadeUp = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.4 } },
-  };
+
+  const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.1 } } };
+  const fadeUp = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
+
+  if (!medicine) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative">
@@ -41,93 +79,111 @@ const MedicineResult = () => {
             <ArrowLeft size={18} />
           </button>
           <h1 className="font-display text-xl font-bold text-foreground">Medicine Result</h1>
-          <button className="ml-auto w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-primary-foreground glow-pulse-saffron">
-            <Volume2 size={18} />
-          </button>
+          {audioUrl && (
+            <button
+              onClick={toggleAudio}
+              className={`ml-auto w-10 h-10 rounded-xl flex items-center justify-center text-primary-foreground transition-all ${
+                playing ? "bg-destructive" : "bg-primary glow-pulse-saffron"
+              }`}
+            >
+              {playing ? <VolumeX size={18} /> : <Volume2 size={18} />}
+            </button>
+          )}
         </motion.div>
 
         <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-5">
           {/* Medicine name */}
           <motion.div variants={fadeUp} className="bg-card border border-border rounded-2xl p-6">
-            <p className="text-xs text-muted-foreground font-display uppercase tracking-wider mb-1">Brand</p>
-            <h2 className="font-display text-3xl font-bold text-foreground glow-pulse-cyan inline-block px-1">{mockMedicine.brand}</h2>
-            <p className="text-muted-foreground text-sm mt-1">{mockMedicine.name}</p>
+            <p className="text-xs text-muted-foreground font-display uppercase tracking-wider mb-1">Medicine</p>
+            <h2 className="font-display text-3xl font-bold text-foreground glow-pulse-cyan inline-block px-1">{medicine.medicine_name}</h2>
+            {medicine.dosage_strength && (
+              <p className="text-muted-foreground text-sm mt-1">Strength: {medicine.dosage_strength}</p>
+            )}
           </motion.div>
 
           {/* Salts */}
-          <motion.div variants={fadeUp} className="bg-card border border-border rounded-2xl p-6">
-            <p className="text-xs text-muted-foreground font-display uppercase tracking-wider mb-3">Active Ingredients</p>
-            <div className="flex flex-wrap gap-2">
-              {mockMedicine.salts.map((s) => (
-                <span key={s} className="px-4 py-1.5 rounded-full bg-secondary/15 text-secondary text-sm font-semibold border border-secondary/30">
-                  {s}
-                </span>
-              ))}
-            </div>
-          </motion.div>
+          {medicine.active_salts?.length > 0 && (
+            <motion.div variants={fadeUp} className="bg-card border border-border rounded-2xl p-6">
+              <p className="text-xs text-muted-foreground font-display uppercase tracking-wider mb-3">Active Ingredients</p>
+              <div className="flex flex-wrap gap-2">
+                {medicine.active_salts.map((s) => (
+                  <span key={s} className="px-4 py-1.5 rounded-full bg-secondary/15 text-secondary text-sm font-semibold border border-secondary/30">
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </motion.div>
+          )}
 
           {/* Dosage strength */}
           <motion.div variants={fadeUp} className="bg-card border border-border rounded-2xl p-6">
             <p className="text-xs text-muted-foreground font-display uppercase tracking-wider mb-3">Dosage Strength</p>
             <div className="flex items-center gap-4">
               <div className={`w-16 h-16 rounded-full border-4 flex items-center justify-center ${
-                mockMedicine.dosageStrength === "normal" ? "border-green-500" : "border-red-500"
+                medicine.is_high_dosage ? "border-red-500" : "border-green-500"
               }`}>
-                {mockMedicine.dosageStrength === "normal" ? (
-                  <CheckCircle className="text-green-500" size={28} />
-                ) : (
+                {medicine.is_high_dosage ? (
                   <AlertTriangle className="text-red-500" size={28} />
+                ) : (
+                  <CheckCircle className="text-green-500" size={28} />
                 )}
               </div>
               <div>
-                <p className="font-display font-bold text-foreground text-lg capitalize">{mockMedicine.dosageStrength}</p>
-                <p className="text-muted-foreground text-sm">Standard therapeutic dose</p>
+                <p className="font-display font-bold text-foreground text-lg">{medicine.is_high_dosage ? "High Dosage" : "Normal Dosage"}</p>
+                <p className="text-muted-foreground text-sm">{medicine.dosage_info || "Standard therapeutic dose"}</p>
               </div>
             </div>
           </motion.div>
 
           {/* Conditions */}
-          <motion.div variants={fadeUp} className="bg-card border border-border rounded-2xl p-6">
-            <p className="text-xs text-muted-foreground font-display uppercase tracking-wider mb-3">Conditions Treated</p>
-            <div className="flex flex-wrap gap-2">
-              {mockMedicine.conditions.map((c) => (
-                <span key={c} className="px-3 py-1.5 rounded-lg bg-muted text-foreground text-sm">{c}</span>
-              ))}
-            </div>
-          </motion.div>
+          {medicine.conditions?.length > 0 && (
+            <motion.div variants={fadeUp} className="bg-card border border-border rounded-2xl p-6">
+              <p className="text-xs text-muted-foreground font-display uppercase tracking-wider mb-3">Conditions Treated</p>
+              <div className="flex flex-wrap gap-2">
+                {medicine.conditions.map((c) => (
+                  <span key={c} className="px-3 py-1.5 rounded-lg bg-muted text-foreground text-sm">{c}</span>
+                ))}
+              </div>
+            </motion.div>
+          )}
 
           {/* How it works accordion */}
-          <motion.div variants={fadeUp} className="bg-card border border-border rounded-2xl overflow-hidden">
-            <button
-              onClick={() => setHowItWorksOpen(!howItWorksOpen)}
-              className="w-full flex items-center justify-between p-6"
-            >
-              <p className="text-xs text-muted-foreground font-display uppercase tracking-wider">How It Works</p>
-              {howItWorksOpen ? <ChevronUp size={18} className="text-muted-foreground" /> : <ChevronDown size={18} className="text-muted-foreground" />}
-            </button>
-            {howItWorksOpen && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                className="px-6 pb-6"
+          {medicine.what_it_does && (
+            <motion.div variants={fadeUp} className="bg-card border border-border rounded-2xl overflow-hidden">
+              <button
+                onClick={() => setHowItWorksOpen(!howItWorksOpen)}
+                className="w-full flex items-center justify-between p-6"
               >
-                <p className="text-foreground text-sm leading-relaxed">{mockMedicine.howItWorks}</p>
-              </motion.div>
-            )}
-          </motion.div>
+                <p className="text-xs text-muted-foreground font-display uppercase tracking-wider">How It Works</p>
+                {howItWorksOpen ? <ChevronUp size={18} className="text-muted-foreground" /> : <ChevronDown size={18} className="text-muted-foreground" />}
+              </button>
+              {howItWorksOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  className="px-6 pb-6"
+                >
+                  <p className="text-foreground text-sm leading-relaxed">{medicine.what_it_does}</p>
+                </motion.div>
+              )}
+            </motion.div>
+          )}
 
-          {/* Age groups */}
-          <motion.div variants={fadeUp} className="bg-card border border-border rounded-2xl p-6">
-            <p className="text-xs text-muted-foreground font-display uppercase tracking-wider mb-4">Age Groups</p>
-            <div className="flex gap-3">
-              {Object.entries(mockMedicine.ageGroups).map(([group, age]) => (
-                <div key={group} className="flex-1 bg-muted rounded-xl p-3 text-center">
-                  <p className="font-display font-bold text-foreground text-sm capitalize">{group}</p>
-                  <p className="text-muted-foreground text-xs mt-1">{age}</p>
-                </div>
-              ))}
-            </div>
-          </motion.div>
+          {/* Age group */}
+          {medicine.suitable_age_group && (
+            <motion.div variants={fadeUp} className="bg-card border border-border rounded-2xl p-6">
+              <p className="text-xs text-muted-foreground font-display uppercase tracking-wider mb-3">Suitable Age Group</p>
+              <p className="font-display font-bold text-foreground">{medicine.suitable_age_group}</p>
+            </motion.div>
+          )}
+
+          {/* Advice */}
+          {medicine.advice && (
+            <motion.div variants={fadeUp} className="bg-card border border-primary/30 rounded-2xl p-6">
+              <p className="text-xs text-primary font-display uppercase tracking-wider mb-3">Advice</p>
+              <p className="text-foreground text-sm leading-relaxed">{medicine.advice}</p>
+            </motion.div>
+          )}
         </motion.div>
       </div>
     </div>

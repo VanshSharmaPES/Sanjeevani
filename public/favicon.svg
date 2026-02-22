@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Leaf body -->
+  <path d="M32 4C18 14 8 28 10 46c1 8 8 14 22 14s21-6 22-14C56 28 46 14 32 4z" fill="#0D9488" stroke="#14B8A6" stroke-width="1.5"/>
+  <!-- Leaf vein center -->
+  <path d="M32 12v40" stroke="#F59E0B" stroke-width="2" stroke-linecap="round"/>
+  <!-- Leaf veins left -->
+  <path d="M32 20L20 30M32 28L18 38M32 36L22 44" stroke="#F59E0B" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>
+  <!-- Leaf veins right -->
+  <path d="M32 20L44 30M32 28L46 38M32 36L42 44" stroke="#F59E0B" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>
+  <!-- Cross/plus symbol -->
+  <rect x="28" y="22" width="8" height="20" rx="2" fill="#F59E0B" opacity="0.3"/>
+  <rect x="22" y="28" width="20" height="8" rx="2" fill="#F59E0B" opacity="0.3"/>
+</svg>
