@@ -1,13 +1,16 @@
+"use client";
+
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Camera, Upload, ArrowLeft, Scan } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useRouter, useSearchParams } from "next/navigation";
 import MandalaBackground from "@/components/MandalaBackground";
 import DNASpinner from "@/components/DNASpinner";
+import { Suspense } from "react";
 
-const ScanUpload = () => {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+function ScanUploadContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const type = searchParams.get("type") || "medicine";
   const [mode, setMode] = useState<"camera" | "upload">("upload");
   const [analyzing, setAnalyzing] = useState(false);
@@ -17,9 +20,9 @@ const ScanUpload = () => {
     setAnalyzing(true);
     setTimeout(() => {
       if (type === "prescription") {
-        navigate("/result/prescription");
+        router.push("/result/prescription");
       } else {
-        navigate("/result/medicine");
+        router.push("/result/medicine");
       }
     }, 2500);
   };
@@ -36,7 +39,7 @@ const ScanUpload = () => {
           className="flex items-center gap-4 mb-10"
         >
           <button
-            onClick={() => navigate("/dashboard")}
+            onClick={() => router.push("/dashboard")}
             className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center text-foreground hover:bg-muted transition-colors"
           >
             <ArrowLeft size={18} />
@@ -116,7 +119,7 @@ const ScanUpload = () => {
               </p>
               <p className="text-muted-foreground text-sm mb-4">or click to browse files</p>
               <span className="text-xs text-muted-foreground">
-                Supports JPG, PNG, HEIC • Max 10MB
+                Supports JPG, PNG, HEIC &bull; Max 10MB
               </span>
             </div>
           )}
@@ -152,6 +155,12 @@ const ScanUpload = () => {
       </div>
     </div>
   );
-};
+}
 
-export default ScanUpload;
+export default function ScanUploadPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <ScanUploadContent />
+    </Suspense>
+  );
+}

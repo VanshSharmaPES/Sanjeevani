@@ -1,10 +1,12 @@
+"use client";
+
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, Leaf } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import ParticleField from "@/components/ParticleField";
 import MandalaBackground from "@/components/MandalaBackground";
 import SanjeevaniLogo from "@/components/SanjeevaniLogo";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -12,7 +14,7 @@ const Login = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,7 +24,7 @@ const Login = () => {
     } else if (isLogin) {
       localStorage.setItem("sanjeevani_user", email.split("@")[0]);
     }
-    navigate("/dashboard");
+    router.push("/dashboard");
   };
 
   return (

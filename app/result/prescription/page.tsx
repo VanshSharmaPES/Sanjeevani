@@ -1,7 +1,9 @@
+"use client";
+
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Printer, Share2, ChevronDown, ChevronUp, Sun, Sunset, Moon } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import MandalaBackground from "@/components/MandalaBackground";
 
 const mockPrescription = {
@@ -39,7 +41,7 @@ const timingIcons: Record<string, React.ReactNode> = {
 };
 
 const PrescriptionResult = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
 
   const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.1 } } };
@@ -50,7 +52,7 @@ const PrescriptionResult = () => {
       <MandalaBackground />
       <div className="relative z-10 p-6 lg:p-12 max-w-2xl mx-auto">
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-4 mb-8">
-          <button onClick={() => navigate("/dashboard")} className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center text-foreground hover:bg-muted transition-colors">
+          <button onClick={() => router.push("/dashboard")} className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center text-foreground hover:bg-muted transition-colors">
             <ArrowLeft size={18} />
           </button>
           <h1 className="font-display text-xl font-bold text-foreground">Prescription Result</h1>

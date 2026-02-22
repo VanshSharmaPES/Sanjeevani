@@ -1,7 +1,9 @@
+"use client";
+
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Volume2, ChevronDown, ChevronUp, AlertTriangle, CheckCircle } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import MandalaBackground from "@/components/MandalaBackground";
 
 const mockMedicine = {
@@ -17,7 +19,7 @@ const mockMedicine = {
 };
 
 const MedicineResult = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
 
   const stagger = {
@@ -35,7 +37,7 @@ const MedicineResult = () => {
       <div className="relative z-10 p-6 lg:p-12 max-w-2xl mx-auto">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-4 mb-8">
-          <button onClick={() => navigate("/dashboard")} className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center text-foreground hover:bg-muted transition-colors">
+          <button onClick={() => router.push("/dashboard")} className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center text-foreground hover:bg-muted transition-colors">
             <ArrowLeft size={18} />
           </button>
           <h1 className="font-display text-xl font-bold text-foreground">Medicine Result</h1>

@@ -1,7 +1,9 @@
+"use client";
+
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Pill, FileText, LogOut, History, Globe, User, Menu, X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import MandalaBackground from "@/components/MandalaBackground";
 import SanjeevaniLogo from "@/components/SanjeevaniLogo";
 
@@ -17,8 +19,8 @@ const languages = [
 ];
 
 const Dashboard = () => {
-  const navigate = useNavigate();
-  const userName = localStorage.getItem("sanjeevani_user") || "User";
+  const router = useRouter();
+  const userName = typeof window !== "undefined" ? localStorage.getItem("sanjeevani_user") || "User" : "User";
   const [language, setLanguage] = useState("en");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -84,7 +86,7 @@ const Dashboard = () => {
           {/* Nav items */}
           <nav className="space-y-1">
             <button
-              onClick={() => navigate("/history")}
+              onClick={() => router.push("/history")}
               className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors text-sm"
             >
               <History size={18} />
@@ -96,7 +98,7 @@ const Dashboard = () => {
 
         <div className="p-4 border-t border-sidebar-border">
           <button
-            onClick={() => navigate("/")}
+            onClick={() => router.push("/")}
             className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors text-sm"
           >
             <LogOut size={18} />
@@ -133,14 +135,14 @@ const Dashboard = () => {
               description="Identify medicines, ingredients, dosage & more using AI vision"
               icon={<Pill size={36} />}
               variant="teal"
-              onClick={() => navigate("/scan?type=medicine")}
+              onClick={() => router.push("/scan?type=medicine")}
             />
             <ActionCard
               title="Read Prescription"
               description="Decode handwritten prescriptions into clear, structured results"
               icon={<FileText size={36} />}
               variant="amber"
-              onClick={() => navigate("/scan?type=prescription")}
+              onClick={() => router.push("/scan?type=prescription")}
             />
           </motion.div>
         </motion.div>
