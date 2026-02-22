@@ -28,7 +28,7 @@ function ScanUploadContent() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Cleanup camera stream on unmount or mode change
+  // Cleanup camera stream on unmount
   useEffect(() => {
     return () => {
       if (streamRef.current) {
@@ -49,57 +49,44 @@ function ScanUploadContent() {
     setError(null);
     setCapturedImage(null);
 
-    // Camera API is only available on HTTPS or localhost
     if (!navigator.mediaDevices?.getUserMedia) {
       setError("Camera is not available. This feature requires HTTPS or localhost. Try the Upload tab instead.");
       return;
     }
 
-    const tryGetCamera = async (constraints: MediaStreamConstraints) => {
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    try {
+      // No resolution constraints — negotiating a specific resolution is the primary delay source
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } },
+      });
       streamRef.current = stream;
+
+      // videoRef is always mounted (just hidden when not active), so this is always safe
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        // Wait for the video to be ready before playing (fixes "play() interrupted" race condition)
-        await new Promise<void>((resolve) => {
-          if (!videoRef.current) { resolve(); return; }
-          if (videoRef.current.readyState >= 1) { resolve(); return; }
-          videoRef.current.onloadedmetadata = () => resolve();
-        });
-        try {
-          await videoRef.current?.play();
-        } catch (playErr: any) {
-          // AbortError is harmless — it just means a re-render beat us to it; camera is still active
-          if (playErr?.name !== "AbortError") throw playErr;
+        // autoPlay attribute on the <video> handles play() automatically.
+        // We only call play() manually as a safety net if autoPlay doesn't fire.
+        if (videoRef.current.readyState < 2) {
+          await new Promise<void>((resolve) => {
+            if (!videoRef.current) { resolve(); return; }
+            videoRef.current.oncanplay = () => resolve();
+          });
         }
+        try { await videoRef.current.play(); } catch { /* AbortError is harmless */ }
       }
       setCameraActive(true);
-    };
-
-
-    try {
-      // Pass 1: prefer rear camera on phones; falls back automatically to front camera on laptops
-      await tryGetCamera({
-        video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 960 } },
-      });
-    } catch {
-      try {
-        // Pass 2: any available camera with no constraints
-        await tryGetCamera({ video: true });
-      } catch (err: any) {
-        const msg =
-          err?.name === "NotAllowedError"
-            ? "Camera permission denied. Please click the camera icon in your browser's address bar and allow access, then try again."
-            : err?.name === "NotFoundError"
-              ? "No camera detected on this device. Please use the Upload tab instead."
-              : `Camera unavailable: ${err?.message || "unknown error"}. Try the Upload tab instead.`;
-        setError(msg);
-      }
+    } catch (err: any) {
+      const msg =
+        err?.name === "NotAllowedError"
+          ? "Camera permission denied. Please click the camera icon in your browser address bar and allow access, then click Enable Camera."
+          : err?.name === "NotFoundError"
+            ? "No camera detected on this device. Please use the Upload tab instead."
+            : `Camera error: ${err?.message || "unknown"}. Try the Upload tab instead.`;
+      setError(msg);
     }
   }, []);
 
-
-  // Start camera when switching to camera mode
+  // Start/stop camera when mode changes
   useEffect(() => {
     if (mode === "camera") {
       startCamera();
@@ -122,7 +109,6 @@ function ScanUploadContent() {
     setCapturedImage(dataUrl);
     stopCamera();
 
-    // Convert to File
     canvas.toBlob(
       (blob) => {
         if (blob) {
@@ -193,7 +179,6 @@ function ScanUploadContent() {
         return;
       }
 
-      // Store result for the result page
       sessionStorage.setItem("scanResult", JSON.stringify(data));
       sessionStorage.setItem("scanType", type);
 
@@ -211,7 +196,21 @@ function ScanUploadContent() {
   return (
     <div className="min-h-screen relative">
       <MandalaBackground />
+      {/* Canvas is always hidden — used only for snapshot capture */}
       <canvas ref={canvasRef} className="hidden" />
+
+      {/*
+        The <video> element MUST be always present in the DOM so that videoRef.current
+        is non-null when startCamera() assigns stream.srcObject.
+        Visibility is controlled with CSS (block/hidden), NOT with conditional rendering.
+      */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className="hidden"   // startCamera will switch this to block via cameraActive state
+      />
 
       <div className="relative z-10 p-6 lg:p-12 max-w-2xl mx-auto">
         {/* Header */}
@@ -249,8 +248,8 @@ function ScanUploadContent() {
               key={m.id}
               onClick={() => { setMode(m.id); clearFile(); }}
               className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-display font-semibold transition-all ${mode === m.id
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
                 }`}
             >
               <m.icon size={16} />
@@ -270,19 +269,19 @@ function ScanUploadContent() {
           </motion.div>
         )}
 
-        {/* Content */}
+        {/* Content — camera section or upload zone */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
           {mode === "camera" ? (
-            /* Camera viewfinder */
+            /* ── Camera viewfinder ── */
             <div className="relative aspect-[4/3] bg-forest-deep rounded-2xl border-2 border-border overflow-hidden flex items-center justify-center">
-              {capturedImage ? (
-                /* Show captured photo */
+              {/* Captured photo overlay */}
+              {capturedImage && (
                 <>
-                  <img src={capturedImage} alt="Captured" className="w-full h-full object-contain" />
+                  <img src={capturedImage} alt="Captured" className="absolute inset-0 w-full h-full object-contain" />
                   <button
                     onClick={retakePhoto}
                     className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-5 py-2.5 bg-card/90 backdrop-blur border border-border rounded-xl text-foreground text-sm font-display font-semibold hover:bg-muted transition-colors"
@@ -291,17 +290,25 @@ function ScanUploadContent() {
                     Retake
                   </button>
                 </>
-              ) : cameraActive ? (
-                /* Live camera feed */
+              )}
+
+              {/* Live video feed — shown once camera is active */}
+              {cameraActive && !capturedImage && (
                 <>
+                  {/* Mirror the global video element into this viewfinder via a cloned display */}
                   <video
-                    ref={videoRef}
+                    ref={(el) => {
+                      if (el && streamRef.current) {
+                        el.srcObject = streamRef.current;
+                        el.play().catch(() => { });
+                      }
+                    }}
                     autoPlay
                     playsInline
                     muted
                     className="w-full h-full object-cover"
                   />
-                  {/* Scan corners */}
+                  {/* Scan corner overlays */}
                   <div className="absolute top-4 left-4 w-12 h-12 border-t-2 border-l-2 border-secondary rounded-tl-lg" style={{ animation: "scanPulse 1.5s ease-in-out infinite" }} />
                   <div className="absolute top-4 right-4 w-12 h-12 border-t-2 border-r-2 border-secondary rounded-tr-lg" style={{ animation: "scanPulse 1.5s ease-in-out infinite 0.2s" }} />
                   <div className="absolute bottom-16 left-4 w-12 h-12 border-b-2 border-l-2 border-secondary rounded-bl-lg" style={{ animation: "scanPulse 1.5s ease-in-out infinite 0.4s" }} />
@@ -314,11 +321,13 @@ function ScanUploadContent() {
                     <div className="w-12 h-12 rounded-full bg-white mx-auto" />
                   </button>
                 </>
-              ) : (
-                /* Camera loading/permission */
-                <div className="text-center text-muted-foreground">
-                  <Camera size={48} className="mx-auto mb-3 opacity-40" />
-                  <p className="text-sm">Starting camera...</p>
+              )}
+
+              {/* Loading/permission state */}
+              {!cameraActive && !capturedImage && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
+                  <Camera size={48} className="mb-3 opacity-40" />
+                  <p className="text-sm">{error ? "Camera unavailable" : "Starting camera..."}</p>
                   <button
                     onClick={startCamera}
                     className="mt-3 px-4 py-2 bg-primary text-primary-foreground text-sm rounded-lg font-display font-semibold"
@@ -329,7 +338,7 @@ function ScanUploadContent() {
               )}
             </div>
           ) : (
-            /* Upload zone */
+            /* ── Upload zone ── */
             <>
               <input
                 ref={fileInputRef}
@@ -343,7 +352,6 @@ function ScanUploadContent() {
               />
 
               {preview ? (
-                /* Image preview */
                 <div className="relative aspect-[4/3] rounded-2xl border-2 border-secondary overflow-hidden bg-card">
                   <img src={preview} alt="Selected" className="w-full h-full object-contain" />
                   <button
@@ -358,7 +366,6 @@ function ScanUploadContent() {
                   </div>
                 </div>
               ) : (
-                /* Drop zone */
                 <div
                   onClick={() => fileInputRef.current?.click()}
                   onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -370,15 +377,15 @@ function ScanUploadContent() {
                     if (f) handleFileSelect(f);
                   }}
                   className={`aspect-[4/3] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer ${dragOver
-                      ? "border-secondary bg-secondary/5"
-                      : "border-border hover:border-primary/50 bg-card/50"
+                    ? "border-secondary bg-secondary/5"
+                    : "border-border hover:border-primary/50 bg-card/50"
                     }`}
                 >
                   <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
                     <Upload size={28} className="text-muted-foreground" />
                   </div>
                   <p className="font-display font-semibold text-foreground mb-1">
-                    Drag & drop your image here
+                    Drag &amp; drop your image here
                   </p>
                   <p className="text-muted-foreground text-sm mb-4">or click to browse files</p>
                   <span className="text-xs text-muted-foreground">

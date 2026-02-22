@@ -37,11 +37,41 @@ const MedicineResult = () => {
       const parsed = JSON.parse(raw);
       const d = parsed.data || parsed;
       setMedicine(d);
-      if (parsed.audio_url) setAudioUrl(parsed.audio_url);
+
+      // Build audio source: prefer embedded base64 (no network hop), fall back to URL
+      let src: string | null = null;
+      if (parsed.audio_b64) {
+        src = `data:audio/mpeg;base64,${parsed.audio_b64}`;
+      } else if (parsed.audio_url) {
+        src = parsed.audio_url;
+      }
+      if (src) {
+        setAudioUrl(src);
+        // Autoplay after a short delay (gives the page time to render first)
+        const audio = new Audio(src);
+        audioRef.current = audio;
+        audio.onended = () => setPlaying(false);
+        setTimeout(() => {
+          audio.play().catch(() => {
+            // Autoplay may be blocked by browser policy — user can still click the button
+          });
+          setPlaying(true);
+        }, 800);
+      }
     } catch {
       router.push("/dashboard");
     }
   }, [router]);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
   const toggleAudio = () => {
     if (!audioUrl) return;
@@ -53,7 +83,9 @@ const MedicineResult = () => {
       audioRef.current.pause();
       setPlaying(false);
     } else {
-      audioRef.current.play();
+      // Reset to start so the user can replay from the beginning
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(() => { });
       setPlaying(true);
     }
   };
@@ -82,9 +114,8 @@ const MedicineResult = () => {
           {audioUrl && (
             <button
               onClick={toggleAudio}
-              className={`ml-auto w-10 h-10 rounded-xl flex items-center justify-center text-primary-foreground transition-all ${
-                playing ? "bg-destructive" : "bg-primary glow-pulse-saffron"
-              }`}
+              className={`ml-auto w-10 h-10 rounded-xl flex items-center justify-center text-primary-foreground transition-all ${playing ? "bg-destructive" : "bg-primary glow-pulse-saffron"
+                }`}
             >
               {playing ? <VolumeX size={18} /> : <Volume2 size={18} />}
             </button>
@@ -119,9 +150,8 @@ const MedicineResult = () => {
           <motion.div variants={fadeUp} className="bg-card border border-border rounded-2xl p-6">
             <p className="text-xs text-muted-foreground font-display uppercase tracking-wider mb-3">Dosage Strength</p>
             <div className="flex items-center gap-4">
-              <div className={`w-16 h-16 rounded-full border-4 flex items-center justify-center ${
-                medicine.is_high_dosage ? "border-red-500" : "border-green-500"
-              }`}>
+              <div className={`w-16 h-16 rounded-full border-4 flex items-center justify-center ${medicine.is_high_dosage ? "border-red-500" : "border-green-500"
+                }`}>
                 {medicine.is_high_dosage ? (
                   <AlertTriangle className="text-red-500" size={28} />
                 ) : (

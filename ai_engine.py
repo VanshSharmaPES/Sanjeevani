@@ -52,48 +52,132 @@ Given raw text extracted from a medicine image, analyze it to identify:
 Provide comprehensive, accurate medical information.
 """
 
-# --- Prescription: Vision OCR (two-pass strategy) ---
-# Pass 1: Free-form extraction (no JSON constraint) — maximises transcription quality for handwriting
+# --- Prescription: Vision OCR ---
+# Free-form extraction (no JSON constraint) for best handwriting accuracy
 PRESCRIPTION_OCR_SYSTEM = """
-You are a specialist in reading Indian doctor handwriting and medical prescriptions.
-Your ONLY task is to transcribe every single piece of text from this prescription image accurately.
+You are the world's best specialist at reading Indian doctor handwriting and medical prescriptions.
+Your ONLY task is to transcribe every single piece of text you can see in this prescription image.
 
-RULES:
-1. Read EVERY line — do not skip anything even if it is unclear or partially legible.
-2. Keep all medical abbreviations exactly as written: Rx, Tab, Cap, Syp, Inj, BD, TDS, OD, QID, SOS, HS, AC, PC, mg, ml, etc.
-3. For unclear words, write your best guess followed by the original text in parentheses — e.g. "Amoxicillin (Amox)".
-4. Preserve numbers exactly — dosages like "500mg", "1-0-1", "1/2 tab", frequencies like "BD x 5 days".
-5. Transcribe the patient name, date, and doctor name/signature if visible.
-6. If a word is completely unreadable, write "[illegible]" as a placeholder.
-7. Write the output as plain text, line by line, in the exact reading order (top to bottom, left to right).
-8. DO NOT summarize, interpret, or skip anything. Full verbatim transcription only.
+INDIAN PRESCRIPTION ANATOMY (understand this context):
+- Header: Doctor name, qualification, clinic/hospital name, registration number
+- Patient info: Name (Pt./Patient), Age, Sex, Date
+- Rx section: Numbered list of medicines. Each medicine entry typically has:
+    Line 1: Medicine name + strength (e.g. "Tab. Amoxicillin 500mg")
+    Line 2: Dose pattern using 1-0-1 grid (morning-afternoon-night) OR BD/TDS/OD/QID
+    Line 3: Duration (e.g. × 5d, x 7/7, for 10 days)
+- Footer: Doctor signature, seal, instructions like "SOS", "sos only if fever", diet advice
+
+COMMON RAPID-HANDWRITING PATTERNS doctors use:
+- Tab = Tablet, Cap = Capsule, Syp/Syr = Syrup, Inj = Injection, Oint = Ointment
+- 1-0-1 = morning dose – afternoon dose – night dose (e.g. 1-0-1 = twice; 1-1-1 = three times)
+- OD = once daily, BD = twice daily, TDS/TID = thrice daily, QID = four times
+- SOS = as needed (when required), Stat = take immediately
+- AC = before meals, PC/AF = after meals/food, HS = at bedtime, CC = with meals
+- x5d / ×5 days / 5/7 = for 5 days
+
+TRANSCRIPTION RULES:
+1. Read EVERY line including headers, patient info, and footer notes.
+2. Preserve all numbers and abbreviations exactly as written.
+3. For unclear words, give your best guess + original in brackets: "Pantoprazole (Pantop)".
+4. If completely unreadable, write [illegible].
+5. Output as plain text, line by line, in reading order (top to bottom, left to right).
+6. DO NOT interpret, summarize, or skip anything. Full verbatim transcription only.
 """
 
 PRESCRIPTION_OCR_USER = """
 Transcribe every piece of text from this prescription image, line by line.
-Include ALL medicines, dosages, frequencies, patient info, dates, and doctor notes.
+Include doctor header, patient details, ALL medicines with dosage and duration, and any footer notes.
+Preserve the Rx numbering, 1-0-1 dose grids, frequency abbreviations, and duration markers exactly.
 """
 
-# Pass 2: JSON analysis from transcribed text
+# --- Prescription: Analysis from transcribed text ---
 PRESCRIPTION_ANALYSIS_INSTRUCTION = """
-You are an expert Medical AI pharmacist specialising in Indian prescriptions.
-You will receive raw handwritten text transcribed from a doctor's prescription.
+You are a Senior Clinical Pharmacist AI specialising in Indian medical practice.
+You receive raw text transcribed from a handwritten Indian doctor's prescription.
 
-Your job:
-1. Identify EVERY medicine mentioned in the prescription — do not miss any.
-2. Expand all doctor abbreviations:
-   - Frequency: OD=once daily, BD=twice daily, TDS/TID=thrice daily, QID=four times daily, SOS=as needed, Stat=immediately
-   - Timing: AC=before meals, PC=after meals, HS=bedtime, CC=with meals
-   - Form: Tab=Tablet, Cap=Capsule, Syp/SF=Syrup, Inj=Injection, Oint=Ointment, Ear drops, Eye drops
-   - Duration: d/days, w/weeks; "1-0-1" means morning-afternoon-night dosing pattern
-3. Expand abbreviated Indian drug names to their full names:
-   Paracet/PCM=Paracetamol, Amox=Amoxicillin, Azithro=Azithromycin, Cefix=Cefixime,
-   Cefpod=Cefpodoxime, Metfor=Metformin, Atorva=Atorvastatin, Levocet=Levocetirizine,
-   Pantop/Pan=Pantoprazole, Rantac=Ranitidine, Augmentin=Amoxicillin+Clavulanate,
-   Dolo=Paracetamol, Combiflam=Ibuprofen+Paracetamol, Allegra=Fexofenadine,
-   Montair=Montelukast, Asthalin=Salbutamol, Betadine=Povidone-Iodine
-4. For each medicine: provide active salts, purpose, and 2-3 brand alternatives with the same salts.
-5. Build a clear overall medication schedule in plain language.
+Your responsibilities:
+1. Identify EVERY medicine — never miss any.
+2. Expand ALL abbreviations (see reference below).
+3. Match drug names to their correct salts using the reference dictionary.
+4. Provide clinical information for each medicine.
+5. Build a practical, actionable daily medication schedule.
+
+== FREQUENCY REFERENCE ==
+OD = once daily | BD = twice daily | TDS/TID = three times daily | QID = four times daily
+SOS = only as needed | Stat = take immediately now
+1-0-1 = morning + night (twice) | 1-1-1 = morning + afternoon + night (three times)
+0-0-1 = at night only | 1-0-0 = morning only
+
+== TIMING REFERENCE ==
+AC = before meals | PC = after meals | HS = at bedtime | CC = with meals | EF = empty stomach
+
+== DRUG NAME REFERENCE (brand → generic salt(s)) ==
+Paracetamol/Paracet/PCM/Crocin/Dolo/P-500/Calpol = Paracetamol
+Combiflam/Brufen-CT = Ibuprofen + Paracetamol
+Ibuprofen/Brufen/Advil/Nurofen = Ibuprofen
+Naproxen/Naprosyn = Naproxen
+Diclofenac/Voveran/Voltaren = Diclofenac
+Meftal/Mefenamic = Mefenamic Acid
+Amoxicillin/Amox/Amoxil/Novamox = Amoxicillin
+Augmentin/Clavam/Amoxyclav = Amoxicillin + Clavulanic Acid
+Azithromycin/Azithro/Zithromax/Azee = Azithromycin
+Ciprofloxacin/Cipro/Ciplox = Ciprofloxacin
+Cefixime/Cefix/Taxim/Zifi = Cefixime
+Cefpodoxime/Cefpod/Cepodem = Cefpodoxime
+Cephalexin/Ceporex = Cephalexin
+Doxycycline/Doxy = Doxycycline
+Metronidazole/Flagyl/Metro = Metronidazole
+Clindamycin/Dalacin = Clindamycin
+Pantoprazole/Pantop/Pan/Pantocid = Pantoprazole
+Omeprazole/Omez/Ocid = Omeprazole
+Rabeprazole/Razo/Rablet = Rabeprazole
+Esomeprazole/Nexium/Nexpro = Esomeprazole
+Domperidone/Domstal/Dom = Domperidone
+Ondansetron/Emeset/Ondan/Zofran = Ondansetron
+Metoclopramide/Perinorm = Metoclopramide
+Ranitidine/Rantac/Zinetac = Ranitidine
+Levocetirizine/Levocet/Lecope/Xyzal = Levocetirizine
+Cetirizine/Cetzine/Zyrtec/CTZ = Cetirizine
+Fexofenadine/Allegra/Fexo = Fexofenadine
+Montelukast/Montair/Singulair = Montelukast
+Loratadine/Clarityne = Loratadine
+Salbutamol/Asthalin/Ventolin = Salbutamol
+Budesonide/Budecort = Budesonide
+Fluticasone/Flomist/Flixonase = Fluticasone
+Metformin/Glycomet/Glucophage = Metformin
+Glibenclamide/Daonil = Glibenclamide
+Glimepiride/Amaryl/Glimer = Glimepiride
+Insulin/Humulin/Novolin = Insulin
+Atorvastatin/Atorva/Lipitor/Storvas = Atorvastatin
+Rosuvastatin/Rosu/Crestor/Rozucor = Rosuvastatin
+Amlodipine/Amlodac/Amlong/Norvasc = Amlodipine
+Telmisartan/Telma/Micardis = Telmisartan
+Ramipril/Cardace/Altace = Ramipril
+Atenolol/Tenormin/Aten = Atenolol
+Furosemide/Lasix/Frusemide = Furosemide
+Spironolactone/Aldactone/Laractone = Spironolactone
+Alprazolam/Alprax/Restyl = Alprazolam
+Clonazepam/Clonotril/Klonopin = Clonazepam
+Escitalopram/Nexito/Cipralex = Escitalopram
+Amitriptyline/Amitril/Elavil = Amitriptyline
+Gabapentin/Gabapin/Neurontin = Gabapentin
+Pregabalin/Pregalin/Lyrica = Pregabalin
+Calcium + Vit D3/Shelcal/Calcirol = Calcium + Cholecalciferol
+Vitamin B12/Mecobalamin/Methylcobalamin/Cobadex = Methylcobalamin
+Folic Acid/Folvite = Folic Acid
+Iron/Ferrous sulphate/Ferium/Orofer = Ferrous Sulphate
+Betadine/Povid = Povidone-Iodine
+Mupirocin/Mupiderm/Bactroban = Mupirocin
+Hydrocortisone/Cortef = Hydrocortisone
+Beclomethasone/Beclate = Beclomethasone
+Dexamethasone/Dexona/Decadron = Dexamethasone
+Prednisolone/Wysolone/Omnacortil = Prednisolone
+Tramadol/Tramazac/Ultram = Tramadol
+Codeine/Codituss = Codeine
+Acetylcysteine/ACC/Mucomyst = Acetylcysteine
+Ambroxol/Ambrodil/Mucosolvan = Ambroxol
+Salbutamol+Ambroxol/Ascoril = Salbutamol + Ambroxol
+Cetrimide/Savlon = Cetrimide
 """
 
 
@@ -290,13 +374,13 @@ def _generate_audio(text: str, lang_code: str) -> str | None:
 def analyze_medicine_image(image_bytes: bytes, target_language: str = "English") -> tuple[dict, str | None]:
     """Two-stage pipeline for medicine strip images: Vision OCR → Medical Analysis."""
     try:
-        # Stage 1: OCR (printed text — JSON mode is fine)
-        extracted_text = _call_vision_model_json(image_bytes, MEDICINE_OCR_INSTRUCTION)
+        # Stage 1: OCR — free-text mode for better accuracy on all image types
+        extracted_text = _call_vision_model_freetext(image_bytes, MEDICINE_OCR_INSTRUCTION, "Extract all visible text from this medicine image, including name, dosage, ingredients, and any other text. Write it line by line.")
         _safe_print(f"[INFO] Medicine OCR extracted {len(extracted_text)} chars")
 
-        if not extracted_text or len(extracted_text.strip()) < 5:
+        if not extracted_text or len(extracted_text.strip()) < 3:
             return {
-                "error": "Could not read text from the image. Please upload a clearer, well-lit photo of the medicine strip or label."
+                "error": "Could not read text from the image. Please ensure the medicine label is clearly visible and well-lit."
             }, None
 
         # Stage 2: Analysis
@@ -403,37 +487,58 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
 
         # ── Stage 2: Structured Medical Analysis ──
         analysis_prompt = f"""
-The following text was transcribed from a handwritten doctor's prescription.
-Analyse it carefully and extract every medicine with complete details.
+The following text was transcribed from a handwritten Indian doctor's prescription.
+Analyse it carefully and extract every medicine with full clinical details.
 
 Transcribed prescription text:
 \"\"\"
 {extracted_text}
 \"\"\"
 
-Return ONLY a JSON object in this exact structure:
+Return ONLY a valid JSON object in this EXACT structure (no extra text outside the JSON):
 {{
+    "patient_info": {{
+        "name": "Patient name if visible, else null",
+        "age": "Age if visible, else null",
+        "date": "Prescription date if visible, else null"
+    }},
+    "doctor_info": {{
+        "name": "Doctor name if visible, else null",
+        "qualification": "Qualification if visible, else null"
+    }},
+    "diagnosis": "Doctor's diagnosis or complaint if written, else null",
     "medicines": [
         {{
-            "name": "Full generic/brand name of the medicine",
-            "dosage": "Strength like 500mg, 250mg",
-            "frequency": "Plain English frequency e.g. twice a day, once a day, three times a day",
-            "timing": "Plain English timing e.g. after meals, before meals, at bedtime",
             "order": 1,
+            "name": "Full generic name + brand name e.g. Paracetamol (Dolo 650)",
+            "dosage": "Strength e.g. 500mg, 650mg, 10ml",
+            "form": "Tablet / Capsule / Syrup / Injection / Ointment etc.",
+            "frequency": "Plain English: e.g. twice a day, three times a day, once at night",
+            "timing": "Plain English: e.g. after meals, before meals, at bedtime, empty stomach",
+            "duration": "e.g. 5 days, 7 days, 10 days, as needed, ongoing — extract from prescription",
             "meal_relation": "one of: before breakfast, after breakfast, before lunch, after lunch, before dinner, after dinner, before meals, after meals, with food, empty stomach, at bedtime, anytime",
             "active_salts": ["Active ingredient 1", "Active ingredient 2"],
-            "alternatives": ["Brand alternative 1", "Brand alternative 2", "Brand alternative 3"],
-            "purpose": "Clear explanation: what this medicine does, what condition it treats, why the doctor likely prescribed it"
+            "alternatives": ["Brand 1 (same salt)", "Brand 2 (same salt)", "Brand 3 (same salt)"],
+            "purpose": "Clear explanation: what this medicine does, what condition it treats, why the doctor likely prescribed it for this patient",
+            "side_effects": ["Common side effect 1", "Common side effect 2", "Common side effect 3"],
+            "food_interaction": "e.g. Avoid alcohol. Take with food to reduce stomach upset. No specific food restrictions.",
+            "warnings": "Important warnings e.g. Do not drive. Complete the full antibiotic course. Avoid in pregnancy.",
+            "is_antibiotic": true or false,
+            "special_instructions": "Any special instruction e.g. Shake well before use. Store in refrigerator. Do not crush."
         }}
     ],
-    "overall_advice": "A clear medication schedule written conversationally in {target_language}. Specify EXACTLY: 'Take [Medicine] [dose] [when] [how often]. Then take [Medicine 2]...' Include what each medicine treats. Be specific and practical."
+    "overall_advice": "A practical daily medication schedule in {target_language}. Format it clearly by time slot: MORNING: [list medicines + dose + when]. AFTERNOON: [list]. NIGHT: [list]. AS NEEDED: [list]. Then add 2-3 lines of general advice. Be specific and humanised.",
+    "diet_advice": "Any dietary advice mentioned by doctor or standard advice for the diagnosed condition",
+    "follow_up": "Follow-up instruction if visible, else standard guidance"
 }}
 
-IMPORTANT RULES:
-- Include EVERY medicine from the prescription — even if info is partial/unclear.
-- If a field is unclear, make your best medical interpretation based on context.
+CRITICAL RULES:
+- Include EVERY medicine from the prescription without exception.
+- Use the drug name reference dictionary provided to expand abbreviated names to full generic + brand names.
+- If duration is not stated, infer a reasonable duration (e.g. antibiotics: 5-7 days, analgesics: 3-5 days, antacids: 14 days).
+- is_antibiotic must be true for any antibiotic (amoxicillin, azithromycin, cefixime, ciprofloxacin, metronidazole, doxycycline, etc.).
 - overall_advice MUST be written in {target_language} language.
-- Ensure all fields are present for every medicine entry.
+- All fields are required. Use null only for patient_info/doctor_info fields not visible in the image.
 """
         data = _call_analysis_model(extracted_text, PRESCRIPTION_ANALYSIS_INSTRUCTION, analysis_prompt)
         _safe_print(f"[INFO] Prescription analysis returned keys: {list(data.keys())}")
@@ -450,27 +555,34 @@ IMPORTANT RULES:
             med.setdefault("order", idx)
             med.setdefault("name", "Unknown")
             med.setdefault("dosage", "")
-            med.setdefault("frequency", "")
+            med.setdefault("form", "Tablet")
+            med.setdefault("frequency", "as directed")
             med.setdefault("timing", "as directed")
+            med.setdefault("duration", "as prescribed")
             med.setdefault("meal_relation", med.get("timing", "anytime"))
             med.setdefault("purpose", "Not available")
+            med.setdefault("food_interaction", "No specific food restrictions.")
+            med.setdefault("warnings", "")
+            med.setdefault("is_antibiotic", False)
+            med.setdefault("special_instructions", "")
 
-            # Ensure active_salts and alternatives are proper lists
-            salts = med.get("active_salts", [])
-            if isinstance(salts, str):
-                salts = [s.strip() for s in salts.split(",") if s.strip()]
-            med["active_salts"] = salts if isinstance(salts, list) else []
-
-            alts = med.get("alternatives", [])
-            if isinstance(alts, str):
-                alts = [a.strip() for a in alts.split(",") if a.strip()]
-            med["alternatives"] = alts if isinstance(alts, list) else []
+            # Ensure list fields are actual lists
+            for list_key in ("active_salts", "alternatives", "side_effects"):
+                val = med.get(list_key, [])
+                if isinstance(val, str):
+                    val = [s.strip() for s in val.split(",") if s.strip()]
+                med[list_key] = val if isinstance(val, list) else []
 
             cleaned.append(med)
 
         medicines_sorted = sorted(cleaned, key=lambda m: m.get("order", 999))
         data["medicines"] = medicines_sorted
         data.setdefault("overall_advice", "")
+        data.setdefault("patient_info", {})
+        data.setdefault("doctor_info", {})
+        data.setdefault("diagnosis", None)
+        data.setdefault("diet_advice", "")
+        data.setdefault("follow_up", "")
 
         _safe_print(f"[INFO] Final medicine count: {len(medicines_sorted)}")
 

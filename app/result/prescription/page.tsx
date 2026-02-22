@@ -58,11 +58,40 @@ const PrescriptionResult = () => {
       const parsed = JSON.parse(raw);
       const d = parsed.data || parsed;
       setPrescription(d);
-      if (parsed.audio_url) setAudioUrl(parsed.audio_url);
+
+      // Build audio source: prefer embedded base64, fall back to URL
+      let src: string | null = null;
+      if (parsed.audio_b64) {
+        src = `data:audio/mpeg;base64,${parsed.audio_b64}`;
+      } else if (parsed.audio_url) {
+        src = parsed.audio_url;
+      }
+      if (src) {
+        setAudioUrl(src);
+        const audio = new Audio(src);
+        audioRef.current = audio;
+        audio.onended = () => setPlaying(false);
+        setTimeout(() => {
+          audio.play().catch(() => {
+            // Autoplay may be blocked by browser policy — user can still click the button
+          });
+          setPlaying(true);
+        }, 800);
+      }
     } catch {
       router.push("/dashboard");
     }
   }, [router]);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
   const toggleAudio = () => {
     if (!audioUrl) return;
@@ -74,7 +103,9 @@ const PrescriptionResult = () => {
       audioRef.current.pause();
       setPlaying(false);
     } else {
-      audioRef.current.play();
+      // Reset to start so the user can replay from the beginning
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(() => { });
       setPlaying(true);
     }
   };
@@ -104,9 +135,8 @@ const PrescriptionResult = () => {
           {audioUrl && (
             <button
               onClick={toggleAudio}
-              className={`ml-auto w-10 h-10 rounded-xl flex items-center justify-center text-primary-foreground transition-all ${
-                playing ? "bg-destructive" : "bg-primary glow-pulse-saffron"
-              }`}
+              className={`ml-auto w-10 h-10 rounded-xl flex items-center justify-center text-primary-foreground transition-all ${playing ? "bg-destructive" : "bg-primary glow-pulse-saffron"
+                }`}
             >
               {playing ? <VolumeX size={18} /> : <Volume2 size={18} />}
             </button>

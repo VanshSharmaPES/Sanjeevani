@@ -9,6 +9,7 @@ import io
 import os
 import sys
 import json
+import base64
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from ai_engine import analyze_medicine_image, analyze_prescription_image
@@ -96,9 +97,17 @@ def api_analyze_medicine():
 
     response = {"success": True, "data": data}
     if audio_path and os.path.exists(audio_path):
-        response["audio_url"] = f"/api/audio/{os.path.basename(audio_path)}"
-        # Store audio path for serving
-        _audio_cache[os.path.basename(audio_path)] = audio_path
+        try:
+            with open(audio_path, "rb") as af:
+                audio_b64 = base64.b64encode(af.read()).decode("utf-8")
+            response["audio_b64"] = audio_b64
+        except Exception as ae:
+            _safe_log(f"[WARN] Could not read audio file: {ae}")
+        finally:
+            try:
+                os.remove(audio_path)
+            except Exception:
+                pass
 
     return jsonify(response)
 
@@ -129,8 +138,17 @@ def api_analyze_prescription():
 
     response = {"success": True, "data": data}
     if audio_path and os.path.exists(audio_path):
-        response["audio_url"] = f"/api/audio/{os.path.basename(audio_path)}"
-        _audio_cache[os.path.basename(audio_path)] = audio_path
+        try:
+            with open(audio_path, "rb") as af:
+                audio_b64 = base64.b64encode(af.read()).decode("utf-8")
+            response["audio_b64"] = audio_b64
+        except Exception as ae:
+            _safe_log(f"[WARN] Could not read audio file: {ae}")
+        finally:
+            try:
+                os.remove(audio_path)
+            except Exception:
+                pass
 
     return jsonify(response)
 
