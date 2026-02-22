@@ -77,13 +77,35 @@ if image_to_process:
             st.success("✅ Prescription Analyzed Successfully")
             
             st.markdown("#### 📝 Medication Schedule")
-            # Convert the list of dictionaries to a Pandas DataFrame for a clean table display
             medicines = data.get("medicines", [])
             if medicines:
-                df = pd.DataFrame(medicines)
-                # Capitalize column names for display
-                df.columns = [col.capitalize() for col in df.columns]
+                # Ensure predictable ordering
+                medicines_sorted = sorted(medicines, key=lambda m: m.get("order", 999))
+
+                # Create display DataFrame with explicit columns
+                display_rows = []
+                for m in medicines_sorted:
+                    display_rows.append({
+                        "Order": m.get("order"),
+                        "Name": m.get("name"),
+                        "Dosage": m.get("dosage"),
+                        "Frequency": m.get("frequency"),
+                        "Timing": m.get("timing"),
+                        "Meal Relation": m.get("meal_relation", "anytime")
+                    })
+
+                df = pd.DataFrame(display_rows)
                 st.table(df)
+
+                st.markdown("#### 🔢 Sequence & Friendly Schedule")
+                for m in medicines_sorted:
+                    order = m.get("order")
+                    name = m.get("name")
+                    dosage = m.get("dosage") or ""
+                    meal = m.get("meal_relation", "anytime")
+                    frequency = m.get("frequency") or ""
+                    st.write(f"{order}. {name} {dosage} — {frequency} — {meal}")
+
             else:
                 st.warning("No medicines could be clearly extracted from the image.")
 

@@ -89,18 +89,22 @@ def analyze_prescription_image(image_bytes, target_language="Hindi"):
     Extract the list of prescribed medicines, their dosages (e.g., 500mg, 10ml), 
     frequency (e.g., 2 times a day), and timing (e.g., after meals, before sleep).
     
+    Additionally, determine the sequence/order the patient should take the medicines (if the prescription lists them in order, preserve that). For each medicine include a clear "meal_relation" value such as "before breakfast", "after breakfast", "before meals", "after meals", "with food", "empty stomach", "at bedtime", or "anytime".
+
     Return JSON structure exactly like this:
-    {{
+    {
         "medicines": [
-            {{
+            {
                 "name": "string",
                 "dosage": "string",
                 "frequency": "string",
-                "timing": "string"
-            }}
+                "timing": "string",
+                "order": 1,
+                "meal_relation": "after breakfast"
+            }
         ],
         "overall_advice": "A conversational summary of how to take these medicines, translated into {target_language}"
-    }}
+    }
     """
 
     image_base64 = base64.b64encode(image_bytes).decode("utf-8")
@@ -128,6 +132,18 @@ def analyze_prescription_image(image_bytes, target_language="Hindi"):
             raw_content = raw_content[7:-3].strip()
 
         data = json.loads(raw_content)
+
+        # Normalize medicines entries: ensure order and meal_relation exist
+        medicines = data.get("medicines", []) or []
+        for idx, med in enumerate(medicines, start=1):
+            if "order" not in med:
+                med["order"] = med.get("order", idx)
+            if "meal_relation" not in med:
+                med["meal_relation"] = med.get("timing", "anytime")
+
+        # Sort medicines by provided order for predictable presentation
+        medicines_sorted = sorted(medicines, key=lambda m: m.get("order", 999))
+        data["medicines"] = medicines_sorted
         
         # Generate Audio for the overall advice
         audio_file = "prescription_advice.mp3"
