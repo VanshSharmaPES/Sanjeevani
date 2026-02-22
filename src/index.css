@@ -1,0 +1,154 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Biopunk Ayurveda - Dark Theme Primary */
+    --background: 152 55% 11%;        /* #0D2B1E deep forest */
+    --foreground: 40 20% 90%;         /* warm off-white */
+
+    --card: 152 45% 8%;               /* darker forest */
+    --card-foreground: 40 20% 90%;
+
+    --popover: 152 45% 8%;
+    --popover-foreground: 40 20% 90%;
+
+    --primary: 38 90% 48%;            /* #E8960C saffron gold */
+    --primary-foreground: 152 55% 6%;
+
+    --secondary: 168 100% 41%;        /* #00FFD1 bioluminescent cyan */
+    --secondary-foreground: 152 55% 6%;
+
+    --muted: 152 30% 15%;
+    --muted-foreground: 152 15% 55%;
+
+    --accent: 168 100% 41%;
+    --accent-foreground: 152 55% 6%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 152 25% 18%;
+    --input: 152 25% 18%;
+    --ring: 38 90% 48%;
+
+    --radius: 0.75rem;
+
+    /* Custom tokens */
+    --forest: 152 55% 11%;
+    --forest-deep: 152 55% 6%;
+    --forest-light: 152 30% 15%;
+    --saffron: 38 90% 48%;
+    --saffron-glow: 38 100% 55%;
+    --cyan: 168 100% 41%;
+    --cyan-glow: 168 100% 50%;
+    --teal: 170 50% 20%;
+    --amber: 30 50% 20%;
+    --dosage-high: 0 72% 51%;
+    --dosage-normal: 142 70% 45%;
+
+    --sidebar-background: 152 55% 7%;
+    --sidebar-foreground: 40 20% 85%;
+    --sidebar-primary: 38 90% 48%;
+    --sidebar-primary-foreground: 152 55% 6%;
+    --sidebar-accent: 152 30% 13%;
+    --sidebar-accent-foreground: 40 20% 90%;
+    --sidebar-border: 152 25% 15%;
+    --sidebar-ring: 168 100% 41%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Syne', sans-serif;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: 'Syne', sans-serif;
+  }
+
+  .font-body {
+    font-family: 'Noto Sans Devanagari', 'Inter', sans-serif;
+  }
+
+  /* Bioluminescent glow pulse */
+  .glow-pulse {
+    animation: glowPulse 2s ease-in-out infinite;
+  }
+
+  .glow-pulse-saffron {
+    animation: glowPulseSaffron 2s ease-in-out infinite;
+  }
+
+  .glow-pulse-cyan {
+    animation: glowPulseCyan 2.5s ease-in-out infinite;
+  }
+
+  /* Breathing animation */
+  .breathing {
+    animation: breathing 4s ease-in-out infinite;
+  }
+
+  /* Mandala rotation */
+  .mandala-spin {
+    animation: mandalaSpin 120s linear infinite;
+  }
+
+  /* DNA Helix spin */
+  .dna-spin {
+    animation: dnaSpin 1.2s linear infinite;
+  }
+}
+
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 20px hsl(38 90% 48% / 0.3), 0 0 40px hsl(38 90% 48% / 0.1); }
+  50% { box-shadow: 0 0 30px hsl(38 90% 48% / 0.5), 0 0 60px hsl(38 90% 48% / 0.2); }
+}
+
+@keyframes glowPulseSaffron {
+  0%, 100% { box-shadow: 0 0 15px hsl(38 90% 48% / 0.3); }
+  50% { box-shadow: 0 0 30px hsl(38 90% 48% / 0.6), 0 0 50px hsl(38 90% 48% / 0.15); }
+}
+
+@keyframes glowPulseCyan {
+  0%, 100% { box-shadow: 0 0 15px hsl(168 100% 41% / 0.2); }
+  50% { box-shadow: 0 0 25px hsl(168 100% 41% / 0.4), 0 0 45px hsl(168 100% 41% / 0.1); }
+}
+
+@keyframes breathing {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.05); opacity: 1; }
+}
+
+@keyframes mandalaSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes dnaSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes scanPulse {
+  0%, 100% { border-color: hsl(168 100% 41% / 0.4); }
+  50% { border-color: hsl(168 100% 41% / 1); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
