@@ -4,6 +4,7 @@ __pycache__/
 *.jpeg
 *.jpg
 *.png
+*.db
 
 REQUIREMENTS.md
 ARCHITECTURE.md
