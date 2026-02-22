@@ -21,11 +21,13 @@ Language Rule: Do not let translation affect your logic. Only translate the 'adv
 """
 
 PRESCRIPTION_INSTRUCTION = """
-You are a Medical AI Assistant specializing in reading handwritten and printed prescriptions.
-Your goal is to extract every single medicine mentioned, their dosages, and the doctor's instructions.
-Read the prescription thoroughly — do not skip any medicine, even if the handwriting is unclear.
-For each medicine, also identify its active salts/ingredients and suggest 2-3 alternative medicines
-that contain the same salts (generics or other brands), in case the original is unavailable.
+You are a Medical AI Assistant who is an expert at reading real handwritten doctor prescriptions.
+Doctors write in rushed, abbreviated, and often illegible handwriting. You must:
+- Use medical context and common drug names to interpret unclear handwriting.
+- Recognize common doctor abbreviations: "BD" = twice daily, "TDS/TID" = three times daily, "OD" = once daily, "QID" = four times daily, "SOS" = as needed, "HS" = at bedtime, "AC" = before meals, "PC" = after meals, "Stat" = immediately, "Tab" = Tablet, "Cap" = Capsule, "Syp" = Syrup, "Inj" = Injection.
+- If a word is partially legible, match it against known drug names (e.g. "Amox" = Amoxicillin, "Azithro" = Azithromycin, "Paracet" = Paracetamol, "Cefix" = Cefixime).
+- Extract EVERY medicine line — do not skip any entry, even if partially readable.
+- For each medicine, identify its active salts and suggest 2-3 alternatives with the same salts.
 Language Rule: Translate the 'overall_advice' field into the requested target language.
 """
 
@@ -114,14 +116,21 @@ def analyze_medicine_image(image_bytes, target_language="English"):
 
 def analyze_prescription_image(image_bytes, target_language="English"):
     prompt_text = f"""
-    Analyze this medical prescription image very carefully.
-    Read every single medicine mentioned — do not skip any, even if handwriting is unclear.
+    You are reading a real doctor's handwritten prescription. Doctors write quickly so the handwriting may be messy.
+    Use your medical knowledge to interpret abbreviated or unclear text:
+    - Common abbreviations: BD=twice daily, TDS/TID=thrice daily, OD=once daily, QID=four times, SOS=as needed, HS=bedtime, AC=before meals, PC=after meals, Tab=Tablet, Cap=Capsule, Syp=Syrup, Inj=Injection.
+    - Match partial words to known drugs (e.g. "Amox"=Amoxicillin, "Cefix"=Cefixime, "Azithro"=Azithromycin).
+
+    Extract EVERY medicine from this prescription. Do not skip any line.
     
     For each medicine extract:
-    - name, dosage (e.g. 500mg), frequency (e.g. 2 times a day), timing (e.g. after meals, before sleep)
-    - meal_relation: "before breakfast", "after breakfast", "before meals", "after meals", "with food", "empty stomach", "at bedtime", or "anytime"
-    - active_salts: the active salts/ingredients in that medicine
-    - alternatives: 2-3 alternative medicines with the same active salts (generic or other brands) that can be used if the original is unavailable
+    - name: full medicine name (interpret abbreviations)
+    - dosage: strength (e.g. 500mg, 250mg)
+    - frequency: how often (convert abbreviations to plain language, e.g. BD -> "twice a day")
+    - timing: when to take (convert AC/PC to plain language)
+    - meal_relation: one of "before breakfast", "after breakfast", "before lunch", "after lunch", "before dinner", "after dinner", "before meals", "after meals", "with food", "empty stomach", "at bedtime", or "anytime"
+    - active_salts: the active pharmaceutical ingredients
+    - alternatives: 2-3 alternative brand-name medicines containing the same active salts
 
     Return JSON structure exactly like this:
     {{
@@ -129,10 +138,10 @@ def analyze_prescription_image(image_bytes, target_language="English"):
             {{
                 "name": "Medicine Name",
                 "dosage": "500mg",
-                "frequency": "2 times a day",
+                "frequency": "twice a day",
                 "timing": "after meals",
                 "order": 1,
-                "meal_relation": "after breakfast",
+                "meal_relation": "after meals",
                 "active_salts": ["Paracetamol"],
                 "alternatives": ["Crocin", "Calpol", "Dolo"]
             }}

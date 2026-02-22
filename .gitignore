@@ -1,6 +1,9 @@
 .env
 __pycache__/
 *.mp3
+*.jpeg
+*.jpg
+*.png
 
 REQUIREMENTS.md
 ARCHITECTURE.md

@@ -118,26 +118,20 @@ if image_to_process:
                 df = pd.DataFrame(display_rows)
                 st.table(df)
 
-                # Per-medicine detail cards
-                st.markdown("#### 💊 Medicine Details & Alternatives")
+                # Medicine alternatives only (no duplicate prescription details)
+                st.markdown("#### 🔄 Medicine Alternatives")
+                has_any_alt = False
                 for m in medicines_sorted:
-                    order = m.get("order", "")
                     name = m.get("name", "Unknown")
-                    dosage = m.get("dosage", "")
-                    frequency = m.get("frequency", "")
-                    meal = m.get("meal_relation", "anytime")
                     salts = m.get("active_salts", [])
                     alts = m.get("alternatives", [])
-
-                    with st.expander(f"{order}. {name} — {dosage}"):
-                        st.write(f"**Frequency:** {frequency}")
-                        st.write(f"**When to take:** {meal}")
-                        if salts:
-                            st.write(f"**Active Salts:** {', '.join(salts)}")
-                        if alts:
-                            st.info(f"🔄 **Alternatives (same salts):** {', '.join(alts)}")
-                        else:
-                            st.caption("No alternatives found.")
+                    if alts:
+                        has_any_alt = True
+                        salts_str = f" ({', '.join(salts)})" if salts else ""
+                        st.markdown(f"**{name}**{salts_str}")
+                        st.info(f"🔄 Alternatives: {', '.join(alts)}")
+                if not has_any_alt:
+                    st.caption("No alternatives found for any medicine.")
             else:
                 st.warning("No medicines could be clearly extracted from the image.")
 
