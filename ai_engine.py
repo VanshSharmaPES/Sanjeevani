@@ -13,6 +13,10 @@ import edge_tts
 import json
 import base64
 from PIL import Image
+from pillow_heif import register_heif_opener
+
+# Support HEIC/HEIF (standard iPhone formats)
+register_heif_opener()
 
 load_dotenv()
 
@@ -238,19 +242,27 @@ def _preprocess_image(image_bytes: bytes) -> tuple[bytes, str]:
     """
     try:
         img = Image.open(io.BytesIO(image_bytes))
-        # Convert palette/transparency modes to RGB for JPEG
+        
+        # Log suspected format for debugging
+        original_format = getattr(img, "format", "Unknown")
+        _safe_print(f"[INFO] Preprocessing image: format={original_format}, size={img.size}, mode={img.mode}")
+
+        # Convert palette/transparency modes (like PNG) or HEIF modes to RGB for JPEG
         if img.mode not in ("RGB", "L"):
             img = img.convert("RGB")
+            
         # Resize if very large (improves both speed and OCR accuracy)
         max_dim = 1600
         w, h = img.size
         if max(w, h) > max_dim:
             scale = max_dim / max(w, h)
             img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+            
         buf = io.BytesIO()
         img.save(buf, format="JPEG", quality=92)
         return buf.getvalue(), "image/jpeg"
-    except Exception:
+    except Exception as e:
+        _safe_print(f"[WARN] Image preprocessing failed: {e}. Attempting raw fallback.")
         # Fallback: detect MIME from magic bytes and return raw
         mime = "image/jpeg"
         if image_bytes[:8] == b'\x89PNG\r\n\x1a\n':

@@ -4,6 +4,7 @@ groq>=0.4.0
 python-dotenv>=1.0.0
 edge-tts>=6.1.0
 pillow>=10.0.0
+pillow-heif>=0.10.0
 requests>=2.31.0
 flask>=3.0.0
 flask-cors>=4.0.0
