@@ -15,6 +15,7 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -25,23 +26,28 @@ const Login = () => {
 
     try {
       if (isLogin) {
-        // Login flow
+        // Login: `email` state holds the username the user typed
         const res = await fetch("/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username: email, password }),
+          body: JSON.stringify({ username: email.trim(), password }),
         });
         const data = await res.json();
         if (data.success) {
-          localStorage.setItem("sanjeevani_user", data.username || email.split("@")[0]);
+          localStorage.setItem("sanjeevani_user", data.username || email.trim());
           localStorage.setItem("sanjeevani_user_id", String(data.user_id));
           router.push("/dashboard");
         } else {
           setError(data.message || "Invalid credentials");
         }
       } else {
-        // Register flow
-        const username = name || email.split("@")[0];
+        // Register: `name` state is the chosen username
+        const username = name.trim();
+        if (!username) {
+          setError("Please enter a username.");
+          setLoading(false);
+          return;
+        }
         const res = await fetch("/api/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -49,9 +55,13 @@ const Login = () => {
         });
         const data = await res.json();
         if (data.success) {
-          localStorage.setItem("sanjeevani_user", username);
-          localStorage.setItem("sanjeevani_user_id", String(data.user_id));
-          router.push("/dashboard");
+          setSuccess(`Account created! Log in with username "${username}".`);
+          setName("");
+          setPassword("");
+          setTimeout(() => {
+            setSuccess("");
+            setIsLogin(true);
+          }, 2500);
         } else {
           setError(data.message || "Registration failed");
         }
@@ -97,7 +107,7 @@ const Login = () => {
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
             />
             <button
-              onClick={() => setIsLogin(true)}
+              onClick={() => { setIsLogin(true); setError(""); setSuccess(""); }}
               className={`relative z-10 flex-1 py-2 text-sm font-display font-semibold rounded-full transition-colors ${
                 isLogin ? "text-primary-foreground" : "text-muted-foreground"
               }`}
@@ -105,7 +115,7 @@ const Login = () => {
               Login
             </button>
             <button
-              onClick={() => setIsLogin(false)}
+              onClick={() => { setIsLogin(false); setError(""); setSuccess(""); }}
               className={`relative z-10 flex-1 py-2 text-sm font-display font-semibold rounded-full transition-colors ${
                 !isLogin ? "text-primary-foreground" : "text-muted-foreground"
               }`}
@@ -121,10 +131,16 @@ const Login = () => {
                 {error}
               </div>
             )}
+            {success && (
+              <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-xl text-green-400 text-sm text-center">
+                {success}
+              </div>
+            )}
             <AnimatePresence mode="wait">
-              {!isLogin && (
+              {isLogin ? (
+                /* Login: single Username field */
                 <motion.div
-                  key="name"
+                  key="username-login"
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
@@ -133,25 +149,36 @@ const Login = () => {
                   <div className="relative">
                     <input
                       type="text"
-                      placeholder="Full Name"
+                      placeholder="Username"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      autoComplete="username"
+                      className="w-full bg-transparent border-b-2 border-border focus:border-primary py-3 px-1 text-foreground placeholder:text-muted-foreground outline-none transition-colors font-body"
+                    />
+                  </div>
+                </motion.div>
+              ) : (
+                /* Register: Username field */
+                <motion.div
+                  key="username-register"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Choose a Username"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
+                      autoComplete="username"
                       className="w-full bg-transparent border-b-2 border-border focus:border-primary py-3 px-1 text-foreground placeholder:text-muted-foreground outline-none transition-colors font-body"
                     />
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
-
-            <div className="relative">
-              <input
-                type="email"
-                placeholder="Email Address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-transparent border-b-2 border-border focus:border-primary py-3 px-1 text-foreground placeholder:text-muted-foreground outline-none transition-colors font-body"
-              />
-            </div>
 
             <div className="relative">
               <input

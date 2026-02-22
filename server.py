@@ -14,6 +14,9 @@ from db import register_user, authenticate_user, save_scan, get_user_history, de
 app = Flask(__name__)
 CORS(app)
 
+# Audio file cache: filename → absolute path on disk
+_audio_cache: dict[str, str] = {}
+
 LANG_CODE_MAP = {
     "en": "English",
     "hi": "Hindi",
@@ -34,8 +37,7 @@ def api_register():
     password = data.get("password", "")
     success, msg = register_user(username, password)
     if success:
-        ok, user_id = authenticate_user(username, password)
-        return jsonify({"success": True, "message": msg, "user_id": user_id})
+        return jsonify({"success": True, "message": msg})
     return jsonify({"success": False, "message": msg}), 400
 
 
@@ -65,14 +67,15 @@ def api_analyze_medicine():
     data, audio_path = analyze_medicine_image(image_bytes, target_language=language)
 
     if "error" in data:
+        print(f"[ERROR] Medicine analysis failed: {data['error']}")
         return jsonify(data), 500
 
     # Save to history if user is logged in
     if user_id:
         try:
             save_scan(int(user_id), "medicine", language_code, data)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[WARN] Could not save medicine scan to history: {e}")
 
     response = {"success": True, "data": data}
     if audio_path and os.path.exists(audio_path):
@@ -97,14 +100,15 @@ def api_analyze_prescription():
     data, audio_path = analyze_prescription_image(image_bytes, target_language=language)
 
     if "error" in data:
+        print(f"[ERROR] Prescription analysis failed: {data['error']}")
         return jsonify(data), 500
 
     # Save to history if user is logged in
     if user_id:
         try:
             save_scan(int(user_id), "prescription", language_code, data)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[WARN] Could not save prescription scan to history: {e}")
 
     response = {"success": True, "data": data}
     if audio_path and os.path.exists(audio_path):
@@ -115,7 +119,6 @@ def api_analyze_prescription():
 
 
 # ─── Audio serving ───────────────────────────────────────────
-_audio_cache: dict[str, str] = {}
 
 
 @app.route("/api/audio/<filename>", methods=["GET"])

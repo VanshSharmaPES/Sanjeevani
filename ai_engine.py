@@ -63,7 +63,16 @@ Provide accurate, detailed medical analysis.
 
 client = Groq(api_key=os.getenv("API_KEY"))
 
-LANG_MAP = {'English': 'en', 'Hindi': 'hi', 'Kannada': 'kn', 'Tamil': 'ta', 'Telugu': 'te'}
+LANG_MAP = {
+    'English': 'en',
+    'Hindi': 'hi',
+    'Kannada': 'kn',
+    'Tamil': 'ta',
+    'Telugu': 'te',
+    'Bengali': 'bn',
+    'Marathi': 'mr',
+    'Malayalam': 'ml',
+}
 
 
 def _call_vision_model(image_bytes, system_prompt):
@@ -85,7 +94,21 @@ def _call_vision_model(image_bytes, system_prompt):
         response_format={"type": "json_object"}
     )
     raw = response.choices[0].message.content.strip()
-    return json.loads(raw).get("extracted_text", raw)
+    # Robustly extract the text — handle non-JSON or partial JSON responses
+    try:
+        parsed = json.loads(raw)
+        # Accept any key that looks like it holds the extracted text
+        for key in ("extracted_text", "text", "content", "result"):
+            if key in parsed and isinstance(parsed[key], str):
+                return parsed[key]
+        # If no recognised key, join all string values
+        text_values = [v for v in parsed.values() if isinstance(v, str)]
+        if text_values:
+            return " ".join(text_values)
+        return raw
+    except (json.JSONDecodeError, TypeError):
+        # Model returned plain text instead of JSON — use it directly
+        return raw
 
 
 def _call_analysis_model(extracted_text, system_prompt, user_prompt):
@@ -100,8 +123,11 @@ def _call_analysis_model(extracted_text, system_prompt, user_prompt):
         response_format={"type": "json_object"}
     )
     raw = response.choices[0].message.content.strip()
-    if raw.startswith("```json"):
-        raw = raw[7:-3].strip()
+    # Strip any markdown code fences
+    if raw.startswith("```"):
+        lines = raw.splitlines()
+        # Remove first line (```json or ```) and last line (```)
+        raw = "\n".join(lines[1:-1]).strip()
     return json.loads(raw)
 
 
@@ -164,12 +190,17 @@ If the text does not appear to be from a medicine, return:
             audio_text += f"Suitable age group: {age_group}. "
         audio_text += advice
 
-        tts = gTTS(text=audio_text, lang=LANG_MAP.get(target_language, 'en'))
-        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-        tts.save(tmp.name)
-        tmp.close()
+        audio_path = None
+        try:
+            tts = gTTS(text=audio_text, lang=LANG_MAP.get(target_language, 'en'))
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+            tts.save(tmp.name)
+            tmp.close()
+            audio_path = tmp.name
+        except Exception as tts_err:
+            print(f"[WARN] Medicine audio generation failed: {tts_err}")
 
-        return data, tmp.name
+        return data, audio_path
 
     except Exception as e:
         return {"error": f"Scan Failed: {str(e)}"}, None
@@ -248,12 +279,17 @@ Return JSON:
         overall = data.get("overall_advice", "")
         full_audio_text = " ".join(audio_parts) + " " + overall
 
-        tts = gTTS(text=full_audio_text, lang=LANG_MAP.get(target_language, 'en'))
-        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-        tts.save(tmp.name)
-        tmp.close()
+        audio_path = None
+        try:
+            tts = gTTS(text=full_audio_text, lang=LANG_MAP.get(target_language, 'en'))
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+            tts.save(tmp.name)
+            tmp.close()
+            audio_path = tmp.name
+        except Exception as tts_err:
+            print(f"[WARN] Prescription audio generation failed: {tts_err}")
 
-        return data, tmp.name
+        return data, audio_path
 
     except Exception as e:
         return {"error": f"Prescription Scan Failed: {str(e)}"}, None
