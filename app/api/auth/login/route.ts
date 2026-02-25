@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const PYTHON_API = process.env.PYTHON_API_URL || "http://localhost:5000";
+const PYTHON_API = process.env.PYTHON_API_URL || "http://127.0.0.1:5000";
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +13,14 @@ export async function POST(request: NextRequest) {
     });
 
     const data = await response.json();
-    return NextResponse.json(data, { status: response.status });
+    const nextResponse = NextResponse.json(data, { status: response.status });
+
+    const setCookie = response.headers.get("set-cookie");
+    if (setCookie) {
+      nextResponse.headers.set("set-cookie", setCookie);
+    }
+
+    return nextResponse;
   } catch (error: any) {
     return NextResponse.json(
       { success: false, message: "Failed to connect to server" },

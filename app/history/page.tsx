@@ -22,26 +22,18 @@ const ScanHistory = () => {
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   useEffect(() => {
-    const userId = localStorage.getItem("sanjeevani_user_id");
-    if (!userId) {
-      setLoading(false);
-      return;
-    }
-    fetch(`/api/history/${userId}`)
+    fetch(`/api/history`, { credentials: "include" })
       .then((r) => r.json())
       .then((data) => {
         if (data.success) setItems(data.history || []);
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   }, []);
 
   const handleDelete = (id: number) => {
-    const userId = localStorage.getItem("sanjeevani_user_id");
-    if (!userId) return;
-
     setDeletingId(id);
-    fetch(`/api/history/${userId}/${id}`, { method: "DELETE" })
+    fetch(`/api/history/${id}`, { method: "DELETE", credentials: "include" })
       .then((r) => r.json())
       .then((data) => {
         if (data.success) {
@@ -138,9 +130,8 @@ const ScanHistory = () => {
                   transition={{ duration: 0.4, delay: idx * 0.08 }}
                   className="relative pl-14 pb-8"
                 >
-                  <div className={`absolute left-3 top-2 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                    item.scan_type === "medicine" ? "border-secondary bg-secondary/20" : "border-primary bg-primary/20"
-                  }`}>
+                  <div className={`absolute left-3 top-2 w-5 h-5 rounded-full border-2 flex items-center justify-center ${item.scan_type === "medicine" ? "border-secondary bg-secondary/20" : "border-primary bg-primary/20"
+                    }`}>
                     {item.scan_type === "medicine" ? <Pill size={10} className="text-secondary" /> : <FileText size={10} className="text-primary" />}
                   </div>
 
@@ -154,9 +145,8 @@ const ScanHistory = () => {
                         <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-lg">{item.language}</span>
                         <button
                           onClick={() => handleDelete(item.id)}
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all ${
-                            deletingId === item.id ? "animate-[shake_0.3s_ease-in-out]" : ""
-                          }`}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all ${deletingId === item.id ? "animate-[shake_0.3s_ease-in-out]" : ""
+                            }`}
                         >
                           <Trash2 size={14} />
                         </button>

@@ -33,15 +33,12 @@ const Dashboard = () => {
     setLanguage(savedLang);
 
     // Fetch history count
-    const userId = localStorage.getItem("sanjeevani_user_id");
-    if (userId) {
-      fetch(`/api/history/${userId}`)
-        .then((r) => r.json())
-        .then((data) => {
-          if (data.success) setHistoryCount((data.history || []).length);
-        })
-        .catch(() => {});
-    }
+    fetch(`/api/history`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) setHistoryCount((data.history || []).length);
+      })
+      .catch(() => { });
   }, []);
 
   const handleLanguageChange = (code: string) => {
@@ -50,10 +47,13 @@ const Dashboard = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("sanjeevani_user");
-    localStorage.removeItem("sanjeevani_user_id");
-    localStorage.removeItem("sanjeevani_language");
-    router.push("/");
+    fetch("/api/auth/logout", { method: "POST", credentials: "include" })
+      .catch(() => { })
+      .finally(() => {
+        localStorage.removeItem("sanjeevani_user");
+        localStorage.removeItem("sanjeevani_language");
+        router.push("/");
+      });
   };
 
   const stagger = {
@@ -80,9 +80,8 @@ const Dashboard = () => {
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:sticky top-0 left-0 h-screen w-64 bg-sidebar border-r border-sidebar-border z-40 flex flex-col transition-transform duration-300 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        }`}
+        className={`fixed lg:sticky top-0 left-0 h-screen w-64 bg-sidebar border-r border-sidebar-border z-40 flex flex-col transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          }`}
       >
         <div className="p-6 border-b border-sidebar-border">
           <div className="flex items-center gap-3 mb-4">

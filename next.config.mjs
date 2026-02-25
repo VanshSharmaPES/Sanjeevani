@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Allow large prescription/medicine images (up to 20MB)
+  devIndicators: false,
   experimental: {
     serverActions: {
       bodySizeLimit: "20mb",

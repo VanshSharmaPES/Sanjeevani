@@ -132,15 +132,15 @@ npm run dev -- -H 0.0.0.0
 
 * `POST /api/auth/register` - Register a new user
 * `POST /api/auth/login` - Authenticate an existing user
+* `POST /api/auth/logout` - Logout the current user using JWT cookie
 
 **Analysis**
 
-* `POST /api/analyze/medicine` - Upload a medicine image for extraction and TTS translation
-* `POST /api/analyze/prescription` - Upload a prescription image for analysis and TTS translation
+* `POST /api/analyze/medicine` - Upload a medicine for Groq analysis and edge-TTS audio bytes
+* `POST /api/analyze/prescription` - Upload a prescription for analysis and TTS audio bytes
 
 **Media & History**
 
-* `GET /api/audio/<filename>` - Retrieve the generated audio file
-* `GET /api/history/<user_id>` - Fetch a specific user's scan history
-* `DELETE /api/history/<user_id>/<scan_id>` - Remove a specific history entry
+* `GET /api/history` - Fetch the authenticated user's scan history
+* `DELETE /api/history/<scan_id>` - Remove a specific history entry
 * `GET /api/health` - Check backend server health status

@@ -1,0 +1,15 @@
+Γû▓ Next.js 16.1.6 (Turbopack)
+- Environments: .env
+- Experiments (use with caution):
+  ┬╖ serverActions
+
+
+> Build error occurred
+Error: Ambiguous app routes detected:
+
+Ambiguous route pattern "/api/history/[*]" matches multiple routes:
+  - /api/history/[scanId]
+  - /api/history/[userId]
+
+These routes cannot be distinguished from each other when matching URLs. Please ensure that dynamic segments have unique patterns or use different static segments.
+    at ignore-listed frames

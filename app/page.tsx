@@ -30,12 +30,12 @@ const Login = () => {
         const res = await fetch("/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ username: email.trim(), password }),
         });
         const data = await res.json();
         if (data.success) {
           localStorage.setItem("sanjeevani_user", data.username || email.trim());
-          localStorage.setItem("sanjeevani_user_id", String(data.user_id));
           router.push("/dashboard");
         } else {
           setError(data.message || "Invalid credentials");
@@ -108,17 +108,15 @@ const Login = () => {
             />
             <button
               onClick={() => { setIsLogin(true); setError(""); setSuccess(""); }}
-              className={`relative z-10 flex-1 py-2 text-sm font-display font-semibold rounded-full transition-colors ${
-                isLogin ? "text-primary-foreground" : "text-muted-foreground"
-              }`}
+              className={`relative z-10 flex-1 py-2 text-sm font-display font-semibold rounded-full transition-colors ${isLogin ? "text-primary-foreground" : "text-muted-foreground"
+                }`}
             >
               Login
             </button>
             <button
               onClick={() => { setIsLogin(false); setError(""); setSuccess(""); }}
-              className={`relative z-10 flex-1 py-2 text-sm font-display font-semibold rounded-full transition-colors ${
-                !isLogin ? "text-primary-foreground" : "text-muted-foreground"
-              }`}
+              className={`relative z-10 flex-1 py-2 text-sm font-display font-semibold rounded-full transition-colors ${!isLogin ? "text-primary-foreground" : "text-muted-foreground"
+                }`}
             >
               Register
             </button>

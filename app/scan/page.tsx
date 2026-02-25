@@ -34,6 +34,9 @@ function ScanUploadContent() {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
       }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
     };
   }, []);
 
@@ -41,6 +44,9 @@ function ScanUploadContent() {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
     }
     setCameraActive(false);
   }, []);
@@ -165,12 +171,10 @@ function ScanUploadContent() {
       formData.append("image", selectedFile);
 
       const lang = localStorage.getItem("sanjeevani_language") || "en";
-      const userId = localStorage.getItem("sanjeevani_user_id") || "";
       formData.append("language", lang);
-      formData.append("user_id", userId);
 
       const endpoint = type === "prescription" ? "/api/analyze/prescription" : "/api/analyze/medicine";
-      const res = await fetch(endpoint, { method: "POST", body: formData });
+      const res = await fetch(endpoint, { method: "POST", credentials: "include", body: formData });
       const data = await res.json();
 
       if (!res.ok || data.error) {

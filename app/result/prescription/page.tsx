@@ -31,6 +31,7 @@ interface Medicine {
 
 interface PrescriptionData {
   medicines: Medicine[];
+  interactions?: string[];
   overall_advice?: string;
   overall_advice_en?: string;  // English version for bilingual display
   patient_info?: { name?: string; age?: string; date?: string };
@@ -95,6 +96,13 @@ const PrescriptionResult = () => {
           setCurrentTime(0);
           if (rafRef.current) cancelAnimationFrame(rafRef.current);
         };
+        // Auto-play TTS on result load
+        audio.play()
+          .then(() => {
+            setPlaying(true);
+            rafRef.current = requestAnimationFrame(tickProgress);
+          })
+          .catch((e) => console.log("Autoplay blocked/failed:", e));
       }
     } catch { router.push("/dashboard"); }
   }, [router]);
@@ -234,6 +242,21 @@ const PrescriptionResult = () => {
               )}
             </div>
           </motion.div>
+
+          {/* Drug Interactions */}
+          {prescription.interactions && prescription.interactions.length > 0 && (
+            <motion.div variants={fadeUp} className="bg-destructive/10 border border-destructive/20 rounded-2xl p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle size={18} className="text-destructive shrink-0" />
+                <h3 className="font-display font-bold text-destructive text-sm uppercase tracking-wider">Drug Interactions Warning</h3>
+              </div>
+              <ul className="list-disc list-outside ml-5 space-y-1 text-destructive/90 text-sm">
+                {prescription.interactions.map((interaction, idx) => (
+                  <li key={idx} className="leading-relaxed">{interaction}</li>
+                ))}
+              </ul>
+            </motion.div>
+          )}
 
           {/* Medicine cards */}
           {medicines.map((med, idx) => {

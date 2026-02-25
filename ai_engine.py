@@ -12,6 +12,8 @@ import asyncio
 import edge_tts
 import json
 import base64
+import cv2
+import numpy as np
 from PIL import Image
 from pillow_heif import register_heif_opener
 
@@ -258,8 +260,32 @@ def _preprocess_image(image_bytes: bytes) -> tuple[bytes, str]:
             scale = max_dim / max(w, h)
             img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
             
+        # --- OpenCV Preprocessing Pipeline ---
+        cv_img = np.array(img)
+        # Convert RGB to BGR for OpenCV (PIL images are usually RGB)
+        if len(cv_img.shape) == 3 and cv_img.shape[2] == 3:
+            cv_img = cv2.cvtColor(cv_img, cv2.COLOR_RGB2BGR)
+            gray = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
+        else:
+            gray = cv_img
+
+        # 1. CLAHE (Contrast Limited Adaptive Histogram Equalization)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        contrast_img = clahe.apply(gray)
+        
+        # 2. Denoising
+        denoised = cv2.fastNlMeansDenoising(contrast_img, None, h=10, templateWindowSize=7, searchWindowSize=21)
+        
+        # 3. Adaptive Thresholding (Gaussian method)
+        binarized = cv2.adaptiveThreshold(denoised, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+        
+        # Convert back to PIL Image
+        final_img = Image.fromarray(binarized)
+        if final_img.mode != "RGB":
+            final_img = final_img.convert("RGB")
+
         buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=92)
+        final_img.save(buf, format="JPEG", quality=92)
         return buf.getvalue(), "image/jpeg"
     except Exception as e:
         _safe_print(f"[WARN] Image preprocessing failed: {e}. Attempting raw fallback.")
@@ -419,6 +445,7 @@ Return ONLY this JSON structure — no markdown, no prose outside the JSON:
             "special_instructions": ""
         }}
     ],
+    "interactions": ["list of severe known drug-drug interactions between prescribed medicines, if any. Return empty array if none"],
     "overall_advice": "Daily medication schedule in English. Format: MORNING: ... AFTERNOON: ... NIGHT: ... AS NEEDED: ... then general advice.",
     "diet_advice": "Dietary advice for the condition in English",
     "follow_up": "Follow-up recommendation in English"
@@ -430,7 +457,8 @@ RULES:
 3. Expand ALL shorthand: OD=once daily, BD=twice daily, TDS=thrice daily, 1-0-1=morning+night, AC=before meals, PC=after meals.
 4. If duration is missing, infer: antibiotics=5-7 days, analgesics=3-5 days, antacids=14 days.
 5. Set is_antibiotic=true for any antibiotic class drug.
-6. ALL text fields must be in English.
+6. Explicitly check for severe known drug interactions among the extracted medicines and add them to the 'interactions' array. If none exist, return an empty array.
+7. ALL text fields must be in English.
 """
     response = client.chat.completions.create(
         model=ANALYSIS_MODEL,
@@ -459,8 +487,8 @@ def _cap_text(text: str, max_chars: int = MAX_AUDIO_CHARS) -> str:
 
 def _generate_audio(text: str, lang_code: str) -> str | None:
     """
-    Generate a TTS MP3 file using Microsoft Edge TTS (Azure Neural voices).
-    Returns absolute path or None on failure.
+    Generate a TTS MP3 file using Microsoft Edge TTS (Azure Neural voices) in memory.
+    Returns base64 encoded string or None on failure.
     """
     try:
         capped = _cap_text(text)
@@ -470,16 +498,16 @@ def _generate_audio(text: str, lang_code: str) -> str | None:
         # Select the best voice for the language
         voice = VOICE_MAP.get(lang_code, "hi-IN-MadhurNeural")
         
-        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-        tmp_path = tmp.name
-        tmp.close()
-
-        async def _save_edge_tts():
+        async def _stream_edge_tts():
             communicate = edge_tts.Communicate(capped, voice)
-            await communicate.save(tmp_path)
+            audio_bytes = b""
+            async for chunk in communicate.stream():
+                if chunk["type"] == "audio":
+                    audio_bytes += chunk["data"]
+            return audio_bytes
 
-        asyncio.run(_save_edge_tts())
-        return tmp_path
+        audio_bytes = asyncio.run(_stream_edge_tts())
+        return base64.b64encode(audio_bytes).decode("utf-8")
     except Exception as tts_err:
         _safe_print(f"[WARN] Edge TTS generation failed: {tts_err}")
         return None
@@ -689,8 +717,12 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
         data.setdefault("diagnosis", None)
         data.setdefault("diet_advice", "")
         data.setdefault("follow_up", "")
+        data.setdefault("interactions", [])
 
-        _safe_print(f"[INFO] Final medicine count: {len(medicines_sorted)}")
+        if isinstance(data["interactions"], str):
+             data["interactions"] = [s.strip() for s in data["interactions"].split(",") if s.strip()]
+
+        _safe_print(f"[INFO] Final medicine count: {len(medicines_sorted)}, Interactions flagged: {len(data['interactions'])}")
 
         # ── Build English summary from validated structured fields ──
         # Single source of truth — both overall_advice display text and TTS audio come from this.
