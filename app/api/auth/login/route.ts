@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 const PYTHON_API = process.env.PYTHON_API_URL || "http://127.0.0.1:5000";
 
@@ -13,14 +14,27 @@ export async function POST(request: NextRequest) {
     });
 
     const data = await response.json();
-    const nextResponse = NextResponse.json(data, { status: response.status });
 
+    // Pass the Set-Cookie exactly as formatted by flask-jwt-extended
     const setCookie = response.headers.get("set-cookie");
     if (setCookie) {
-      nextResponse.headers.set("set-cookie", setCookie);
+      const cookieParts = setCookie.split(';');
+      let cookieValue = cookieParts[0].split('=')[1] || '';
+      let cookieName = cookieParts[0].split('=')[0] || '';
+      if (cookieName && cookieValue !== undefined) {
+        const cookieStore = await cookies();
+        cookieStore.set({
+          name: cookieName,
+          value: cookieValue,
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax", // Relax to strict locally if ports differ
+          path: "/",
+        });
+      }
     }
 
-    return nextResponse;
+    return NextResponse.json(data, { status: response.status });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, message: "Failed to connect to server" },

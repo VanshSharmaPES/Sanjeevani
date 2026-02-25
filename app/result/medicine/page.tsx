@@ -62,13 +62,6 @@ const MedicineResult = () => {
           setCurrentTime(0);
           if (rafRef.current) cancelAnimationFrame(rafRef.current);
         };
-        // Auto-play TTS on result load
-        audio.play()
-          .then(() => {
-            setPlaying(true);
-            rafRef.current = requestAnimationFrame(tickProgress);
-          })
-          .catch((e) => console.log("Autoplay blocked/failed:", e));
       }
     } catch {
       router.push("/dashboard");
