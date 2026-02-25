@@ -64,26 +64,33 @@ sanjeevani/
 ### Backend Setup
 
 1. Navigate to the project directory.
-2. Install the required Python dependencies:
+2. (Optional) Create and activate a Python virtual environment:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows use: venv\Scripts\activate
+```
+
+3. Install the required Python dependencies:
 ```bash
 pip install -r requirements.txt
-
 ```
 
+4. Create a `.env` file in the root directory and add your environment variables:
+```env
+GROQ_API_KEY=your_groq_api_key_here
+JWT_SECRET_KEY=your_secure_jwt_secret_key_here
+```
 
-3. Create a `.env` file and add your environment variables (e.g., `GROQ_API_KEY`).
-4. Start the Flask server:
+5. Start the Flask server:
 ```bash
 python server.py
-
 ```
 
-
-*The server runs on `0.0.0.0:5000`, making it accessible across your local network.*
+*The server runs on `http://127.0.0.1:5000`, making it accessible across your local network.*
 
 ### Frontend Setup
 
-1. Install Node modules:
+1. Open a new terminal instance and install Node modules:
 ```bash
 npm install
 
@@ -93,11 +100,9 @@ npm install
 2. Start the Next.js development server:
 ```bash
 npm run dev
-
 ```
 
-
-*The app will be available at `http://localhost:3000`.*
+*The app will be available at `https://localhost:3000`. Note: It uses Next.js experimental HTTPS, so your browser might show a standard "Not Secure" self-signed certificate warning upon first load. You can safely proceed past it for local testing.*
 
 ---
 
