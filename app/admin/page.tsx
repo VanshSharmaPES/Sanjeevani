@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Printer, Share2, Search, PlusCircle, FileText, CheckCircle, 
@@ -31,6 +31,32 @@ const languages = [
   { code: "kn", name: "Kannada" },
   { code: "ml", name: "Malayalam" },
 ];
+
+interface AutoResizeTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  value: string;
+}
+
+const AutoResizeTextarea = ({ value, className = "", ...props }: AutoResizeTextareaProps) => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = "auto";
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+  }, [value]);
+
+  return (
+    <textarea
+      ref={textareaRef}
+      value={value}
+      className={`${className} resize-none overflow-hidden`}
+      rows={1}
+      {...props}
+    />
+  );
+};
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -457,8 +483,7 @@ export default function AdminDashboard() {
               
               <div>
                 <label className="text-xs text-muted-foreground block mb-1">Medicine Name</label>
-                <input 
-                  type="text" 
+                <AutoResizeTextarea 
                   value={medName}
                   onChange={(e) => setMedName(e.target.value)}
                   placeholder="e.g. Dolo 650"
@@ -468,8 +493,7 @@ export default function AdminDashboard() {
 
               <div>
                 <label className="text-xs text-muted-foreground block mb-1">Active Salts / Ingredients</label>
-                <input 
-                  type="text" 
+                <AutoResizeTextarea 
                   value={salts}
                   onChange={(e) => setSalts(e.target.value)}
                   placeholder="e.g. Paracetamol IP 650mg"
@@ -480,8 +504,7 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs text-muted-foreground block mb-1">Dosage</label>
-                  <input 
-                    type="text" 
+                  <AutoResizeTextarea 
                     value={dosage}
                     onChange={(e) => setDosage(e.target.value)}
                     disabled={aiGenerating}
@@ -491,8 +514,7 @@ export default function AdminDashboard() {
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground block mb-1">Frequency</label>
-                  <input 
-                    type="text" 
+                  <AutoResizeTextarea 
                     value={frequency}
                     onChange={(e) => setFrequency(e.target.value)}
                     disabled={aiGenerating}
@@ -504,8 +526,7 @@ export default function AdminDashboard() {
 
               <div>
                 <label className="text-xs text-muted-foreground block mb-1">Timing / Meal Relation</label>
-                <input 
-                  type="text" 
+                <AutoResizeTextarea 
                   value={timing}
                   onChange={(e) => setTiming(e.target.value)}
                   disabled={aiGenerating}
@@ -530,13 +551,12 @@ export default function AdminDashboard() {
 
               <div>
                 <label className="text-xs text-muted-foreground block mb-1">Doctor Specific Advice (Optional)</label>
-                <textarea 
+                <AutoResizeTextarea 
                   value={docNotes}
                   onChange={(e) => setDocNotes(e.target.value)}
                   disabled={aiGenerating}
                   placeholder="Add custom warnings or instructions..."
-                  rows={3}
-                  className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary resize-none disabled:opacity-60"
+                  className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary disabled:opacity-60"
                 />
               </div>
 
