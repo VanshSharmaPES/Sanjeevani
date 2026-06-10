@@ -838,3 +838,49 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
         import traceback
         traceback.print_exc()
         return {"error": f"Prescription Scan Failed: {str(e)}"}, None
+
+
+def get_medicine_dosage_info(medicine_name: str, composition: str = "") -> dict:
+    """
+    Query the AI model to get recommended default baseline dosage, frequency, timing,
+    and safety advice notes for the specified medicine.
+    """
+    try:
+        system_prompt = (
+            "You are an expert clinical pharmacist. Recommend a standard, safe, adult baseline "
+            "dosage profile for the specified medicine. Always prioritize safety. Return JSON format."
+        )
+        
+        user_prompt = f"""
+        Medicine: "{medicine_name}"
+        Composition: "{composition}"
+        
+        Return standard initial adult dosage details in JSON format with exactly these keys:
+        {{
+            "dosage": "e.g., 500mg, 1 tablet, 10ml (specify common baseline strength)",
+            "frequency": "e.g., Once a day (1-0-0), Twice a day (1-0-1), Three times a day (1-1-1)",
+            "timing": "e.g., After meals (PC), Before meals (AC), With meals (CC)",
+            "doctorNotes": "1-2 brief safety warnings (e.g. 'Complete the course. Avoid alcohol.')."
+        }}
+        """
+        
+        response = client.chat.completions.create(
+            model=ANALYSIS_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.2,
+            response_format={"type": "json_object"}
+        )
+        
+        content = response.choices[0].message.content.strip()
+        return json.loads(content)
+    except Exception as e:
+        _safe_print(f"[WARN] Error fetching AI dosage for {medicine_name}: {e}")
+        return {
+            "dosage": "1 Tablet",
+            "frequency": "Twice a day (1-0-1)",
+            "timing": "After meals (PC)",
+            "doctorNotes": "Consult prescription details for specific instructions."
+        }

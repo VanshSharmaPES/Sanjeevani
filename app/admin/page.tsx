@@ -39,6 +39,7 @@ export default function AdminDashboard() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [aiGenerating, setAiGenerating] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState("hi");
   const [loading, setLoading] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -58,6 +59,7 @@ export default function AdminDashboard() {
   // Generated Guide state
   const [generatedGuide, setGeneratedGuide] = useState<GuideData | null>(null);
 
+  // Role Guard
   useEffect(() => {
     const savedRole = localStorage.getItem("sanjeevani_role");
     const savedUser = localStorage.getItem("sanjeevani_user") || "Doctor";
@@ -68,6 +70,35 @@ export default function AdminDashboard() {
       setDoctorName(`Dr. ${savedUser}`);
     }
   }, [router]);
+
+  // Debounced Keystroke Search Autocomplete
+  useEffect(() => {
+    const query = searchQuery.trim();
+    if (query.length < 3) {
+      setSearchResults([]);
+      setShowDropdown(false);
+      return;
+    }
+
+    const delayDebounceFn = setTimeout(() => {
+      const performSearch = async () => {
+        setSearching(true);
+        try {
+          const res = await fetch(`/api/medicines/search?q=${encodeURIComponent(query)}`);
+          const data = await res.json();
+          setSearchResults(data);
+          setShowDropdown(data.length > 0);
+        } catch (err) {
+          console.error("Auto search error:", err);
+        } finally {
+          setSearching(false);
+        }
+      };
+      performSearch();
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
 
   const handleSearch = async () => {
     const query = searchQuery.trim();
@@ -88,25 +119,49 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleSelectMedicine = (med: any) => {
+  const handleSelectMedicine = async (med: any) => {
     setMedName(med.medicineName);
     setSalts(med.activeSalts);
     
-    // Auto fill unit/form
-    let defaultDosage = "1 Tablet";
-    if (med.unit && med.unit.toLowerCase() !== "tablet") {
-      defaultDosage = med.unit.charAt(0).toUpperCase() + med.unit.slice(1);
-    }
-    setDosage(defaultDosage);
-    
-    // Auto fill Doctor warnings/notes from composition/uses/side-effects
-    let notes = "";
-    if (med.uses) notes += `Primary Uses: ${med.uses}. `;
-    if (med.sideEffects) notes += `Side Effects: ${med.sideEffects}. `;
-    setDocNotes(notes.trim());
-    
+    // Clear dropdown list immediately
     setShowDropdown(false);
     setSearchResults([]);
+
+    // Loading states for baseline fields
+    setDosage("Querying AI...");
+    setFrequency("Querying AI...");
+    setTiming("Querying AI...");
+    setDocNotes("Consulting clinical guidelines via AI...");
+    setAiGenerating(true);
+
+    try {
+      const res = await fetch(
+        `/api/medicines/dosage-info?name=${encodeURIComponent(med.medicineName)}&composition=${encodeURIComponent(med.activeSalts)}`
+      );
+      const data = await res.json();
+      
+      setDosage(data.dosage || "1 Tablet");
+      setFrequency(data.frequency || "Twice a day (1-0-1)");
+      setTiming(data.timing || "After meals (PC)");
+      setDocNotes(data.doctorNotes || "");
+    } catch (err) {
+      console.error("AI prefill error:", err);
+      // Fallback parsing if backend or API fails
+      let defaultDosage = "1 Tablet";
+      if (med.unit && med.unit.toLowerCase() !== "tablet") {
+        defaultDosage = med.unit.charAt(0).toUpperCase() + med.unit.slice(1);
+      }
+      setDosage(defaultDosage);
+      setFrequency("Twice a day (1-0-1)");
+      setTiming("After meals (PC)");
+      
+      let notes = "";
+      if (med.uses) notes += `Uses: ${med.uses}. `;
+      if (med.sideEffects) notes += `Side Effects: ${med.sideEffects}. `;
+      setDocNotes(notes.trim());
+    } finally {
+      setAiGenerating(false);
+    }
   };
 
   const handleGenerate = async () => {
@@ -132,7 +187,6 @@ export default function AdminDashboard() {
         te: `మందు పేరు: ${medName}. మోతాదు: ${dosage}, ఫ్రీక్వెన్సీ: ${frequency}, సమయం: ${timing}. వైద్యుని గమనిక: ${docNotes || "క్రమమైన తీసుకోవడం."}`,
         bn: `ওষুধের নাম: ${medName}। ডোজ: ${dosage}, ফ্রিকোয়েন্সি: ${frequency}, সময়: ${timing}। ডাক্তারের পরামর্শ: ${docNotes || "নিয়মিত গ্রহণ করুন।"}`
       };
-
       setGeneratedGuide({
         medicineName: medName,
         activeSalts: salts,
@@ -430,8 +484,9 @@ export default function AdminDashboard() {
                     type="text" 
                     value={dosage}
                     onChange={(e) => setDosage(e.target.value)}
+                    disabled={aiGenerating}
                     placeholder="e.g. 1 Tablet"
-                    className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary"
+                    className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary disabled:opacity-60"
                   />
                 </div>
                 <div>
@@ -440,8 +495,9 @@ export default function AdminDashboard() {
                     type="text" 
                     value={frequency}
                     onChange={(e) => setFrequency(e.target.value)}
+                    disabled={aiGenerating}
                     placeholder="e.g. 1-0-1"
-                    className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary"
+                    className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary disabled:opacity-60"
                   />
                 </div>
               </div>
@@ -452,8 +508,9 @@ export default function AdminDashboard() {
                   type="text" 
                   value={timing}
                   onChange={(e) => setTiming(e.target.value)}
+                  disabled={aiGenerating}
                   placeholder="e.g. After meals"
-                  className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary"
+                  className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary disabled:opacity-60"
                 />
               </div>
 
@@ -462,7 +519,8 @@ export default function AdminDashboard() {
                 <select 
                   value={selectedLanguage}
                   onChange={(e) => setSelectedLanguage(e.target.value)}
-                  className="w-full bg-muted border border-border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-primary"
+                  disabled={aiGenerating}
+                  className="w-full bg-muted border border-border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-primary disabled:opacity-60"
                 >
                   {languages.map(l => (
                     <option key={l.code} value={l.code}>{l.name}</option>
@@ -475,18 +533,19 @@ export default function AdminDashboard() {
                 <textarea 
                   value={docNotes}
                   onChange={(e) => setDocNotes(e.target.value)}
+                  disabled={aiGenerating}
                   placeholder="Add custom warnings or instructions..."
                   rows={3}
-                  className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary resize-none"
+                  className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary resize-none disabled:opacity-60"
                 />
               </div>
 
               <button 
                 onClick={handleGenerate}
-                disabled={loading || !medName}
+                disabled={loading || !medName || aiGenerating}
                 className="w-full py-3 bg-secondary text-secondary-foreground font-display font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
               >
-                {loading ? "Generating Guide..." : "Create Guide & Handout"}
+                {aiGenerating ? "AI Baseline Generating..." : loading ? "Generating Guide..." : "Create Guide & Handout"}
               </button>
             </div>
           </div>

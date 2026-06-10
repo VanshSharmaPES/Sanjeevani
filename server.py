@@ -15,7 +15,7 @@ from functools import wraps
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, set_access_cookies, jwt_required, get_jwt_identity, unset_jwt_cookies
-from ai_engine import analyze_medicine_image, analyze_prescription_image
+from ai_engine import analyze_medicine_image, analyze_prescription_image, get_medicine_dosage_info
 from db import register_user, authenticate_user, save_scan, get_user_history, delete_scan, search_medicines
 
 # Fix Windows charmap codec crashes when printing Unicode model output
@@ -120,6 +120,16 @@ def api_logout():
 def api_search_medicines():
     query = request.args.get("q", "").strip()
     results = search_medicines(query)
+    return jsonify(results)
+
+
+@app.route("/api/medicines/dosage-info", methods=["GET"])
+def api_medicine_dosage_info():
+    name = request.args.get("name", "").strip()
+    composition = request.args.get("composition", "").strip()
+    if not name:
+        return jsonify({"error": "Missing medicine name"}), 400
+    results = get_medicine_dosage_info(name, composition)
     return jsonify(results)
 
 
