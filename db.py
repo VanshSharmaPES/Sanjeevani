@@ -76,8 +76,9 @@ def init_db():
     conn.close()
 
     # Register default test accounts for peer testing
-    register_user("doctor1", "sanjeevani_doctor_2026", "doctor")
-    register_user("doctor2", "sanjeevani_doctor_2026", "doctor")
+    register_user("hemanth", "admin@123", "doctor")
+    register_user("pranay", "admin@123", "doctor")
+    register_user("vansh", "admin@123", "doctor")
     register_user("patient1", "sanjeevani_patient_2026", "patient")
 
 

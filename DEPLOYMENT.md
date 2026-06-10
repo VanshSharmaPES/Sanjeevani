@@ -50,8 +50,8 @@ The Next.js frontend is deployed directly to Vercel and proxies requests to your
 You can give these pre-configured login credentials to your teammates to test all features:
 
 * **Doctor / Pharmacist Credentials (Access to Admin Dashboard):**
-  * **Username:** `doctor1` or `doctor2`
-  * **Password:** `sanjeevani_doctor_2026`
+  * **Usernames:** `hemanth`, `pranay`, or `vansh`
+  * **Password:** `admin@123`
   * **Access:** Can access `/admin` to query medicines, generate PDF digital prescriptions, and share handouts.
 
 * **Patient Credentials (Standard Dashboard):**
