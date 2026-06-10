@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
     try {
         const cookie = request.headers.get("cookie") || "";
         const response = await fetch(`${PYTHON_API}/api/history`, {
-            headers: { cookie }
+            headers: { "Cookie": cookie }
         });
         const data = await response.json();
         return NextResponse.json(data, { status: response.status });

@@ -10,11 +10,13 @@ import os
 import sys
 import json
 import base64
+import time
+from functools import wraps
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, set_access_cookies, jwt_required, get_jwt_identity, unset_jwt_cookies
 from ai_engine import analyze_medicine_image, analyze_prescription_image
-from db import register_user, authenticate_user, save_scan, get_user_history, delete_scan
+from db import register_user, authenticate_user, save_scan, get_user_history, delete_scan, search_medicines
 
 # Fix Windows charmap codec crashes when printing Unicode model output
 if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
@@ -30,13 +32,37 @@ def _safe_log(msg: str):
     except (UnicodeEncodeError, UnicodeError):
         print(msg.encode("ascii", errors="replace").decode("ascii"))
 
+
+# Simple in-memory rate limiter: IP -> list of timestamps
+_rate_limits: dict[str, list[float]] = {}
+LIMIT_WINDOW = 60         # 1 minute window
+LIMIT_MAX_REQUESTS = 15   # Max 15 scans per minute per IP to protect Vision LLM endpoints
+
+def rate_limited(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        ip = request.remote_addr or "unknown"
+        now = time.time()
+        
+        # Clean up expired timestamps for this IP
+        timestamps = _rate_limits.setdefault(ip, [])
+        _rate_limits[ip] = [t for t in timestamps if now - t < LIMIT_WINDOW]
+        
+        if len(_rate_limits[ip]) >= LIMIT_MAX_REQUESTS:
+            _safe_log(f"[WARN] Rate limit exceeded for IP: {ip}")
+            return jsonify({"error": "Too many requests. Please wait a minute before scanning again."}), 429
+            
+        _rate_limits[ip].append(now)
+        return f(*args, **kwargs)
+    return decorated_function
+
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
 
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "super-secret-sanjeevani-key")
 app.config["JWT_TOKEN_LOCATION"] = ["cookies"]
-app.config["JWT_COOKIE_SECURE"] = True
-app.config["JWT_COOKIE_SAMESITE"] = "Strict"
+app.config["JWT_COOKIE_SECURE"] = os.getenv("JWT_COOKIE_SECURE", "False").lower() == "true"
+app.config["JWT_COOKIE_SAMESITE"] = "Lax"
 app.config["JWT_COOKIE_CSRF_PROTECT"] = False
 jwt = JWTManager(app)
 
@@ -61,14 +87,9 @@ def api_register():
     data = request.get_json()
     username = data.get("username", "")
     password = data.get("password", "")
-    success, msg = register_user(username, password)
+    role = data.get("role", "patient")
+    success, msg = register_user(username, password, role)
     if success:
-        auth_success, user_id = authenticate_user(username, password)
-        if auth_success:
-            token = create_access_token(identity=str(user_id))
-            resp = jsonify({"success": True, "message": msg, "username": username})
-            set_access_cookies(resp, token)
-            return resp
         return jsonify({"success": True, "message": msg})
     return jsonify({"success": False, "message": msg}), 400
 
@@ -78,10 +99,10 @@ def api_login():
     data = request.get_json()
     username = data.get("username", "")
     password = data.get("password", "")
-    success, user_id = authenticate_user(username, password)
+    success, user_id, role = authenticate_user(username, password)
     if success:
-        token = create_access_token(identity=str(user_id))
-        resp = jsonify({"success": True, "username": username})
+        token = create_access_token(identity=str(user_id), additional_claims={"role": role})
+        resp = jsonify({"success": True, "username": username, "role": role})
         set_access_cookies(resp, token)
         return resp
     return jsonify({"success": False, "message": "Invalid credentials"}), 401
@@ -94,9 +115,18 @@ def api_logout():
     return resp
 
 
+# ─── Medicines search ────────────────────────────────────────
+@app.route("/api/medicines/search", methods=["GET"])
+def api_search_medicines():
+    query = request.args.get("q", "").strip()
+    results = search_medicines(query)
+    return jsonify(results)
+
+
 # ─── Analysis ────────────────────────────────────────────────
 @app.route("/api/analyze/medicine", methods=["POST"])
 @jwt_required(optional=True)
+@rate_limited
 def api_analyze_medicine():
     if "image" not in request.files:
         return jsonify({"error": "No image provided"}), 400
@@ -129,6 +159,7 @@ def api_analyze_medicine():
 
 @app.route("/api/analyze/prescription", methods=["POST"])
 @jwt_required(optional=True)
+@rate_limited
 def api_analyze_prescription():
     if "image" not in request.files:
         return jsonify({"error": "No image provided"}), 400
@@ -194,5 +225,7 @@ def health():
 
 
 if __name__ == "__main__":
-    print("🌿 Sanjeevani API server starting on http://localhost:5000")
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    port = int(os.getenv("PORT", 5000))
+    debug_mode = os.getenv("FLASK_ENV", "production").lower() == "development"
+    print(f"🌿 Sanjeevani API server starting on http://localhost:{port} (Debug: {debug_mode})")
+    app.run(host="0.0.0.0", port=port, debug=debug_mode)

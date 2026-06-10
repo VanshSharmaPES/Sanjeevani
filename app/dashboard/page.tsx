@@ -21,6 +21,7 @@ const languages = [
 const Dashboard = () => {
   const router = useRouter();
   const [userName, setUserName] = useState("User");
+  const [role, setRole] = useState("patient");
   const [language, setLanguage] = useState("en");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [historyCount, setHistoryCount] = useState(0);
@@ -28,6 +29,9 @@ const Dashboard = () => {
   useEffect(() => {
     const name = localStorage.getItem("sanjeevani_user") || "User";
     setUserName(name);
+
+    const savedRole = localStorage.getItem("sanjeevani_role") || "patient";
+    setRole(savedRole);
 
     const savedLang = localStorage.getItem("sanjeevani_language") || "en";
     setLanguage(savedLang);
@@ -51,6 +55,7 @@ const Dashboard = () => {
       .catch(() => { })
       .finally(() => {
         localStorage.removeItem("sanjeevani_user");
+        localStorage.removeItem("sanjeevani_role");
         localStorage.removeItem("sanjeevani_language");
         router.push("/");
       });
@@ -90,7 +95,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="font-display font-semibold text-sidebar-foreground text-sm">{userName}</p>
-              <p className="text-xs text-muted-foreground">Patient</p>
+              <p className="text-xs text-muted-foreground capitalize">{role === "doctor" ? "Doctor / Pharmacist" : "Patient"}</p>
             </div>
           </div>
         </div>
@@ -126,6 +131,15 @@ const Dashboard = () => {
                 <span className="ml-auto text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full font-semibold">{historyCount}</span>
               )}
             </button>
+            {role === "doctor" && (
+              <button
+                onClick={() => router.push("/admin")}
+                className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors text-sm"
+              >
+                <FileText size={18} />
+                <span>Admin Dashboard</span>
+              </button>
+            )}
           </nav>
         </div>
 

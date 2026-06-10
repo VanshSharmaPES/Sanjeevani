@@ -14,6 +14,7 @@ const Login = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState("patient");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
@@ -36,6 +37,7 @@ const Login = () => {
         const data = await res.json();
         if (data.success) {
           localStorage.setItem("sanjeevani_user", data.username || email.trim());
+          localStorage.setItem("sanjeevani_role", data.role || "patient");
           router.push("/dashboard");
         } else {
           setError(data.message || "Invalid credentials");
@@ -51,7 +53,7 @@ const Login = () => {
         const res = await fetch("/api/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, password }),
+          body: JSON.stringify({ username, password, role }),
         });
         const data = await res.json();
         if (data.success) {
@@ -156,13 +158,14 @@ const Login = () => {
                   </div>
                 </motion.div>
               ) : (
-                /* Register: Username field */
+                /* Register: Username field & Role Selector */
                 <motion.div
                   key="username-register"
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.2 }}
+                  className="space-y-4"
                 >
                   <div className="relative">
                     <input
@@ -173,6 +176,26 @@ const Login = () => {
                       autoComplete="username"
                       className="w-full bg-transparent border-b-2 border-border focus:border-primary py-3 px-1 text-foreground placeholder:text-muted-foreground outline-none transition-colors font-body"
                     />
+                  </div>
+                  
+                  <div className="relative pt-2">
+                    <label className="text-[10px] text-muted-foreground block mb-2 font-display uppercase tracking-wider">I am registering as a:</label>
+                    <div className="flex bg-muted rounded-xl p-1 border border-border">
+                      <button
+                        type="button"
+                        onClick={() => setRole("patient")}
+                        className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors ${role === "patient" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
+                      >
+                        Patient
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRole("doctor")}
+                        className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors ${role === "doctor" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
+                      >
+                        Doctor / Pharmacist
+                      </button>
+                    </div>
                   </div>
                 </motion.div>
               )}

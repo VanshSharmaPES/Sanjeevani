@@ -13,16 +13,19 @@ export async function POST(request: NextRequest) {
 
     const language = (incoming.get("language") as string) || "en";
 
+    // Read the file into a buffer to prevent Next.js undici fetch failed stream closure issues
+    const fileBuffer = await imageFile.arrayBuffer();
+
     // Rebuild FormData explicitly so the boundary is set correctly
     const outgoing = new FormData();
-    outgoing.append("image", imageFile, imageFile.name || "upload.jpg");
+    outgoing.append("image", new Blob([fileBuffer]), imageFile.name || "upload.jpg");
     outgoing.append("language", language);
 
     const cookie = request.headers.get("cookie") || "";
     const response = await fetch(`${PYTHON_API}/api/analyze/medicine`, {
       method: "POST",
       body: outgoing,
-      headers: { cookie }
+      headers: { "Cookie": cookie }
     });
 
     const data = await response.json();

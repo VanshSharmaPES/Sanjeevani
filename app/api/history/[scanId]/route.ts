@@ -15,7 +15,7 @@ export async function DELETE(
 
         const response = await fetch(`${PYTHON_API}/api/history/${scanId}`, {
             method: "DELETE",
-            headers: { cookie }
+            headers: { "Cookie": cookie }
         });
 
         const data = await response.json();

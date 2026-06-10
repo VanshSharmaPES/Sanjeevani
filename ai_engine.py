@@ -41,9 +41,16 @@ MAX_AUDIO_CHARS = 1800
 
 # --- Medicine Strip: Vision OCR ---
 MEDICINE_OCR_INSTRUCTION = """
-You are a precision OCR specialist. Your ONLY job is to extract all visible text from this medicine image.
-Extract the medicine name, any dosage/strength info, manufacturer name, active ingredients/composition,
-and any other text visible on the strip, box, or label.
+You are a precision pharmaceutical OCR specialist. Your ONLY task is to extract all visible text from this medicine strip, box, or bottle label.
+
+SPECIAL GUIDELINES FOR MEDICINE PACKAGING:
+1. Scan in all directions (horizontal, vertical, rotated, or upside down) as text layout on medicine strips often runs in multiple orientations.
+2. Search for active ingredients / composition. This is usually prefixed by phrases like: "Composition", "Each tablet contains", "Each capsule contains", "Active ingredients", or followed by standards like "IP", "BP", "USP" (e.g. "Paracetamol IP 650 mg").
+3. Identify the brand name. It is typically printed in the largest, boldest font on the strip or package (e.g. "DOLO-650", "AUGMENTIN 625 Duo", "PANTOCID").
+4. Extract strengths and dosage units (e.g. "500 mg", "650mg", "40 mg", "5 ml", "10% w/v").
+5. Look out for manufacturer details (e.g. "Mfg. Lic. No.", "Batch No.", "Exp. Date").
+6. Correct common visual noise: metallic strips can reflect light; do not let glare cause you to skip characters or misread them (e.g., cross-reference with known pharmaceutical terms to resolve blurry letters).
+
 Return the result as JSON: {"extracted_text": "all text you can read from the image"}
 """
 
@@ -62,7 +69,7 @@ Provide comprehensive, accurate medical information.
 # --- Prescription: Vision OCR ---
 # Free-form extraction (no JSON constraint) for best handwriting accuracy
 PRESCRIPTION_OCR_SYSTEM = """
-You are the world's best specialist at reading Indian doctor handwriting and medical prescriptions.
+You are the world's leading medical transcriptionist specializing in deciphering handwritten doctor prescriptions, with a focus on Indian healthcare environments.
 Your ONLY task is to transcribe every single piece of text you can see in this prescription image.
 
 INDIAN PRESCRIPTION ANATOMY (understand this context):
@@ -81,6 +88,14 @@ COMMON RAPID-HANDWRITING PATTERNS doctors use:
 - SOS = as needed (when required), Stat = take immediately
 - AC = before meals, PC/AF = after meals/food, HS = at bedtime, CC = with meals
 - x5d / ×5 days / 5/7 = for 5 days
+
+COMMON INDIAN BRANDS & DRUGS VOCABULARY REFERENCE (use this to resolve ambiguous handwritten shapes):
+- Painkillers/Fever: Paracetamol, Dolo, Calpol, Crocin, Combiflam, Ibuprofen, Diclofenac, Voveran, Meftal, Meftal-Spas, Ultracet, Tramadol
+- Antibiotics: Amoxicillin, Augmentin, Clavam, Azithromycin, Azee, Ciprofloxacin, Ciplox, Cefixime, Zifi, Cefpodoxime, Cepodem, Doxycycline, Doxy, Metronidazole, Flagyl
+- Acid Reflux/PPIs: Pantoprazole, Pantocid, Pan-D, Pan-L, Omeprazole, Omez, Rabeprazole, Razo, Rablet, Ranitidine, Rantac, Zinetac, Domperidone, Domstal
+- Allergy/Cough: Levocetirizine, Levocet, Lecope, Cetirizine, Cetzine, Budesonide, Budecort, Salbutamol, Asthalin, Montelukast, Montair, Montair-LC, Allegra, Fexofenadine
+- Heart/Diabetes: Metformin, Glycomet, Glimepiride, Amaryl, Atorvastatin, Atorva, Rosuvastatin, Rosu, Amlodipine, Amlokind, Amlong, Telmisartan, Telma
+- Vitamins/Supplements: Shelcal, Shelcal-500, Calcirol, Mecobalamin, Methylcobalamin, Cobadex, Folic Acid, Folvite, Orofer, Orofer-XT, Becosules, Limcee
 
 TRANSCRIPTION RULES:
 1. Read EVERY line including headers, patient info, and footer notes.
@@ -239,53 +254,40 @@ def _safe_print(*args, **kwargs):
 
 def _preprocess_image(image_bytes: bytes) -> tuple[bytes, str]:
     """
-    Convert any image format to JPEG and resize to max 1600px on the longest side.
+    Convert any image format to JPEG, auto-correct orientation, enhance contrast,
+    sharpen text, and resize to max 1600px on the longest side.
     Returns (processed_bytes, mime_type).
     """
     try:
+        from PIL import ImageOps, ImageEnhance
         img = Image.open(io.BytesIO(image_bytes))
         
         # Log suspected format for debugging
         original_format = getattr(img, "format", "Unknown")
         _safe_print(f"[INFO] Preprocessing image: format={original_format}, size={img.size}, mode={img.mode}")
 
+        # Correct portrait/landscape camera orientation based on EXIF tag
+        img = ImageOps.exif_transpose(img)
+
         # Convert palette/transparency modes (like PNG) or HEIF modes to RGB for JPEG
         if img.mode not in ("RGB", "L"):
             img = img.convert("RGB")
+        elif img.mode == "L":
+            img = img.convert("RGB")
             
+        # Subtle contrast and sharpness enhancements to make handwriting and print text pop
+        img = ImageEnhance.Contrast(img).enhance(1.18)
+        img = ImageEnhance.Sharpness(img).enhance(1.12)
+
         # Resize if very large (improves both speed and OCR accuracy)
         max_dim = 1600
         w, h = img.size
         if max(w, h) > max_dim:
             scale = max_dim / max(w, h)
             img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
-            
-        # --- OpenCV Preprocessing Pipeline ---
-        cv_img = np.array(img)
-        # Convert RGB to BGR for OpenCV (PIL images are usually RGB)
-        if len(cv_img.shape) == 3 and cv_img.shape[2] == 3:
-            cv_img = cv2.cvtColor(cv_img, cv2.COLOR_RGB2BGR)
-            gray = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
-        else:
-            gray = cv_img
-
-        # 1. CLAHE (Contrast Limited Adaptive Histogram Equalization)
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-        contrast_img = clahe.apply(gray)
-        
-        # 2. Denoising
-        denoised = cv2.fastNlMeansDenoising(contrast_img, None, h=10, templateWindowSize=7, searchWindowSize=21)
-        
-        # 3. Adaptive Thresholding (Gaussian method)
-        binarized = cv2.adaptiveThreshold(denoised, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-        
-        # Convert back to PIL Image
-        final_img = Image.fromarray(binarized)
-        if final_img.mode != "RGB":
-            final_img = final_img.convert("RGB")
 
         buf = io.BytesIO()
-        final_img.save(buf, format="JPEG", quality=92)
+        img.save(buf, format="JPEG", quality=92)
         return buf.getvalue(), "image/jpeg"
     except Exception as e:
         _safe_print(f"[WARN] Image preprocessing failed: {e}. Attempting raw fallback.")
@@ -485,9 +487,9 @@ def _cap_text(text: str, max_chars: int = MAX_AUDIO_CHARS) -> str:
     return truncated.strip()
 
 
-def _generate_audio(text: str, lang_code: str) -> str | None:
+async def _generate_audio_bytes_async(text: str, lang_code: str) -> str | None:
     """
-    Generate a TTS MP3 file using Microsoft Edge TTS (Azure Neural voices) in memory.
+    Generate a TTS MP3 file in memory asynchronously.
     Returns base64 encoded string or None on failure.
     """
     try:
@@ -495,22 +497,24 @@ def _generate_audio(text: str, lang_code: str) -> str | None:
         if not capped:
             return None
 
-        # Select the best voice for the language
         voice = VOICE_MAP.get(lang_code, "hi-IN-MadhurNeural")
-        
-        async def _stream_edge_tts():
-            communicate = edge_tts.Communicate(capped, voice)
-            audio_bytes = b""
-            async for chunk in communicate.stream():
-                if chunk["type"] == "audio":
-                    audio_bytes += chunk["data"]
-            return audio_bytes
-
-        audio_bytes = asyncio.run(_stream_edge_tts())
+        communicate = edge_tts.Communicate(capped, voice)
+        audio_bytes = b""
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                audio_bytes += chunk["data"]
         return base64.b64encode(audio_bytes).decode("utf-8")
     except Exception as tts_err:
-        _safe_print(f"[WARN] Edge TTS generation failed: {tts_err}")
+        _safe_print(f"[WARN] Async Edge TTS generation failed: {tts_err}")
         return None
+
+
+def _generate_audio(text: str, lang_code: str) -> str | None:
+    """
+    Generate a TTS MP3 file using Microsoft Edge TTS (Azure Neural voices) in memory.
+    Returns base64 encoded string or None on failure.
+    """
+    return asyncio.run(_generate_audio_bytes_async(text, lang_code))
 
 
 def _translate_text(text: str, target_language: str) -> str:
@@ -560,6 +564,40 @@ def analyze_medicine_image(image_bytes: bytes, target_language: str = "English")
             return {
                 "error": "Could not read text from the image. Please ensure the medicine label is clearly visible and well-lit."
             }, None
+
+        # Check local SQLite cache first to save API costs & latency
+        from db import find_cached_drug_by_ocr, cache_drug
+        cached_data = find_cached_drug_by_ocr(extracted_text)
+        if cached_data:
+            _safe_print(f"[INFO] Cache HIT for medicine from OCR text!")
+            data = cached_data.copy()
+            name = data.get("medicine_name", "Unknown")
+            conditions_str = ", ".join(data.get("conditions", []))
+            what_it_does = data.get("what_it_does", "")
+            dosage_info = data.get("dosage_info", "")
+            age_group = data.get("suitable_age_group", "")
+            
+            advice_en = data.get("advice_en", "")
+            if not advice_en:
+                parts_en = [f"{name}."]  
+                if conditions_str:
+                    parts_en.append(f"Used for: {conditions_str}.")  
+                if dosage_info and dosage_info != "N/A":
+                    parts_en.append(f"{dosage_info}.")
+                if what_it_does and what_it_does != "N/A":
+                    parts_en.append(f"{what_it_does}.")
+                if age_group and age_group != "N/A":
+                    parts_en.append(f"Suitable for: {age_group}.")
+                advice_en = _cap_text(" ".join(parts_en))
+            
+            translated_summary = _translate_text(advice_en, target_language)
+            lang_code = LANG_MAP.get(target_language, "en")
+            
+            data["advice"] = translated_summary
+            data["advice_en"] = advice_en
+            
+            audio_path = _generate_audio(translated_summary, lang_code)
+            return data, audio_path
 
         # Stage 2: Analysis — generate ALL fields in English for accuracy
         analysis_prompt = """
@@ -643,6 +681,13 @@ If the image does not appear to be a medicine, return:
         # Store both versions so the frontend can display them
         data["advice"] = translated_summary        # shown in selected language
         data["advice_en"] = english_summary        # shown in English for reference
+
+        # Store results in the SQLite lookup cache
+        if data.get("is_medicine") and data.get("medicine_name") != "Unknown":
+            try:
+                cache_drug(data["medicine_name"], data)
+            except Exception as cache_err:
+                _safe_print(f"[WARN] Failed to write cache: {cache_err}")
 
         audio_path = _generate_audio(translated_summary, lang_code)
         return data, audio_path
@@ -767,6 +812,22 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
                 val = data.get(field, "")
                 if val:
                     data[field] = _translate_text(val, target_language)
+
+        # Generate individual medicine audios in parallel
+        async def _generate_all_meds_audio(meds):
+            async def process_med(med, sentence):
+                translated = _translate_text(sentence, target_language)
+                med["advice_en"] = sentence
+                med["advice_translated"] = translated
+                med["audio_b64"] = await _generate_audio_bytes_async(translated, lang_code)
+
+            tasks = [process_med(m, s) for m, s in zip(meds, med_parts_en)]
+            await asyncio.gather(*tasks)
+
+        try:
+            asyncio.run(_generate_all_meds_audio(medicines_sorted))
+        except Exception as parallel_tts_err:
+            _safe_print(f"[WARN] Parallel TTS generation failed: {parallel_tts_err}")
 
         audio_text = _cap_text(translated_summary)
         audio_path = _generate_audio(audio_text, lang_code)

@@ -25,6 +25,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
+            role TEXT DEFAULT 'patient',
             created_at TEXT NOT NULL
         )
     """)
@@ -39,8 +40,45 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users(id)
         )
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS drug_cache (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            medicine_name TEXT UNIQUE NOT NULL,
+            result_json TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS medicines (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL,
+            unit TEXT,
+            composition TEXT,
+            uses TEXT,
+            side_effects TEXT,
+            image_url TEXT,
+            manufacturer TEXT,
+            excellent_review_pct INTEGER,
+            average_review_pct INTEGER,
+            poor_review_pct INTEGER
+        )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_medicines_name ON medicines(name)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_medicines_composition ON medicines(composition)")
+
+    # Alter table if role column doesn't exist
+    cursor.execute("PRAGMA table_info(users)")
+    columns = [row[1] for row in cursor.fetchall()]
+    if "role" not in columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'patient'")
+
     conn.commit()
     conn.close()
+
+    # Register default test accounts for peer testing
+    register_user("doctor1", "sanjeevani_doctor_2026", "doctor")
+    register_user("doctor2", "sanjeevani_doctor_2026", "doctor")
+    register_user("patient1", "sanjeevani_patient_2026", "patient")
 
 
 def _hash_password(password: str) -> str:
@@ -49,18 +87,20 @@ def _hash_password(password: str) -> str:
     return hashlib.sha256(salted.encode()).hexdigest()
 
 
-def register_user(username: str, password: str) -> tuple[bool, str]:
+def register_user(username: str, password: str, role: str = "patient") -> tuple[bool, str]:
     """Register a new user. Returns (success, message)."""
     if not username or not password:
         return False, "Username and password are required."
     if len(password) < 4:
         return False, "Password must be at least 4 characters."
+    if role not in ("patient", "doctor"):
+        role = "patient"
 
     conn = _get_conn()
     try:
         conn.execute(
-            "INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)",
-            (username.strip().lower(), _hash_password(password), datetime.now().isoformat())
+            "INSERT INTO users (username, password_hash, role, created_at) VALUES (?, ?, ?, ?)",
+            (username.strip().lower(), _hash_password(password), role, datetime.now().isoformat())
         )
         conn.commit()
         return True, "Account created successfully!"
@@ -70,20 +110,21 @@ def register_user(username: str, password: str) -> tuple[bool, str]:
         conn.close()
 
 
-def authenticate_user(username: str, password: str) -> tuple[bool, int | None]:
-    """Authenticate a user. Returns (success, user_id)."""
+def authenticate_user(username: str, password: str) -> tuple[bool, int | None, str | None]:
+    """Authenticate a user. Returns (success, user_id, role)."""
     conn = _get_conn()
     row = conn.execute(
-        "SELECT id, password_hash FROM users WHERE username = ?",
+        "SELECT id, password_hash, role FROM users WHERE username = ?",
         (username.strip().lower(),)
     ).fetchone()
     conn.close()
 
     if row is None:
-        return False, None
+        return False, None, None
     if row["password_hash"] == _hash_password(password):
-        return True, row["id"]
-    return False, None
+        return True, row["id"], row["role"]
+    return False, None, None
+
 
 
 def save_scan(user_id: int, scan_type: str, language: str, result_data: dict):
@@ -132,5 +173,96 @@ def delete_scan(user_id: int, scan_id: int) -> bool:
     return deleted
 
 
+def get_cached_drug(medicine_name: str) -> dict | None:
+    """Retrieve cached drug details by name (case-insensitive normalized)."""
+    if not medicine_name:
+        return None
+    conn = _get_conn()
+    try:
+        row = conn.execute(
+            "SELECT result_json FROM drug_cache WHERE LOWER(medicine_name) = ?",
+            (medicine_name.strip().lower(),)
+        ).fetchone()
+        if row:
+            return json.loads(row["result_json"])
+        return None
+    except Exception:
+        return None
+    finally:
+        conn.close()
+
+
+def find_cached_drug_by_ocr(ocr_text: str) -> dict | None:
+    """Check if any cached medicine name is found as a substring in the OCR text."""
+    if not ocr_text:
+        return None
+    ocr_lower = ocr_text.lower()
+    conn = _get_conn()
+    try:
+        rows = conn.execute("SELECT medicine_name, result_json FROM drug_cache").fetchall()
+        for row in rows:
+            name = row["medicine_name"].lower()
+            if name in ocr_lower and len(name) > 3:
+                return json.loads(row["result_json"])
+        return None
+    except Exception:
+        return None
+    finally:
+        conn.close()
+
+
+def cache_drug(medicine_name: str, result_data: dict):
+    """Cache drug details by name."""
+    if not medicine_name or not result_data:
+        return
+    conn = _get_conn()
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO drug_cache (medicine_name, result_json, created_at) VALUES (?, ?, ?)",
+            (medicine_name.strip().lower(), json.dumps(result_data, ensure_ascii=False), datetime.now().isoformat())
+        )
+        conn.commit()
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+
+def search_medicines(query: str, limit: int = 15) -> list[dict]:
+    """Search medicines in the local medicines lookup table."""
+    if not query:
+        return []
+    conn = _get_conn()
+    try:
+        # Search by name or composition using case-insensitive LIKE
+        rows = conn.execute(
+            """
+            SELECT name, unit, composition, uses, side_effects, manufacturer
+            FROM medicines
+            WHERE name LIKE ? OR composition LIKE ?
+            LIMIT ?
+            """,
+            (f"%{query}%", f"%{query}%", limit)
+        ).fetchall()
+        
+        results = []
+        for row in rows:
+            results.append({
+                "medicineName": row["name"],
+                "unit": row["unit"],
+                "activeSalts": row["composition"],
+                "uses": row["uses"],
+                "sideEffects": row["side_effects"],
+                "manufacturer": row["manufacturer"]
+            })
+        return results
+    except Exception as e:
+        print(f"[WARN] Error searching medicines: {e}")
+        return []
+    finally:
+        conn.close()
+
+
 # Initialize database on import
 init_db()
+

@@ -4,6 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Sanjeevani AI",
   description: "Your intelligent medical companion",
+  manifest: "/manifest.json",
   icons: {
     icon: "/favicon.svg",
   },

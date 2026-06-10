@@ -27,6 +27,7 @@ interface Medicine {
   is_antibiotic?: boolean;
   special_instructions?: string;
   order?: number;
+  audio_b64?: string;
 }
 
 interface PrescriptionData {
@@ -63,6 +64,22 @@ const timingIcons: Record<string, React.ReactNode> = {
 /** Format seconds → m:ss */
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
+const base64ToBlobUrl = (b64: string): string => {
+  try {
+    const binary = atob(b64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], { type: "audio/mpeg" });
+    return URL.createObjectURL(blob);
+  } catch (err) {
+    console.error("Failed to convert base64 to audio blob:", err);
+    return "";
+  }
+};
+
 const PrescriptionResult = () => {
   const router = useRouter();
   const [prescription, setPrescription] = useState<PrescriptionData | null>(null);
@@ -74,6 +91,26 @@ const PrescriptionResult = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const rafRef = useRef<number | null>(null);
 
+  // Per-medicine audio state
+  const [playingIdx, setPlayingIdx] = useState<number | null>(null);
+  const activeAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Embedded SDK state
+  const [isEmbedded, setIsEmbedded] = useState(false);
+
+  useEffect(() => {
+    setIsEmbedded(window.self !== window.top);
+  }, []);
+
+  const handleImport = () => {
+    if (window.parent) {
+      window.parent.postMessage(
+        { type: "SANJEEVANI_RESULT", payload: prescription },
+        "*"
+      );
+    }
+  };
+
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem("scanResult");
@@ -83,8 +120,11 @@ const PrescriptionResult = () => {
       setPrescription(d);
 
       let src: string | null = null;
-      if (parsed.audio_b64) src = `data:audio/mpeg;base64,${parsed.audio_b64}`;
-      else if (parsed.audio_url) src = parsed.audio_url;
+      if (parsed.audio_b64) {
+        src = base64ToBlobUrl(parsed.audio_b64);
+      } else if (parsed.audio_url) {
+        src = parsed.audio_url;
+      }
 
       if (src) {
         setAudioUrl(src);
@@ -103,6 +143,7 @@ const PrescriptionResult = () => {
   useEffect(() => {
     return () => {
       if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+      if (activeAudioRef.current) { activeAudioRef.current.pause(); activeAudioRef.current = null; }
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, []);
@@ -116,6 +157,13 @@ const PrescriptionResult = () => {
 
   const toggleAudio = () => {
     if (!audioUrl) return;
+
+    // Stop active medicine audio if playing
+    if (playingIdx !== null && activeAudioRef.current) {
+      activeAudioRef.current.pause();
+      setPlayingIdx(null);
+    }
+
     if (!audioRef.current) {
       audioRef.current = new Audio(audioUrl);
       audioRef.current.onloadedmetadata = () => setDuration(audioRef.current!.duration);
@@ -130,10 +178,60 @@ const PrescriptionResult = () => {
       setPlaying(false);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     } else {
-      audioRef.current.play().catch(() => { });
-      setPlaying(true);
-      rafRef.current = requestAnimationFrame(tickProgress);
+      audioRef.current.play()
+        .then(() => {
+          setPlaying(true);
+          rafRef.current = requestAnimationFrame(tickProgress);
+        })
+        .catch((err) => {
+          console.error("Global playback failed:", err);
+          setPlaying(false);
+        });
     }
+  };
+
+  const toggleMedAudio = (idx: number, b64: string) => {
+    if (!b64) return;
+
+    // Stop the global audio if it's playing
+    if (playing && audioRef.current) {
+      audioRef.current.pause();
+      setPlaying(false);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    }
+
+    if (playingIdx === idx) {
+      if (activeAudioRef.current) {
+        activeAudioRef.current.pause();
+      }
+      setPlayingIdx(null);
+      return;
+    }
+
+    if (activeAudioRef.current) {
+      activeAudioRef.current.pause();
+      activeAudioRef.current = null;
+    }
+
+    const url = base64ToBlobUrl(b64);
+    if (!url) return;
+
+    const audio = new Audio(url);
+    activeAudioRef.current = audio;
+    setPlayingIdx(idx);
+
+    audio.play()
+      .then(() => {
+        audio.onended = () => {
+          setPlayingIdx(null);
+          activeAudioRef.current = null;
+        };
+      })
+      .catch((err) => {
+        console.error("Medicine playback failed:", err);
+        setPlayingIdx(null);
+        activeAudioRef.current = null;
+      });
   };
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -265,6 +363,15 @@ const PrescriptionResult = () => {
                       <h3 className="font-display font-bold text-foreground">{med.name}</h3>
                       {med.is_antibiotic && (
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/30 font-semibold">ANTIBIOTIC</span>
+                      )}
+                      {med.audio_b64 && (
+                        <button
+                          onClick={() => toggleMedAudio(idx, med.audio_b64!)}
+                          className={`w-6 h-6 rounded-md flex items-center justify-center transition-all shrink-0 ml-1.5 ${playingIdx === idx ? "bg-primary text-primary-foreground animate-pulse" : "bg-primary/10 text-primary hover:bg-primary/20"}`}
+                          title="Listen to instruction"
+                        >
+                          {playingIdx === idx ? <Pause size={10} /> : <Volume2 size={10} />}
+                        </button>
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
@@ -409,6 +516,16 @@ const PrescriptionResult = () => {
               <p className="text-xs text-muted-foreground font-display uppercase tracking-wider mb-2">Follow Up</p>
               <p className="text-foreground/80 text-sm leading-relaxed">{prescription.follow_up}</p>
             </motion.div>
+          )}
+
+          {isEmbedded && (
+            <motion.button
+              variants={fadeUp}
+              onClick={handleImport}
+              className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-display font-bold text-lg rounded-xl transition-all shadow-lg flex items-center justify-center gap-2"
+            >
+              Import Guide to Portal
+            </motion.button>
           )}
 
           {/* Disclaimer */}

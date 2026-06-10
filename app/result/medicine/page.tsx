@@ -23,6 +23,22 @@ interface MedicineData {
 /** Format seconds → m:ss */
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
+const base64ToBlobUrl = (b64: string): string => {
+  try {
+    const binary = atob(b64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], { type: "audio/mpeg" });
+    return URL.createObjectURL(blob);
+  } catch (err) {
+    console.error("Failed to convert base64 to audio blob:", err);
+    return "";
+  }
+};
+
 const MedicineResult = () => {
   const router = useRouter();
   const [medicine, setMedicine] = useState<MedicineData | null>(null);
@@ -33,6 +49,22 @@ const MedicineResult = () => {
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const rafRef = useRef<number | null>(null);
+
+  // Embedded SDK state
+  const [isEmbedded, setIsEmbedded] = useState(false);
+
+  useEffect(() => {
+    setIsEmbedded(window.self !== window.top);
+  }, []);
+
+  const handleImport = () => {
+    if (window.parent) {
+      window.parent.postMessage(
+        { type: "SANJEEVANI_RESULT", payload: medicine },
+        "*"
+      );
+    }
+  };
 
   useEffect(() => {
     try {
@@ -48,7 +80,7 @@ const MedicineResult = () => {
       // Build audio source: prefer embedded base64 (no network hop), fall back to URL
       let src: string | null = null;
       if (parsed.audio_b64) {
-        src = `data:audio/mpeg;base64,${parsed.audio_b64}`;
+        src = base64ToBlobUrl(parsed.audio_b64);
       } else if (parsed.audio_url) {
         src = parsed.audio_url;
       }
@@ -102,9 +134,15 @@ const MedicineResult = () => {
       setPlaying(false);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     } else {
-      audioRef.current.play().catch(() => { });
-      setPlaying(true);
-      rafRef.current = requestAnimationFrame(tickProgress);
+      audioRef.current.play()
+        .then(() => {
+          setPlaying(true);
+          rafRef.current = requestAnimationFrame(tickProgress);
+        })
+        .catch((err) => {
+          console.error("Audio play failed:", err);
+          setPlaying(false);
+        });
     }
   };
 
@@ -273,6 +311,16 @@ const MedicineResult = () => {
                 </>
               )}
             </motion.div>
+          )}
+
+          {isEmbedded && (
+            <motion.button
+              variants={fadeUp}
+              onClick={handleImport}
+              className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-display font-bold text-lg rounded-xl transition-all shadow-lg flex items-center justify-center gap-2"
+            >
+              Import Guide to Portal
+            </motion.button>
           )}
         </motion.div>
       </div>
