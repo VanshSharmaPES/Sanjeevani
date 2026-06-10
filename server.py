@@ -15,7 +15,7 @@ from functools import wraps
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, set_access_cookies, jwt_required, get_jwt_identity, unset_jwt_cookies
-from ai_engine import analyze_medicine_image, analyze_prescription_image, get_medicine_dosage_info
+from ai_engine import analyze_medicine_image, analyze_prescription_image, get_medicine_dosage_info, _translate_text
 from db import register_user, authenticate_user, save_scan, get_user_history, delete_scan, search_medicines
 
 # Fix Windows charmap codec crashes when printing Unicode model output
@@ -131,6 +131,20 @@ def api_medicine_dosage_info():
         return jsonify({"error": "Missing medicine name"}), 400
     results = get_medicine_dosage_info(name, composition)
     return jsonify(results)
+
+
+@app.route("/api/translate", methods=["POST"])
+def api_translate():
+    data = request.get_json() or {}
+    text = data.get("text", "").strip()
+    target_lang_code = data.get("language_code", "en").strip()
+    target_language = LANG_CODE_MAP.get(target_lang_code, "English")
+    
+    if not text:
+        return jsonify({"error": "Missing text to translate"}), 400
+        
+    translated = _translate_text(text, target_language)
+    return jsonify({"translated": translated})
 
 
 # ─── Analysis ────────────────────────────────────────────────

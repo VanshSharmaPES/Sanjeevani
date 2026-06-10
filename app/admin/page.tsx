@@ -200,19 +200,49 @@ export default function AdminDashboard() {
     });
     setGenerationTime(now);
     
-    // Simulated quick backend lookup & translation logic
-    setTimeout(() => {
-      const langName = languages.find(l => l.code === selectedLanguage)?.name || "Hindi";
-      let adviceEn = `${medName} (${salts}). Dosage: ${dosage}, frequency: ${frequency}, timing: ${timing}. Note: ${docNotes || "No extra notes"}.`;
-      
-      // Mock translated strings to demonstrate bilingual visual handouts
-      const translatedAdvices: Record<string, string> = {
-        hi: `दवा का नाम: ${medName}। खुराक: ${dosage}, आवृत्ति: ${frequency}, भोजन संबंध: ${timing}। डॉक्टर की सलाह: ${docNotes || "नियमित रूप से लें।"}`,
-        ta: `மருந்து பெயர்: ${medName}. அளவு: ${dosage}, அதிர்வெண்: ${frequency}, உணவு உறவு: ${timing}. மருத்துவர் குறிப்பு: ${docNotes || "வழக்கமான உட்கொள்ளல்."}`,
-        kn: `ಔಷಧದ ಹೆಸರು: ${medName}. ಡೋಸೇಜ್: ${dosage}, ಆವರ್ತನ: ${frequency}, ಸಮಯ: ${timing}. ವೈದ್ಯರ ಟಿಪ್ಪಣಿ: ${docNotes || "ನಿಯಮಿತ ಸೇವನೆ."}`,
-        te: `మందు పేరు: ${medName}. మోతాదు: ${dosage}, ఫ్రీక్వెన్సీ: ${frequency}, సమయం: ${timing}. వైద్యుని గమనిక: ${docNotes || "క్రమమైన తీసుకోవడం."}`,
-        bn: `ওষুধের নাম: ${medName}। ডোজ: ${dosage}, ফ্রিকোয়েন্সি: ${frequency}, সময়: ${timing}। ডাক্তারের পরামর্শ: ${docNotes || "নিয়মিত গ্রহণ করুন।"}`
-      };
+    const langName = languages.find(l => l.code === selectedLanguage)?.name || "Hindi";
+    const adviceEn = `Medicine: ${medName}. Composition: ${salts}. Dosage: ${dosage}. Frequency: ${frequency}. Timing: ${timing}.` + (docNotes ? ` Special Notes: ${docNotes}` : "");
+
+    try {
+      if (selectedLanguage === "en") {
+        setGeneratedGuide({
+          medicineName: medName,
+          activeSalts: salts,
+          dosage: dosage,
+          frequency: frequency,
+          timing: timing,
+          language: langName,
+          doctorNotes: docNotes,
+          adviceText: adviceEn,
+          adviceTextEn: adviceEn
+        });
+      } else {
+        const response = await fetch("/api/translate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            text: adviceEn,
+            language_code: selectedLanguage,
+          }),
+        });
+        
+        const data = await response.json();
+        setGeneratedGuide({
+          medicineName: medName,
+          activeSalts: salts,
+          dosage: dosage,
+          frequency: frequency,
+          timing: timing,
+          language: langName,
+          doctorNotes: docNotes,
+          adviceText: data.translated || adviceEn,
+          adviceTextEn: adviceEn
+        });
+      }
+    } catch (err) {
+      console.error("Translation error:", err);
       setGeneratedGuide({
         medicineName: medName,
         activeSalts: salts,
@@ -221,11 +251,12 @@ export default function AdminDashboard() {
         timing: timing,
         language: langName,
         doctorNotes: docNotes,
-        adviceText: translatedAdvices[selectedLanguage] || adviceEn,
+        adviceText: adviceEn,
         adviceTextEn: adviceEn
       });
+    } finally {
       setLoading(false);
-    }, 1200);
+    }
   };
 
   const [copied, setCopied] = useState(false);
@@ -596,18 +627,9 @@ export default function AdminDashboard() {
                 {/* Printable Handout Content */}
                 <div id="printable-handout" className="bg-card border-2 border-border print:border-0 rounded-3xl p-6 print:p-0 space-y-4 shadow-xl print:shadow-none bg-background text-foreground">
                   
-                  {/* Digital Prescription Clinic Header */}
-                  <div className="border-b-2 border-border pb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary font-bold text-xl font-display">
-                        Rx
-                      </div>
-                      <div>
-                        <h4 className="font-display font-bold text-lg text-foreground tracking-tight">SANJEEVANI</h4>
-                        <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Bilingual Digital Dispensing &amp; Prescription System</p>
-                      </div>
-                    </div>
-                    <div className="text-left md:text-right space-y-0.5 text-xs text-muted-foreground">
+                  {/* Digital Prescription Clinic Header (Doctor Details Only, No Rx header or line below it) */}
+                  <div className="flex justify-end items-start gap-4">
+                    <div className="text-right space-y-0.5 text-xs text-muted-foreground">
                       <p className="font-semibold text-foreground">{doctorName}</p>
                       <p>Reg No: MCI-2026-98765</p>
                       {generationTime && <p className="text-[10px] font-medium text-emerald-500">{generationTime}</p>}
