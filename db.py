@@ -238,6 +238,51 @@ def find_cached_drug_by_ocr(ocr_text: str) -> dict | None:
         conn.close()
 
 
+def find_db_drug_by_ocr(ocr_text: str) -> dict | None:
+    """Check if any word in the OCR text matches a medicine name in the medicines table."""
+    if not ocr_text:
+        return None
+    import re
+    ocr_lower = ocr_text.lower()
+    # Find all alphanumeric words/numbers of length > 3
+    words = [w.strip() for w in re.split(r'[^a-zA-Z0-9]', ocr_lower) if len(w.strip()) > 3]
+    if not words:
+        return None
+        
+    conn = _get_conn()
+    try:
+        for word in words:
+            # First search exact name match or prefix match
+            row = conn.execute(
+                """
+                SELECT name, unit, composition, uses, side_effects, manufacturer 
+                FROM medicines 
+                WHERE LOWER(name) = ? OR LOWER(name) LIKE ?
+                LIMIT 1
+                """,
+                (word, f"{word} %")
+            ).fetchone()
+            if row:
+                return {
+                    "is_medicine": True,
+                    "medicine_name": row["name"],
+                    "active_salts": [s.strip() for s in row["composition"].split("+") if s.strip()] if row["composition"] else [],
+                    "dosage_strength": "N/A",
+                    "is_high_dosage": False,
+                    "dosage_info": "Normal dosage (database lookup fallback)",
+                    "conditions": [s.strip() for s in row["uses"].split(",") if s.strip()] if row["uses"] else [],
+                    "what_it_does": "Active ingredient acts on the target symptoms.",
+                    "suitable_age_group": "Adults/Children (verify with practitioner)",
+                    "advice": f"Medicine identified via lookup database: {row['name']} by {row['manufacturer']}. Salts: {row['composition']}."
+                }
+        return None
+    except Exception as e:
+        print(f"[WARN] Error in find_db_drug_by_ocr: {e}")
+        return None
+    finally:
+        conn.close()
+
+
 def cache_drug(medicine_name: str, result_data: dict):
     """Cache drug details by name."""
     if not medicine_name or not result_data:

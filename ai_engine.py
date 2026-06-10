@@ -688,7 +688,18 @@ If the image does not appear to be a medicine, return:
     "advice": "This does not appear to be a medicine."
 }
 """
-        data = _call_analysis_model(extracted_text, MEDICINE_ANALYSIS_INSTRUCTION, analysis_prompt)
+        try:
+            data = _call_analysis_model(extracted_text, MEDICINE_ANALYSIS_INSTRUCTION, analysis_prompt)
+        except Exception as analysis_err:
+            _safe_print(f"[WARN] Analysis LLM failed: {analysis_err}. Attempting database lookup fallback...")
+            from db import find_db_drug_by_ocr
+            fallback_data = find_db_drug_by_ocr(extracted_text)
+            if fallback_data:
+                _safe_print("[INFO] Fallback database lookup succeeded!")
+                data = fallback_data
+            else:
+                _safe_print("[WARN] Fallback database lookup failed to find a match.")
+                raise analysis_err
 
         # Defaults for all required fields
         data.setdefault("is_medicine", True)
