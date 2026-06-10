@@ -409,10 +409,10 @@ export default function AdminDashboard() {
         </div>
 
         {/* Print Layout Header (Hidden on screen, shown on paper) */}
-        <div className="hidden print:block border-b-2 border-black pb-4 mb-6">
+        <div className="hidden print:block border-b-2 border-black pb-3 mb-4">
           <div className="flex justify-between items-end">
             <div>
-              <h1 className="text-3xl font-bold">SANJEEVANI CLINIC</h1>
+              <h1 className="text-2xl font-bold">SANJEEVANI</h1>
               <p className="text-sm">Personalized Medication Guide</p>
             </div>
             <div className="text-right">
@@ -594,16 +594,16 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Printable Handout Content */}
-                <div id="printable-handout" className="bg-card border-2 border-border print:border-0 rounded-3xl p-8 print:p-0 space-y-6 shadow-xl print:shadow-none bg-background text-foreground">
+                <div id="printable-handout" className="bg-card border-2 border-border print:border-0 rounded-3xl p-6 print:p-0 space-y-4 shadow-xl print:shadow-none bg-background text-foreground">
                   
                   {/* Digital Prescription Clinic Header */}
-                  <div className="border-b-2 border-border pb-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div className="border-b-2 border-border pb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-primary font-bold text-2xl font-display">
+                      <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary font-bold text-xl font-display">
                         Rx
                       </div>
                       <div>
-                        <h4 className="font-display font-bold text-xl text-foreground tracking-tight">SANJEEVANI CLINICAL CENTER</h4>
+                        <h4 className="font-display font-bold text-lg text-foreground tracking-tight">SANJEEVANI</h4>
                         <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Bilingual Digital Dispensing &amp; Prescription System</p>
                       </div>
                     </div>
@@ -614,13 +614,13 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  <div className="flex justify-between items-start pt-2">
+                  <div className="flex justify-between items-start pt-1">
                     <div>
                       <span className="text-[10px] px-2 py-1 rounded bg-secondary/15 text-secondary border border-secondary/20 font-semibold print:hidden">
                         BILINGUAL PATIENT HANDOUT
                       </span>
-                      <h3 className="font-display text-3xl font-bold mt-2">{generatedGuide.medicineName}</h3>
-                      <p className="text-muted-foreground text-sm mt-1">{generatedGuide.activeSalts}</p>
+                      <h3 className="font-display text-2xl font-bold mt-1.5">{generatedGuide.medicineName}</h3>
+                      <p className="text-muted-foreground text-xs mt-0.5">{generatedGuide.activeSalts}</p>
                     </div>
                     <div className="flex items-center gap-1.5 px-3 py-1 bg-muted border border-border rounded-lg text-xs print:hidden">
                       <Globe size={13} className="text-muted-foreground" />
@@ -629,52 +629,52 @@ export default function AdminDashboard() {
                   </div>
 
                   {/* Core schedule highlights */}
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 border-y border-border py-6">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 border-y border-border py-4">
                     <div>
                       <p className="text-[10px] text-muted-foreground font-display uppercase tracking-wider">Dosage</p>
-                      <p className="font-semibold text-lg">{generatedGuide.dosage}</p>
+                      <p className="font-semibold text-base">{generatedGuide.dosage}</p>
                     </div>
                     <div>
                       <p className="text-[10px] text-muted-foreground font-display uppercase tracking-wider">Frequency</p>
-                      <p className="font-semibold text-lg">{generatedGuide.frequency}</p>
+                      <p className="font-semibold text-base">{generatedGuide.frequency}</p>
                     </div>
                     <div>
                       <p className="text-[10px] text-muted-foreground font-display uppercase tracking-wider">Timing</p>
-                      <p className="font-semibold text-lg">{generatedGuide.timing}</p>
+                      <p className="font-semibold text-base">{generatedGuide.timing}</p>
                     </div>
                   </div>
 
                   {/* Bilingual Advice Translation Block */}
-                  <div className="space-y-4">
-                    <div className="p-5 rounded-2xl bg-secondary/5 border border-secondary/25">
-                      <h4 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-2">
+                  <div className="space-y-3">
+                    <div className="p-4 rounded-xl bg-secondary/5 border border-secondary/25">
+                      <h4 className="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-1">
                         Instructions in Patient's Language ({generatedGuide.language})
                       </h4>
-                      <p className="text-foreground text-lg leading-relaxed">{generatedGuide.adviceText}</p>
+                      <p className="text-foreground text-base leading-relaxed">{generatedGuide.adviceText}</p>
                     </div>
 
-                    <div className="p-5 rounded-2xl bg-muted/40 border border-border">
-                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                    <div className="p-4 rounded-xl bg-muted/40 border border-border">
+                      <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
                         Instructions in English
                       </h4>
-                      <p className="text-muted-foreground text-sm leading-relaxed">{generatedGuide.adviceTextEn}</p>
+                      <p className="text-muted-foreground text-xs leading-relaxed">{generatedGuide.adviceTextEn}</p>
                     </div>
                   </div>
 
                   {/* Custom Doctor Notes */}
                   {generatedGuide.doctorNotes && (
-                    <div className="border-t border-border pt-5">
-                      <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2">
+                    <div className="border-t border-border pt-4">
+                      <h4 className="text-[10px] font-semibold text-foreground uppercase tracking-wider mb-1">
                         Special Notes by Practitioner
                       </h4>
-                      <p className="text-foreground text-sm leading-relaxed bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl">
+                      <p className="text-foreground text-xs leading-relaxed bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl">
                         {generatedGuide.doctorNotes}
                       </p>
                     </div>
                   )}
 
                   {/* Digital Prescription Verification Footer */}
-                  <div className="border-t border-border pt-5 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-muted-foreground">
+                  <div className="border-t border-border pt-4 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-muted-foreground">
                     <div className="flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                       <span className="font-semibold text-foreground">Digital Prescription Verified</span>
