@@ -224,18 +224,27 @@ export default function AdminDashboard() {
           adviceTextEn: adviceEn
         });
       } else {
-        const response = await fetch("/api/translate", {
+        // Translate advice text and doctor notes in parallel
+        const translateAdvicePromise = fetch("/api/translate", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             text: adviceEn,
             language_code: selectedLanguage,
           }),
-        });
-        
-        const data = await response.json();
+        }).then(r => r.json());
+
+        const translateNotesPromise = docNotes ? fetch("/api/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: docNotes,
+            language_code: selectedLanguage,
+          }),
+        }).then(r => r.json()) : Promise.resolve({ translated: "" });
+
+        const [adviceData, notesData] = await Promise.all([translateAdvicePromise, translateNotesPromise]);
+
         setGeneratedGuide({
           medicineName: medName,
           activeSalts: salts,
@@ -243,8 +252,8 @@ export default function AdminDashboard() {
           frequency: frequency,
           timing: timing,
           language: langName,
-          doctorNotes: docNotes,
-          adviceText: data.translated || adviceEn,
+          doctorNotes: notesData.translated || docNotes,
+          adviceText: adviceData.translated || adviceEn,
           adviceTextEn: adviceEn
         });
       }
