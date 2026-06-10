@@ -111,6 +111,32 @@ def register_user(username: str, password: str, role: str = "patient") -> tuple[
         conn.close()
 
 
+def reset_password(username: str, new_password: str) -> tuple[bool, str]:
+    """Reset user's password."""
+    if not username or not new_password:
+        return False, "Username and new password are required."
+    if len(new_password) < 4:
+        return False, "Password must be at least 4 characters."
+    
+    conn = _get_conn()
+    try:
+        # Check if user exists
+        row = conn.execute("SELECT id FROM users WHERE username = ?", (username.strip().lower(),)).fetchone()
+        if not row:
+            return False, "User not found."
+            
+        conn.execute(
+            "UPDATE users SET password_hash = ? WHERE username = ?",
+            (_hash_password(new_password), username.strip().lower())
+        )
+        conn.commit()
+        return True, "Password reset successfully!"
+    except Exception as e:
+        return False, f"Failed to reset password: {e}"
+    finally:
+        conn.close()
+
+
 def authenticate_user(username: str, password: str) -> tuple[bool, int | None, str | None]:
     """Authenticate a user. Returns (success, user_id, role)."""
     conn = _get_conn()

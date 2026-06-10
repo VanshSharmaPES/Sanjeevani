@@ -20,6 +20,57 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  // Reset Password State
+  const [showReset, setShowReset] = useState(false);
+  const [resetUsername, setResetUsername] = useState("");
+  const [resetPasswordVal, setResetPasswordVal] = useState("");
+  const [resetError, setResetError] = useState("");
+  const [resetSuccess, setResetSuccess] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetError("");
+    setResetSuccess("");
+    
+    const u = resetUsername.trim();
+    const p = resetPasswordVal;
+    
+    if (!u || !p) {
+      setResetError("Username and new password are required.");
+      return;
+    }
+    if (p.length < 4) {
+      setResetError("Password must be at least 4 characters.");
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: u, new_password: p }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setResetSuccess("Password reset successfully! You can now log in.");
+        setResetUsername("");
+        setResetPasswordVal("");
+        setTimeout(() => {
+          setShowReset(false);
+          setResetSuccess("");
+        }, 2200);
+      } else {
+        setResetError(data.message || "Failed to reset password.");
+      }
+    } catch {
+      setResetError("Failed to connect to authentication server.");
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -232,11 +283,101 @@ const Login = () => {
           {isLogin && (
             <p className="text-center text-muted-foreground text-xs mt-6">
               Forgot your password?{" "}
-              <span className="text-secondary cursor-pointer hover:underline">Reset here</span>
+              <span 
+                onClick={() => setShowReset(true)}
+                className="text-secondary cursor-pointer hover:underline"
+              >
+                Reset here
+              </span>
             </p>
           )}
         </div>
       </motion.div>
+
+      {/* Reset Password Modal */}
+      <AnimatePresence>
+        {showReset && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setShowReset(false);
+                setResetError("");
+                setResetSuccess("");
+              }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative bg-card/95 border border-border w-full max-w-sm rounded-2xl p-6 shadow-2xl z-10"
+            >
+              <h3 className="font-display font-bold text-lg mb-4 text-foreground">
+                Reset Password
+              </h3>
+              
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                {resetError && (
+                  <div className="p-3 bg-destructive/10 border border-destructive/20 text-destructive text-xs rounded-xl">
+                    {resetError}
+                  </div>
+                )}
+                {resetSuccess && (
+                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs rounded-xl">
+                    {resetSuccess}
+                  </div>
+                )}
+                
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Username</label>
+                  <input
+                    type="text"
+                    value={resetUsername}
+                    onChange={(e) => setResetUsername(e.target.value)}
+                    placeholder="Enter your username"
+                    className="w-full bg-muted border border-border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary text-foreground"
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">New Password</label>
+                  <input
+                    type="password"
+                    value={resetPasswordVal}
+                    onChange={(e) => setResetPasswordVal(e.target.value)}
+                    placeholder="Enter new password"
+                    className="w-full bg-muted border border-border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary text-foreground"
+                  />
+                </div>
+                
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowReset(false);
+                      setResetError("");
+                      setResetSuccess("");
+                    }}
+                    className="flex-1 py-2.5 bg-muted hover:bg-muted/80 text-foreground font-semibold rounded-xl text-xs transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={resetLoading}
+                    className="flex-1 py-2.5 bg-primary text-primary-foreground font-semibold rounded-xl text-xs disabled:opacity-50 transition-opacity"
+                  >
+                    {resetLoading ? "Resetting..." : "Reset Password"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -16,7 +16,7 @@ from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, set_access_cookies, jwt_required, get_jwt_identity, unset_jwt_cookies
 from ai_engine import analyze_medicine_image, analyze_prescription_image, get_medicine_dosage_info, _translate_text
-from db import register_user, authenticate_user, save_scan, get_user_history, delete_scan, search_medicines
+from db import register_user, authenticate_user, save_scan, get_user_history, delete_scan, search_medicines, reset_password
 
 # Fix Windows charmap codec crashes when printing Unicode model output
 if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
@@ -113,6 +113,17 @@ def api_logout():
     resp = jsonify({"success": True, "message": "Logged out"})
     unset_jwt_cookies(resp)
     return resp
+
+
+@app.route("/api/auth/reset-password", methods=["POST"])
+def api_reset_password():
+    data = request.get_json() or {}
+    username = data.get("username", "")
+    new_password = data.get("new_password", "")
+    success, msg = reset_password(username, new_password)
+    if success:
+        return jsonify({"success": True, "message": msg})
+    return jsonify({"success": False, "message": msg}), 400
 
 
 # ─── Medicines search ────────────────────────────────────────
