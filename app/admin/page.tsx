@@ -154,10 +154,10 @@ export default function AdminDashboard() {
     setSearchResults([]);
 
     // Loading states for baseline fields
-    setDosage("Querying AI...");
-    setFrequency("Querying AI...");
-    setTiming("Querying AI...");
-    setDocNotes("Consulting clinical guidelines via AI...");
+    setDosage("Generating..");
+    setFrequency("Generating..");
+    setTiming("Generating..");
+    setDocNotes("Generating..");
     setAiGenerating(true);
 
     try {
@@ -201,7 +201,14 @@ export default function AdminDashboard() {
     setGenerationTime(now);
     
     const langName = languages.find(l => l.code === selectedLanguage)?.name || "Hindi";
-    const adviceEn = `Medicine: ${medName}. Composition: ${salts}. Dosage: ${dosage}. Frequency: ${frequency}. Timing: ${timing}.` + (docNotes ? ` Special Notes: ${docNotes}` : "");
+    const adviceEn = `PRESCRIPTION & MEDICATION GUIDE
+---------------------------------
+• Medicine Name: ${medName}
+• Composition: ${salts}
+• Dosage: ${dosage}
+• Frequency: ${frequency}
+• Food Relation: ${timing}
+• Special Warnings: ${docNotes || "No special warnings. Take as directed by practitioner."}`;
 
     try {
       if (selectedLanguage === "en") {
@@ -672,14 +679,14 @@ export default function AdminDashboard() {
                       <h4 className="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-1">
                         Instructions in Patient's Language ({generatedGuide.language})
                       </h4>
-                      <p className="text-foreground text-base leading-relaxed">{generatedGuide.adviceText}</p>
+                      <p className="text-foreground text-base leading-relaxed whitespace-pre-line">{generatedGuide.adviceText}</p>
                     </div>
 
                     <div className="p-4 rounded-xl bg-muted/40 border border-border">
                       <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
                         Instructions in English
                       </h4>
-                      <p className="text-muted-foreground text-xs leading-relaxed">{generatedGuide.adviceTextEn}</p>
+                      <p className="text-muted-foreground text-xs leading-relaxed whitespace-pre-line">{generatedGuide.adviceTextEn}</p>
                     </div>
                   </div>
 
