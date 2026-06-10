@@ -666,21 +666,6 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  {/* Core schedule highlights */}
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 border-y border-zinc-800 print:border-black py-4">
-                    <div>
-                      <p className="text-[10px] text-zinc-400 print:text-zinc-600 font-display uppercase tracking-wider">Dosage</p>
-                      <p className="font-semibold text-base text-zinc-100 print:text-black">{generatedGuide.dosage}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-zinc-400 print:text-zinc-600 font-display uppercase tracking-wider">Frequency</p>
-                      <p className="font-semibold text-base text-zinc-100 print:text-black">{generatedGuide.frequency}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-zinc-400 print:text-zinc-600 font-display uppercase tracking-wider">Timing</p>
-                      <p className="font-semibold text-base text-zinc-100 print:text-black">{generatedGuide.timing}</p>
-                    </div>
-                  </div>
 
                   {/* Instructions Block */}
                   <div className="space-y-3">
