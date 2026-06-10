@@ -290,6 +290,40 @@ def search_medicines(query: str, limit: int = 15) -> list[dict]:
         conn.close()
 
 
+def get_db_status() -> dict:
+    """Get status of the database (existence, size, table row counts)."""
+    status = {
+        "db_path": DB_PATH,
+        "db_exists": os.path.exists(DB_PATH),
+    }
+    if status["db_exists"]:
+        status["db_size_bytes"] = os.path.getsize(DB_PATH)
+        try:
+            conn = _get_conn()
+            cursor = conn.cursor()
+            
+            # Check tables
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = [row[0] for row in cursor.fetchall()]
+            status["tables"] = tables
+            
+            counts = {}
+            for table in tables:
+                if table == "sqlite_sequence":
+                    continue
+                try:
+                    cursor.execute(f"SELECT COUNT(*) FROM [{table}]")
+                    counts[table] = cursor.fetchone()[0]
+                except Exception as e:
+                    counts[table] = f"Error: {e}"
+            status["row_counts"] = counts
+            conn.close()
+        except Exception as e:
+            status["error"] = str(e)
+    return status
+
+
 # Initialize database on import
 init_db()
+
 

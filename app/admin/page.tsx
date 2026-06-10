@@ -112,8 +112,9 @@ export default function AdminDashboard() {
         try {
           const res = await fetch(`/api/medicines/search?q=${encodeURIComponent(query)}`);
           const data = await res.json();
-          setSearchResults(data);
-          setShowDropdown(data.length > 0);
+          const results = Array.isArray(data) ? data : [];
+          setSearchResults(results);
+          setShowDropdown(results.length > 0);
         } catch (err) {
           console.error("Auto search error:", err);
         } finally {
@@ -133,13 +134,17 @@ export default function AdminDashboard() {
     try {
       const res = await fetch(`/api/medicines/search?q=${encodeURIComponent(query)}`);
       const data = await res.json();
-      setSearchResults(data);
-      setShowDropdown(data.length > 0);
-      if (data.length === 0) {
+      const results = Array.isArray(data) ? data : [];
+      setSearchResults(results);
+      setShowDropdown(results.length > 0);
+      if (!Array.isArray(data)) {
+        alert(data.message || "Search failed. Backend API server error.");
+      } else if (results.length === 0) {
         alert("No medicines found matching your search. You can manually enter the details below.");
       }
     } catch (err) {
       console.error("Search error:", err);
+      alert("Failed to search medicines. Connection to the API failed.");
     } finally {
       setSearching(false);
     }

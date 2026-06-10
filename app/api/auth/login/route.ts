@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
-const PYTHON_API = process.env.PYTHON_API_URL || "http://127.0.0.1:5000";
+const PYTHON_API = (process.env.PYTHON_API_URL || "http://127.0.0.1:5000").replace(/\/$/, "");
 
 export async function POST(request: NextRequest) {
   try {

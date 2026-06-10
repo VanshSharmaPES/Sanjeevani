@@ -16,7 +16,7 @@ from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, set_access_cookies, jwt_required, get_jwt_identity, unset_jwt_cookies
 from ai_engine import analyze_medicine_image, analyze_prescription_image, get_medicine_dosage_info, _translate_text
-from db import register_user, authenticate_user, save_scan, get_user_history, delete_scan, search_medicines, reset_password
+from db import register_user, authenticate_user, save_scan, get_user_history, delete_scan, search_medicines, reset_password, get_db_status
 
 # Fix Windows charmap codec crashes when printing Unicode model output
 if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
@@ -256,7 +256,11 @@ def api_delete_scan(scan_id):
 # ─── Health check ────────────────────────────────────────────
 @app.route("/api/health", methods=["GET"])
 def health():
-    return jsonify({"status": "ok"})
+    db_status = get_db_status()
+    return jsonify({
+        "status": "ok",
+        "database": db_status
+    })
 
 
 if __name__ == "__main__":

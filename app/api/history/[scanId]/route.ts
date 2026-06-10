@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-const PYTHON_API = process.env.PYTHON_API_URL || "http://127.0.0.1:5000";
+const PYTHON_API = (process.env.PYTHON_API_URL || "http://127.0.0.1:5000").replace(/\/$/, "");
 
 export async function DELETE(
     request: NextRequest,
