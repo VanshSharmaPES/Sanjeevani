@@ -57,6 +57,7 @@ const Dashboard = () => {
         localStorage.removeItem("sanjeevani_user");
         localStorage.removeItem("sanjeevani_role");
         localStorage.removeItem("sanjeevani_language");
+        localStorage.removeItem("sanjeevani_token");
         router.push("/");
       });
   };

@@ -89,6 +89,9 @@ const Login = () => {
         if (data.success) {
           localStorage.setItem("sanjeevani_user", data.username || email.trim());
           localStorage.setItem("sanjeevani_role", data.role || "patient");
+          if (data.token) {
+            localStorage.setItem("sanjeevani_token", data.token);
+          }
           router.push("/dashboard");
         } else {
           setError(data.message || "Invalid credentials");

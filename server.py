@@ -60,7 +60,7 @@ app = Flask(__name__)
 CORS(app, supports_credentials=True)
 
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "super-secret-sanjeevani-key")
-app.config["JWT_TOKEN_LOCATION"] = ["cookies"]
+app.config["JWT_TOKEN_LOCATION"] = ["headers", "cookies"]
 app.config["JWT_COOKIE_SECURE"] = os.getenv("JWT_COOKIE_SECURE", "False").lower() == "true"
 app.config["JWT_COOKIE_SAMESITE"] = "Lax"
 app.config["JWT_COOKIE_CSRF_PROTECT"] = False
@@ -102,7 +102,7 @@ def api_login():
     success, user_id, role = authenticate_user(username, password)
     if success:
         token = create_access_token(identity=str(user_id), additional_claims={"role": role})
-        resp = jsonify({"success": True, "username": username, "role": role})
+        resp = jsonify({"success": True, "username": username, "role": role, "token": token})
         set_access_cookies(resp, token)
         return resp
     return jsonify({"success": False, "message": "Invalid credentials"}), 401

@@ -173,8 +173,42 @@ function ScanUploadContent() {
       const lang = localStorage.getItem("sanjeevani_language") || "en";
       formData.append("language", lang);
 
-      const endpoint = type === "prescription" ? "/api/analyze/prescription" : "/api/analyze/medicine";
-      const res = await fetch(endpoint, { method: "POST", credentials: "include", body: formData });
+      // Fetch the Python API URL to check if we should fetch directly
+      let apiUrl = "";
+      try {
+        const configRes = await fetch("/api/config");
+        const configData = await configRes.json();
+        apiUrl = configData.python_api_url || "";
+      } catch (e) {
+        console.warn("Failed to fetch config, falling back to proxy routes:", e);
+      }
+
+      const isDeployed = apiUrl && !apiUrl.includes("127.0.0.1") && !apiUrl.includes("localhost");
+
+      let res;
+      if (isDeployed) {
+        // Direct browser-to-backend request: avoids Vercel's 10s serverless function timeout
+        const headers: Record<string, string> = {};
+        const token = localStorage.getItem("sanjeevani_token");
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+        
+        const directEndpoint = type === "prescription" 
+          ? `${apiUrl}/api/analyze/prescription` 
+          : `${apiUrl}/api/analyze/medicine`;
+
+        res = await fetch(directEndpoint, {
+          method: "POST",
+          headers: headers,
+          body: formData,
+        });
+      } else {
+        // Local dev environment: Use standard Next.js proxy route
+        const endpoint = type === "prescription" ? "/api/analyze/prescription" : "/api/analyze/medicine";
+        res = await fetch(endpoint, { method: "POST", credentials: "include", body: formData });
+      }
+
       const data = await res.json();
 
       if (!res.ok || data.error) {
