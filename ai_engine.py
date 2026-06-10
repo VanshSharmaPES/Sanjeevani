@@ -203,7 +203,63 @@ Cetrimide/Savlon = Cetrimide
 """
 
 
-client = Groq(api_key=os.getenv("API_KEY"))
+class RotatingGroqClient:
+    def __init__(self):
+        self.keys = []
+        
+        # Support API_KEY_1 to API_KEY_10 or GROQ_API_KEY_1 to GROQ_API_KEY_10
+        for i in range(1, 11):
+            key = os.getenv(f"API_KEY_{i}") or os.getenv(f"GROQ_API_KEY_{i}")
+            if key and key.strip():
+                self.keys.append(key.strip())
+                
+        # Support fallback/main key
+        main_key = os.getenv("API_KEY") or os.getenv("GROQ_API_KEY")
+        if main_key and main_key.strip() and main_key.strip() not in self.keys:
+            self.keys.append(main_key.strip())
+            
+        # Deduplicate
+        seen = set()
+        self.keys = [x for x in self.keys if not (x in seen or seen.add(x))]
+        
+        if not self.keys:
+            print("[WARN] RotatingGroqClient: No Groq API keys found in environment variables!")
+            self.keys = [""]
+            
+        self.clients = [Groq(api_key=k) for k in self.keys]
+        self.current_index = 0
+        print(f"🔑 RotatingGroqClient: Loaded {len(self.keys)} API key(s) for rotation.")
+
+    def rotate(self):
+        if len(self.clients) > 1:
+            self.current_index = (self.current_index + 1) % len(self.clients)
+            print(f"🔄 RotatingGroqClient: Switched to API key index {self.current_index} due to error/limit.")
+
+    class CompletionsWrapper:
+        def __init__(self, outer):
+            self.outer = outer
+
+        def create(self, *args, **kwargs):
+            last_error = None
+            for _ in range(len(self.outer.clients)):
+                client_instance = self.outer.clients[self.outer.current_index]
+                try:
+                    return client_instance.chat.completions.create(*args, **kwargs)
+                except Exception as e:
+                    last_error = e
+                    print(f"⚠️ RotatingGroqClient: Request failed using key index {self.outer.current_index}. Error: {e}")
+                    self.outer.rotate()
+            raise last_error
+
+    class ChatWrapper:
+        def __init__(self, outer):
+            self.completions = RotatingGroqClient.CompletionsWrapper(outer)
+
+    @property
+    def chat(self):
+        return RotatingGroqClient.ChatWrapper(self)
+
+client = RotatingGroqClient()
 
 LANG_MAP = {
     'English': 'en',
