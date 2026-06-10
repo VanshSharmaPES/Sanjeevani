@@ -1,19 +1,28 @@
 import sqlite3
 import pandas as pd
 import os
+import sys
+import io
+
+# Force UTF-8 encoding
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 db_path = os.path.join(os.path.dirname(__file__), "sanjeevani.db")
-csv_path = os.path.join(os.path.dirname(__file__), "Medicine_Details_revised_new.csv")
+csv_path = os.path.join(os.path.dirname(__file__), "A_Z_medicines_dataset_of_India.csv")
 
 def run_migration():
     if not os.path.exists(csv_path):
         print(f"Error: CSV not found at {csv_path}")
         return
 
-    print("🌿 Connecting to database...")
+    print("🌿 Connecting to SQLite database...")
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
+    # Drop table to ensure clean import of the new A-Z database
+    print("🌿 Resetting medicines table...")
+    cursor.execute("DROP TABLE IF EXISTS medicines")
+    
     # 1. Create medicines table
     print("🌿 Creating medicines table and indexes...")
     cursor.execute("""
@@ -44,43 +53,50 @@ def run_migration():
     conn.commit()
 
     # 3. Read and clean CSV
-    print("🌿 Reading CSV data...")
-    df = pd.read_csv(csv_path)
+    print("🌿 Reading new A-Z CSV data...")
+    # Use chunksize or low_memory to optimize loading of ~32MB CSV
+    df = pd.read_csv(csv_path, dtype=str)
     print(f"🌿 Read {len(df)} rows from CSV.")
     
     # Replace NaN with empty strings
     df = df.fillna("")
 
+    print("🌿 Preparing records for bulk insertion...")
     records = []
     for _, row in df.iterrows():
-        try:
-            exc = int(float(row['Excellent Review %'])) if row['Excellent Review %'] != "" else 0
-        except ValueError:
-            exc = 0
-        try:
-            avg = int(float(row['Average Review %'])) if row['Average Review %'] != "" else 0
-        except ValueError:
-            avg = 0
-        try:
-            poor = int(float(row['Poor Review %'])) if row['Poor Review %'] != "" else 0
-        except ValueError:
-            poor = 0
+        name = row['name'].strip()
+        unit = row['pack_size_label'].strip()
+        manufacturer = row['manufacturer_name'].strip()
+        
+        # Combine composition 1 and 2
+        comp1 = row['short_composition1'].strip()
+        comp2 = row['short_composition2'].strip()
+        
+        if comp1 and comp2:
+            composition = f"{comp1} + {comp2}"
+        elif comp1:
+            composition = comp1
+        elif comp2:
+            composition = comp2
+        else:
+            composition = "Not specified"
 
+        # Map to identical database schema (backward-compatible)
         records.append((
-            row['Medicine Name'].strip(),
-            row['Unit'].strip(),
-            row['Composition'].strip(),
-            row['Uses'].strip(),
-            row['Side_effects'].strip(),
-            row['Image URL'].strip(),
-            row['Manufacturer'].strip(),
-            exc,
-            avg,
-            poor
+            name,
+            unit,
+            composition,
+            "", # uses
+            "", # side_effects
+            "", # image_url
+            manufacturer,
+            0,  # excellent_review_pct
+            0,  # average_review_pct
+            0   # poor_review_pct
         ))
 
     # 4. Bulk insert
-    print("🌿 Inserting records in bulk (this might take a few seconds)...")
+    print(f"🌿 Bulk-inserting {len(records)} medicines into SQLite...")
     cursor.executemany("""
         INSERT OR IGNORE INTO medicines (
             name, unit, composition, uses, side_effects, image_url, manufacturer,
