@@ -7,18 +7,19 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
 dist
 dist-ssr
 *.local
 
+# Environment
 .env
 .env.local
 
 # Next.js
 .next/
 out/
-
 
 # Editor directories and files
 .vscode/*
@@ -31,11 +32,10 @@ out/
 *.sln
 *.sw?
 
+# Project-specific overrides
 REQUIREMENTS.md
 ARCHITECTURE.md
 *.jpg
 *.jpeg
-*.jpeg
-*.db
 certificates
 A_Z_medicines_dataset_of_India.csv
