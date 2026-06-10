@@ -673,20 +673,13 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  {/* Bilingual Advice Translation Block */}
+                  {/* Instructions Block */}
                   <div className="space-y-3">
                     <div className="p-4 rounded-xl bg-secondary/5 border border-secondary/25">
                       <h4 className="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-1">
-                        Instructions in Patient's Language ({generatedGuide.language})
+                        Instructions ({generatedGuide.language})
                       </h4>
                       <p className="text-foreground text-base leading-relaxed whitespace-pre-line">{generatedGuide.adviceText}</p>
-                    </div>
-
-                    <div className="p-4 rounded-xl bg-muted/40 border border-border">
-                      <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                        Instructions in English
-                      </h4>
-                      <p className="text-muted-foreground text-xs leading-relaxed whitespace-pre-line">{generatedGuide.adviceTextEn}</p>
                     </div>
                   </div>
 
