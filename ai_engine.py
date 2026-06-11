@@ -409,6 +409,67 @@ def _safe_print(*args, **kwargs):
         safe_args = [str(a).encode("ascii", errors="replace").decode("ascii") for a in args]
         print(*safe_args, **kwargs)
 
+def _check_image_quality(img_array: np.ndarray) -> tuple[bool, str]:
+    """
+    Compute the Laplacian variance to evaluate image sharpness.
+    Returns (is_acceptable, message).
+    """
+    try:
+        # If it's a color image (has 3 dimensions), convert to gray
+        if len(img_array.shape) == 3:
+            gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
+        else:
+            gray = img_array
+        variance = cv2.Laplacian(gray, cv2.CV_64F).var()
+        _safe_print(f"[INFO] Image quality check: sharpness score = {variance:.2f}")
+        # Threshold: if variance < 45, it is considered too blurry to process
+        if variance < 45:
+            return False, f"Image is too blurry or low contrast (sharpness score: {variance:.1f}). Please upload a clearer photo."
+        return True, "Success"
+    except Exception as e:
+        _safe_print(f"[WARN] Error in _check_image_quality: {e}")
+        return True, "Success"
+
+
+def _heuristic_split_prescription(text: str) -> list[str]:
+    """
+    Fallback heuristic splitter that splits text by line/numbered patterns
+    if the LLM fails to segment it.
+    """
+    lines = text.splitlines()
+    segments = []
+    current_segment = []
+    
+    # Patterns that indicate a new medicine entry starts
+    new_entry_patterns = [
+        r'^\s*\d+[\s\.\)-]',  # e.g., 1. or 1) or 1-
+        r'^\s*(I|II|III|IV|V|VI|VII|VIII|IX|X)[\s\.\)-]',  # Roman numerals
+        r'^\s*(Tab|Cap|Syr|Syp|Inj|Oint|Rx|Rx:|Tablet|Capsule|Syrup|Injection|Ointment)\b'  # Brand/form prefix
+    ]
+    
+    def starts_new_entry(line):
+        line_stripped = line.strip()
+        if not line_stripped:
+            return False
+        for pattern in new_entry_patterns:
+            if re.match(pattern, line_stripped, re.IGNORECASE):
+                return True
+        return False
+
+    for line in lines:
+        if not line.strip():
+            continue
+        if starts_new_entry(line) and current_segment:
+            segments.append("\n".join(current_segment))
+            current_segment = [line]
+        else:
+            current_segment.append(line)
+            
+    if current_segment:
+        segments.append("\n".join(current_segment))
+        
+    return segments
+
 
 def _preprocess_image(image_bytes: bytes) -> tuple[bytes, str]:
     """
@@ -420,6 +481,12 @@ def _preprocess_image(image_bytes: bytes) -> tuple[bytes, str]:
         from PIL import ImageOps, ImageEnhance
         img = Image.open(io.BytesIO(image_bytes))
         
+        # Check image quality (sharpness check via Laplacian variance)
+        img_np = np.array(img)
+        is_acceptable, msg = _check_image_quality(img_np)
+        if not is_acceptable:
+            raise ValueError(msg)
+            
         # Log suspected format for debugging
         original_format = getattr(img, "format", "Unknown")
         _safe_print(f"[INFO] Preprocessing image: format={original_format}, size={img.size}, mode={img.mode}")
@@ -447,6 +514,8 @@ def _preprocess_image(image_bytes: bytes) -> tuple[bytes, str]:
         buf = io.BytesIO()
         img.save(buf, format="JPEG", quality=92)
         return buf.getvalue(), "image/jpeg"
+    except ValueError as ve:
+        raise ve
     except Exception as e:
         _safe_print(f"[WARN] Image preprocessing failed: {e}. Attempting raw fallback.")
         # Fallback: detect MIME from magic bytes and return raw
@@ -872,7 +941,10 @@ If the image does not appear to be a medicine, return:
 
     except Exception as e:
         _safe_print(f"[ERROR] Medicine analysis exception: {e}")
-        return {"error": f"Scan Failed: {str(e)}"}, None
+        err_msg = str(e)
+        if "Image is too blurry" in err_msg:
+            return {"error": err_msg}, None
+        return {"error": f"Scan Failed: {err_msg}"}, None
 
 
 def _extract_prescription_metadata(extracted_text: str) -> dict:
@@ -1161,6 +1233,15 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
         
         # 2. Split prescription text into segments (one segment per medicine)
         segments = _split_prescription_ocr(extracted_text)
+        
+        # Fallback / heuristic splitter check (Task 3)
+        # If LLM returned 0 or 1 segments, check if we have a multi-medicine layout heuristically
+        if len(segments) <= 1:
+            heuristic_segments = _heuristic_split_prescription(extracted_text)
+            if len(heuristic_segments) > len(segments):
+                _safe_print(f"[INFO] Fallback: LLM returned {len(segments)} segments, but heuristic splitter detected {len(heuristic_segments)} segments. Using heuristic splitting.")
+                segments = heuristic_segments
+        
         _safe_print(f"[INFO] Two-stage pipeline: split prescription into {len(segments)} segments.")
         
         # 3. Process each segment concurrently to extract precise medicine and dosage details
@@ -1301,7 +1382,10 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
         _safe_print(f"[ERROR] Prescription analysis exception: {e}")
         import traceback
         traceback.print_exc()
-        return {"error": f"Prescription Scan Failed: {str(e)}"}, None
+        err_msg = str(e)
+        if "Image is too blurry" in err_msg:
+            return {"error": err_msg}, None
+        return {"error": f"Prescription Scan Failed: {err_msg}"}, None
 
 
 def get_medicine_dosage_info(medicine_name: str, composition: str = "") -> dict:
