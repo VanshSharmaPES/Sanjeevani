@@ -471,6 +471,38 @@ def _heuristic_split_prescription(text: str) -> list[str]:
     return segments
 
 
+def _compute_confidence(data: dict, fuzzy_scores: list[int], ocr_len: int) -> str:
+    """
+    Computes overall confidence of the parsing: returns "high", "medium", or "low".
+    Confidence is set to "low" when:
+      - Any fuzzy match score is < 75
+      - Any dosage information is missing or empty (or "N/A")
+      - OCR text length is < 20 characters
+    Otherwise, returns "high" if all fuzzy scores are >= 85, else "medium".
+    """
+    if ocr_len < 20:
+        return "low"
+    
+    # Check fuzzy match scores
+    if not fuzzy_scores or any(score < 75 for score in fuzzy_scores):
+        return "low"
+        
+    # Check dosage information
+    if "medicines" in data:
+        for med in data["medicines"]:
+            dosage = med.get("dosage", "")
+            if not dosage or not str(dosage).strip() or str(dosage).strip().upper() == "N/A":
+                return "low"
+    else:
+        dosage = data.get("dosage_strength", "")
+        if not dosage or not str(dosage).strip() or str(dosage).strip().upper() == "N/A":
+            return "low"
+
+    if all(score >= 85 for score in fuzzy_scores):
+        return "high"
+    return "medium"
+
+
 def _preprocess_image(image_bytes: bytes) -> tuple[bytes, str]:
     """
     Convert any image format to JPEG, auto-correct orientation, enhance contrast,
@@ -823,6 +855,13 @@ def analyze_medicine_image(image_bytes: bytes, target_language: str = "English")
             data["advice"] = translated_summary
             data["advice_en"] = advice_en
             
+            # Ensure confidence & reviewRequired fields are populated for cache hits
+            if "confidence" not in data:
+                score = 80 if not data.get("low_confidence", False) else 70
+                confidence = _compute_confidence(data, [score], len(extracted_text))
+                data["confidence"] = confidence
+                data["reviewRequired"] = (confidence == "low")
+            
             audio_path = _generate_audio(translated_summary, lang_code)
             return data, audio_path
 
@@ -892,6 +931,16 @@ If the image does not appear to be a medicine, return:
             data["low_confidence"] = False
         else:
             data["low_confidence"] = True
+
+        # Compute confidence and reviewRequired (Task 4)
+        if not data.get("is_medicine"):
+            data["confidence"] = "low"
+            data["reviewRequired"] = True
+        else:
+            score = normalized.get("score", 0)
+            confidence = _compute_confidence(data, [score], len(extracted_text))
+            data["confidence"] = confidence
+            data["reviewRequired"] = (confidence == "low")
 
         # Ensure list fields are actual lists
         if isinstance(data.get("active_salts"), str):
@@ -1257,14 +1306,24 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
             fuzzy_score = normalized["score"]
             
             dosage_data = _extract_dosage_structured(confirmed_name, segment)
+            dosage = dosage_data.get("dosage", "")
+            
+            # Map reviewRequired for this medicine segment
+            med_review_req = (
+                low_confidence or 
+                not dosage or 
+                not str(dosage).strip() or 
+                str(dosage).strip().upper() == "N/A"
+            )
             
             return {
                 "order": idx,
                 "name": confirmed_name,
                 "active_salts": matched_salts,
                 "low_confidence": low_confidence,
+                "reviewRequired": med_review_req,
                 "fuzzy_score": fuzzy_score,
-                "dosage": dosage_data.get("dosage", ""),
+                "dosage": dosage,
                 "form": dosage_data.get("form", "Tablet"),
                 "frequency": dosage_data.get("frequency", "as directed"),
                 "timing": dosage_data.get("timing", "as directed"),
@@ -1303,6 +1362,11 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
             "follow_up": metadata.get("follow_up", ""),
             "interactions": []
         }
+        
+        # Compute overall confidence and reviewRequired (Task 4)
+        confidence = _compute_confidence(data, fuzzy_scores, len(extracted_text))
+        data["confidence"] = confidence
+        data["reviewRequired"] = (confidence == "low")
         
         # 5. Check drug-drug interactions for all matched names
         med_names = [m["name"] for m in medicines_sorted if m["name"] != "Unknown"]
