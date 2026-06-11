@@ -8,6 +8,7 @@ import sys
 import tempfile
 from dotenv import load_dotenv
 from groq import Groq
+from openai import OpenAI
 import asyncio
 import edge_tts
 import json
@@ -36,6 +37,11 @@ if sys.stderr.encoding and sys.stderr.encoding.lower() not in ("utf-8", "utf8"):
 VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 # Analysis model: used for medical reasoning from extracted text
 ANALYSIS_MODEL = "llama-3.3-70b-versatile"
+
+# If NVIDIA Developer Platform key is present, override the defaults
+if os.getenv("NVIDIA_API_KEY"):
+    VISION_MODEL = os.getenv("NVIDIA_VISION_MODEL", "meta/llama-3.2-11b-vision-instruct")
+    ANALYSIS_MODEL = os.getenv("NVIDIA_ANALYSIS_MODEL", "meta/llama-3.3-70b-instruct")
 
 # Max characters for TTS (gTTS times out on very long inputs)
 MAX_AUDIO_CHARS = 1800
@@ -262,7 +268,54 @@ class RotatingGroqClient:
     def chat(self):
         return RotatingGroqClient.ChatWrapper(self)
 
-client = RotatingGroqClient()
+
+class UnifiedAIClient:
+    def __init__(self):
+        self.groq_client = RotatingGroqClient()
+        self.nvidia_key = os.getenv("NVIDIA_API_KEY")
+        if self.nvidia_key and self.nvidia_key.strip():
+            self.nvidia_client = OpenAI(
+                base_url=os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1"),
+                api_key=self.nvidia_key.strip()
+            )
+            print("🔑 UnifiedAIClient: NVIDIA client initialized.")
+        else:
+            self.nvidia_client = None
+            print("ℹ️ UnifiedAIClient: NVIDIA_API_KEY not found. Operating in Groq-only mode.")
+
+    class CompletionsWrapper:
+        def __init__(self, outer):
+            self.outer = outer
+
+        def create(self, *args, **kwargs):
+            model = kwargs.get("model", "")
+            is_nvidia_model = model.startswith("meta/llama") or "nemotron" in model
+            
+            if is_nvidia_model and self.outer.nvidia_client:
+                try:
+                    print(f"📡 Routing request to NVIDIA Platform (Model: {model})")
+                    return self.outer.nvidia_client.chat.completions.create(*args, **kwargs)
+                except Exception as ne:
+                    print(f"⚠️ NVIDIA API call failed: {ne}. Falling back to Groq client pool...")
+                    # Fallback to Groq equivalent models
+                    if "llama-3.3-70b" in model:
+                        kwargs["model"] = "llama-3.3-70b-versatile"
+                    elif "llama-3.2-11b-vision" in model or "llama-3.2-90b-vision" in model:
+                        kwargs["model"] = "meta-llama/llama-4-scout-17b-16e-instruct"
+                    return self.outer.groq_client.chat.completions.create(*args, **kwargs)
+            else:
+                return self.outer.groq_client.chat.completions.create(*args, **kwargs)
+
+    class ChatWrapper:
+        def __init__(self, outer):
+            self.completions = UnifiedAIClient.CompletionsWrapper(outer)
+
+    @property
+    def chat(self):
+        return UnifiedAIClient.ChatWrapper(self)
+
+
+client = UnifiedAIClient()
 
 LANG_MAP = {
     'English': 'en',
