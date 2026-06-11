@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Pill, FileText, LogOut, History, Globe, User, Menu, X } from "lucide-react";
+import { Pill, FileText, LogOut, History, Globe, User, Menu, X, ChevronDown, Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import MandalaBackground from "@/components/MandalaBackground";
 import SanjeevaniLogo from "@/components/SanjeevaniLogo";
@@ -37,6 +37,9 @@ const Dashboard = () => {
   const [userName, setUserName] = useState("User");
   const [role, setRole] = useState("patient");
   const [language, setLanguage] = useState("en");
+  const [langOpen, setLangOpen] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [historyCount, setHistoryCount] = useState(0);
 
@@ -61,8 +64,29 @@ const Dashboard = () => {
 
   const handleLanguageChange = (code: string) => {
     setLanguage(code);
+    setLangOpen(false);
     localStorage.setItem("sanjeevani_language", code);
   };
+
+  const openDropdown = () => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    }
+    setLangOpen((o) => !o);
+  };
+
+  // Close on outside click
+  useEffect(() => {
+    if (!langOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (triggerRef.current && !triggerRef.current.contains(e.target as Node)) {
+        setLangOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [langOpen]);
 
   const handleLogout = () => {
     fetch("/api/auth/logout", { method: "POST", credentials: "include" })
@@ -116,31 +140,53 @@ const Dashboard = () => {
         </div>
 
         <div className="p-4 flex-1 overflow-y-auto">
-          {/* Language selector — custom scrollable picker (avoids CSS transform stacking context bug) */}
+          {/* Language selector — custom fixed-position dropdown (escapes sidebar transform stacking context) */}
           <div className="mb-6">
             <label className="text-xs text-muted-foreground font-display uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <Globe size={12} /> Language
             </label>
-            <div
-              className="w-full bg-sidebar-accent border border-sidebar-border rounded-lg overflow-hidden"
+            <button
+              ref={triggerRef}
+              onClick={openDropdown}
+              className="w-full flex items-center justify-between bg-sidebar-accent border border-sidebar-border rounded-lg px-3 py-2 text-sm text-sidebar-foreground outline-none focus:border-primary transition-colors cursor-pointer hover:bg-sidebar-accent/80"
             >
-              <div className="max-h-36 overflow-y-auto">
+              <span>
+                {(() => { const l = languages.find(x => x.code === language); return l ? `${l.native} (${l.name})` : "English"; })()}
+              </span>
+              <ChevronDown size={14} className={`transition-transform duration-200 ${langOpen ? "rotate-180" : ""}`} />
+            </button>
+          </div>
+
+          {/* Fixed-position dropdown panel — rendered outside sidebar's stacking context via inline fixed styles */}
+          {langOpen && (
+            <div
+              style={{
+                position: "fixed",
+                top: dropdownPos.top,
+                left: dropdownPos.left,
+                width: dropdownPos.width,
+                zIndex: 99999,
+              }}
+              className="bg-card border border-border rounded-lg shadow-2xl overflow-hidden"
+            >
+              <div className="max-h-64 overflow-y-auto">
                 {languages.map((l) => (
                   <button
                     key={l.code}
-                    onClick={() => handleLanguageChange(l.code)}
-                    className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+                    onMouseDown={(e) => { e.preventDefault(); handleLanguageChange(l.code); }}
+                    className={`w-full flex items-center justify-between text-left px-3 py-2 text-sm transition-colors ${
                       language === l.code
-                        ? "bg-primary text-primary-foreground font-semibold"
-                        : "text-sidebar-foreground hover:bg-primary/10"
+                        ? "bg-primary/15 text-primary font-semibold"
+                        : "text-foreground hover:bg-muted"
                     }`}
                   >
-                    {l.native} <span className="opacity-60">({l.name})</span>
+                    <span>{l.native} <span className="text-xs text-muted-foreground">({l.name})</span></span>
+                    {language === l.code && <Check size={12} className="text-primary shrink-0" />}
                   </button>
                 ))}
               </div>
             </div>
-          </div>
+          )}
 
           {/* Nav items */}
           <nav className="space-y-1">
