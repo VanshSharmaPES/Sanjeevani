@@ -115,23 +115,31 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="p-4 flex-1">
-          {/* Language selector */}
+        <div className="p-4 flex-1 overflow-y-auto">
+          {/* Language selector — custom scrollable picker (avoids CSS transform stacking context bug) */}
           <div className="mb-6">
             <label className="text-xs text-muted-foreground font-display uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <Globe size={12} /> Language
             </label>
-            <select
-              value={language}
-              onChange={(e) => handleLanguageChange(e.target.value)}
-              className="w-full bg-sidebar-accent border border-sidebar-border rounded-lg px-3 py-2 text-sm text-sidebar-foreground outline-none focus:border-primary transition-colors"
+            <div
+              className="w-full bg-sidebar-accent border border-sidebar-border rounded-lg overflow-hidden"
             >
-              {languages.map((l) => (
-                <option key={l.code} value={l.code}>
-                  {l.native} ({l.name})
-                </option>
-              ))}
-            </select>
+              <div className="max-h-36 overflow-y-auto">
+                {languages.map((l) => (
+                  <button
+                    key={l.code}
+                    onClick={() => handleLanguageChange(l.code)}
+                    className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+                      language === l.code
+                        ? "bg-primary text-primary-foreground font-semibold"
+                        : "text-sidebar-foreground hover:bg-primary/10"
+                    }`}
+                  >
+                    {l.native} <span className="opacity-60">({l.name})</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Nav items */}
