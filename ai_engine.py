@@ -400,6 +400,7 @@ def normalize_medicine_name(raw_name: str, medicine_df=None) -> dict:
     }
 
 
+
 def _safe_print(*args, **kwargs):
     """Print that never crashes on Windows due to Unicode characters in model output."""
     try:
@@ -874,6 +875,263 @@ If the image does not appear to be a medicine, return:
         return {"error": f"Scan Failed: {str(e)}"}, None
 
 
+def _extract_prescription_metadata(extracted_text: str) -> dict:
+    """
+    Extract patient, doctor, diagnosis info, and a list of raw medicine names from the prescription OCR text.
+    """
+    system_prompt = (
+        "You are a clinical transcription assistant. Your task is to extract prescription metadata "
+        "and list the raw names of all medicines mentioned. Return ONLY valid JSON."
+    )
+    user_prompt = f"""
+Prescription text:
+\"\"\"
+{extracted_text}
+\"\"\"
+
+Extract the metadata and list the raw medicine names. Return ONLY a JSON object:
+{{
+    "patient_info": {{"name": "name or null", "age": "age or null", "date": "date or null"}},
+    "doctor_info": {{"name": "name or null", "qualification": "qualification or null"}},
+    "diagnosis": "diagnosis or null",
+    "diet_advice": "diet advice or null",
+    "follow_up": "follow-up advice or null"
+}}
+"""
+    try:
+        response = client.chat.completions.create(
+            model=ANALYSIS_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.1,
+            response_format={"type": "json_object"}
+        )
+        content = response.choices[0].message.content.strip()
+        return json.loads(content)
+    except Exception as e:
+        _safe_print(f"[WARN] Error in _extract_prescription_metadata: {e}")
+        return {
+            "patient_info": {"name": None, "age": None, "date": None},
+            "doctor_info": {"name": None, "qualification": None},
+            "diagnosis": None,
+            "diet_advice": "",
+            "follow_up": ""
+        }
+
+
+def _split_prescription_ocr(extracted_text: str) -> list[str]:
+    """
+    Use the LLM to split the raw prescription OCR text into individual medicine lines/blocks.
+    Returns a list of raw medicine text segments.
+    """
+    system_prompt = (
+        "You are a clinical transcription assistant. Your task is to extract all individual "
+        "medicine entries from the raw prescription text. Do not summarize or alter the text; "
+        "just split it into distinct text blocks, one for each medicine prescribed. "
+        "Return the result as a JSON object with key 'medicines'."
+    )
+    user_prompt = f"""
+Prescription text:
+\"\"\"
+{extracted_text}
+\"\"\"
+
+Extract each medicine entry (including its name, dosage, timing, duration if available) as a separate string.
+Return ONLY a JSON object with key 'medicines', containing a list of strings:
+{{
+  "medicines": [
+    "1. Tab. Dolo 650mg 1-0-1 x 5 days",
+    "2. Cap. Amoxicillin 500mg 1-1-1 x 7 days after food"
+  ]
+}}
+If no medicines are found, return an empty list:
+{{
+  "medicines": []
+}}
+"""
+    try:
+        response = client.chat.completions.create(
+            model=ANALYSIS_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.1,
+            response_format={"type": "json_object"}
+        )
+        content = response.choices[0].message.content.strip()
+        parsed = json.loads(content)
+        if isinstance(parsed, dict) and "medicines" in parsed:
+            return parsed["medicines"]
+        return []
+    except Exception as e:
+        _safe_print(f"[WARN] Error in _split_prescription_ocr: {e}")
+        return [extracted_text]
+
+
+def _extract_medicine_name_from_segment(segment_text: str) -> str:
+    """
+    Fast LLM call to extract just the raw medicine name from a segment.
+    """
+    system_prompt = "You are a pharmaceutical assistant. Extract only the brand name or generic name of the medicine from this line."
+    user_prompt = f"Line: \"{segment_text}\"\nReturn ONLY the clean medicine name (e.g. Dolo 650, Augmentin 625 Duo, Calpol). No dosage, frequency, or packaging words. Return JSON: {{\"name\": \"...\"}}"
+    try:
+        response = client.chat.completions.create(
+            model=ANALYSIS_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.1,
+            response_format={"type": "json_object"}
+        )
+        content = response.choices[0].message.content.strip()
+        return json.loads(content).get("name", segment_text)
+    except Exception:
+        return segment_text
+
+
+def _extract_dosage_structured(medicine_name: str, segment_text: str) -> dict:
+    """
+    Extract precise dosage details and pharmaceutical/clinical information for a specific
+    medicine based on its text segment from the prescription.
+    """
+    system_prompt = (
+        "You are an expert clinical pharmacist AI. Your task is to extract dosage details "
+        "and provide patient advice for a specific medicine from a prescription line."
+    )
+    user_prompt = f"""
+Medicine: "{medicine_name}"
+Prescription segment: "{segment_text}"
+
+Extract the dosage details and provide detailed medical/clinical information for this medicine.
+Return ALL text fields in English.
+Return ONLY a JSON object matching this structure:
+{{
+    "dosage": "e.g., 500mg, 1 tablet, 10ml",
+    "form": "e.g., Tablet, Capsule, Syrup, Inhaler, Injection",
+    "frequency": "e.g., twice a day, once daily, three times a day",
+    "timing": "e.g., after meals, before meals, at bedtime",
+    "duration": "e.g., 5 days, 1 week, 14 days",
+    "meal_relation": "e.g., after meals, before meals, empty stomach, with meals, anytime",
+    "purpose": "What this medicine treats and why it is prescribed",
+    "side_effects": ["side effect 1", "side effect 2"],
+    "food_interaction": "e.g., Avoid taking with dairy products.",
+    "warnings": "e.g., May cause drowsiness. Do not consume alcohol.",
+    "is_antibiotic": true or false,
+    "special_instructions": "e.g., Take with a full glass of water."
+}}
+"""
+    try:
+        response = client.chat.completions.create(
+            model=ANALYSIS_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.1,
+            response_format={"type": "json_object"}
+        )
+        content = response.choices[0].message.content.strip()
+        return json.loads(content)
+    except Exception as e:
+        _safe_print(f"[WARN] Error in _extract_dosage_structured for {medicine_name}: {e}")
+        return {
+            "dosage": "",
+            "form": "Tablet",
+            "frequency": "as directed",
+            "timing": "as directed",
+            "duration": "as prescribed",
+            "meal_relation": "anytime",
+            "purpose": "Not available",
+            "side_effects": [],
+            "food_interaction": "No specific food restrictions.",
+            "warnings": "",
+            "is_antibiotic": False,
+            "special_instructions": ""
+        }
+
+
+def _check_drug_interactions(medicine_names: list[str]) -> list[str]:
+    """
+    Check for severe drug-drug interactions between these medicines.
+    """
+    if len(medicine_names) < 2:
+        return []
+    system_prompt = "You are a clinical pharmacologist. Check for severe drug-drug interactions between these medicines."
+    user_prompt = f"""
+Medicines: {medicine_names}
+
+Check if there are any severe drug-drug interactions between these medicines.
+Return ONLY a JSON object with key 'interactions' containing a list of strings describing any interactions:
+{{
+    "interactions": [
+        "Severe interaction: Medicine A + Medicine B can cause risk of..."
+    ]
+}}
+If no severe interactions exist, return an empty list:
+{{
+    "interactions": []
+}}
+"""
+    try:
+        response = client.chat.completions.create(
+            model=ANALYSIS_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.1,
+            response_format={"type": "json_object"}
+        )
+        content = response.choices[0].message.content.strip()
+        parsed = json.loads(content)
+        return parsed.get("interactions", [])
+    except Exception as e:
+        _safe_print(f"[WARN] Error checking drug interactions: {e}")
+        return []
+
+
+def _generate_overall_advice(medicines: list[dict], diagnosis: str) -> str:
+    """
+    Generate a clear daily medication schedule based on all prescribed medicines.
+    """
+    if not medicines:
+        return "Follow the individual instructions for each medicine."
+    system_prompt = "You are a clinical pharmacist. Generate a clear daily medication schedule."
+    meds_summary = "\n".join([
+        f"- {m['name']} ({m['dosage']}): Form={m['form']}, Freq={m['frequency']}, Timing={m['timing']}, Duration={m['duration']}, Special Instructions={m['special_instructions']}"
+        for m in medicines
+    ])
+    user_prompt = f"""
+Diagnosis: {diagnosis}
+Medicines:
+{meds_summary}
+
+Create a daily medication schedule. Format exactly like:
+MORNING: (list medicines to take and timing, or None)
+AFTERNOON: (list medicines to take and timing, or None)
+NIGHT: (list medicines to take and timing, or None)
+AS NEEDED: (list medicines to take as needed, or None)
+General Advice: (1-2 sentences of general clinical advice)
+"""
+    try:
+        response = client.chat.completions.create(
+            model=ANALYSIS_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.1
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        _safe_print(f"[WARN] Error generating overall advice: {e}")
+        return "Follow the individual instructions for each medicine."
+
+
 def analyze_prescription_image(image_bytes: bytes, target_language: str = "English") -> tuple[dict, str | None]:
     """
     Two-stage pipeline for prescription images.
@@ -895,57 +1153,86 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
                 "error": "Could not read text from the prescription image. Please upload a clearer, well-lit photo with good contrast."
             }, None
 
-        # ── Stage 2: Structured Medical Analysis (dedicated call — text passed exactly once) ──
+        # ── Stage 2: Two-Stage Prescription Processing ──
         lang_code = LANG_MAP.get(target_language, "en")
-        data = _call_prescription_analysis(extracted_text, target_language, lang_code)
-
-        # ── Normalise medicines list ──
-        medicines = data.get("medicines", []) or []
-        if isinstance(medicines, dict):
-            medicines = list(medicines.values())
-
-        cleaned = []
-        for idx, med in enumerate(medicines, start=1):
-            if not isinstance(med, dict):
-                continue
-            med.setdefault("order", idx)
-            med.setdefault("name", "Unknown")
-            med.setdefault("dosage", "")
-            med.setdefault("form", "Tablet")
-            med.setdefault("frequency", "as directed")
-            med.setdefault("timing", "as directed")
-            med.setdefault("duration", "as prescribed")
-            med.setdefault("meal_relation", med.get("timing", "anytime"))
-            med.setdefault("purpose", "Not available")
-            med.setdefault("food_interaction", "No specific food restrictions.")
-            med.setdefault("warnings", "")
-            med.setdefault("is_antibiotic", False)
-            med.setdefault("special_instructions", "")
-
-            # Ensure list fields are actual lists
-            for list_key in ("active_salts", "alternatives", "side_effects"):
-                val = med.get(list_key, [])
-                if isinstance(val, str):
-                    val = [s.strip() for s in val.split(",") if s.strip()]
-                med[list_key] = val if isinstance(val, list) else []
-
-            cleaned.append(med)
-
-        medicines_sorted = sorted(cleaned, key=lambda m: m.get("order", 999))
-        data["medicines"] = medicines_sorted
-        data.setdefault("overall_advice", "")
-        data.setdefault("patient_info", {})
-        data.setdefault("doctor_info", {})
-        data.setdefault("diagnosis", None)
-        data.setdefault("diet_advice", "")
-        data.setdefault("follow_up", "")
-        data.setdefault("interactions", [])
-
-        if isinstance(data["interactions"], str):
-             data["interactions"] = [s.strip() for s in data["interactions"].split(",") if s.strip()]
-
-        _safe_print(f"[INFO] Final medicine count: {len(medicines_sorted)}, Interactions flagged: {len(data['interactions'])}")
-
+        
+        # 1. Extract metadata (patient, doctor, diagnosis, diet, follow_up)
+        metadata = _extract_prescription_metadata(extracted_text)
+        
+        # 2. Split prescription text into segments (one segment per medicine)
+        segments = _split_prescription_ocr(extracted_text)
+        _safe_print(f"[INFO] Two-stage pipeline: split prescription into {len(segments)} segments.")
+        
+        # 3. Process each segment concurrently to extract precise medicine and dosage details
+        import concurrent.futures
+        
+        def process_segment(idx, segment):
+            raw_name = _extract_medicine_name_from_segment(segment)
+            normalized = normalize_medicine_name(raw_name)
+            
+            confirmed_name = normalized["name"]
+            matched_salts = normalized["active_salts"]
+            low_confidence = normalized["low_confidence"]
+            fuzzy_score = normalized["score"]
+            
+            dosage_data = _extract_dosage_structured(confirmed_name, segment)
+            
+            return {
+                "order": idx,
+                "name": confirmed_name,
+                "active_salts": matched_salts,
+                "low_confidence": low_confidence,
+                "fuzzy_score": fuzzy_score,
+                "dosage": dosage_data.get("dosage", ""),
+                "form": dosage_data.get("form", "Tablet"),
+                "frequency": dosage_data.get("frequency", "as directed"),
+                "timing": dosage_data.get("timing", "as directed"),
+                "duration": dosage_data.get("duration", "as prescribed"),
+                "meal_relation": dosage_data.get("meal_relation", "anytime"),
+                "purpose": dosage_data.get("purpose", "Not available"),
+                "side_effects": dosage_data.get("side_effects", []),
+                "food_interaction": dosage_data.get("food_interaction", "No specific food restrictions."),
+                "warnings": dosage_data.get("warnings", ""),
+                "is_antibiotic": dosage_data.get("is_antibiotic", False),
+                "special_instructions": dosage_data.get("special_instructions", "")
+            }
+            
+        medicines_sorted = []
+        fuzzy_scores = []
+        
+        if segments:
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                futures = [executor.submit(process_segment, idx, segment) for idx, segment in enumerate(segments, start=1)]
+                for fut in concurrent.futures.as_completed(futures):
+                    try:
+                        med_result = fut.result()
+                        medicines_sorted.append(med_result)
+                        fuzzy_scores.append(med_result.pop("fuzzy_score", 0))
+                    except Exception as ex:
+                        _safe_print(f"[WARN] Error processing segment: {ex}")
+            medicines_sorted.sort(key=lambda x: x["order"])
+            
+        # 4. Construct overall return dictionary
+        data = {
+            "patient_info": metadata.get("patient_info") or {"name": None, "age": None, "date": None},
+            "doctor_info": metadata.get("doctor_info") or {"name": None, "qualification": None},
+            "diagnosis": metadata.get("diagnosis"),
+            "medicines": medicines_sorted,
+            "diet_advice": metadata.get("diet_advice", ""),
+            "follow_up": metadata.get("follow_up", ""),
+            "interactions": []
+        }
+        
+        # 5. Check drug-drug interactions for all matched names
+        med_names = [m["name"] for m in medicines_sorted if m["name"] != "Unknown"]
+        if med_names:
+            data["interactions"] = _check_drug_interactions(med_names)
+            
+        # 6. Generate overall daily schedule advice
+        data["overall_advice"] = _generate_overall_advice(medicines_sorted, data["diagnosis"] or "")
+        
+        _safe_print(f"[INFO] Two-stage execution complete: Final medicine count: {len(medicines_sorted)}, Interactions: {len(data['interactions'])}")
+        
         # ── Build English summary from validated structured fields ──
         # Single source of truth — both overall_advice display text and TTS audio come from this.
         med_parts_en = []
