@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getPythonApiUrl } from "@/lib/config";
 
-const PYTHON_API = (process.env.PYTHON_API_URL || "http://127.0.0.1:5000").replace(/\/$/, "");
+const PYTHON_API = getPythonApiUrl();
 
 export async function POST(request: NextRequest) {
   try {

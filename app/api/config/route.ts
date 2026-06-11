@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { getPythonApiUrl } from "@/lib/config";
 
 export async function GET() {
-  const pythonApiUrl = (process.env.PYTHON_API_URL || "http://127.0.0.1:5000").replace(/\/$/, "");
+  const pythonApiUrl = getPythonApiUrl();
   return NextResponse.json({ python_api_url: pythonApiUrl });
 }
