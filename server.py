@@ -15,7 +15,7 @@ from functools import wraps
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, set_access_cookies, jwt_required, get_jwt_identity, unset_jwt_cookies
-from ai_engine import analyze_medicine_image, analyze_prescription_image, get_medicine_dosage_info, _translate_text
+from ai_engine import analyze_medicine_image, analyze_prescription_image, get_medicine_dosage_info, _translate_text, request_guide_generation
 from db import register_user, authenticate_user, save_scan, get_user_history, delete_scan, search_medicines, reset_password, get_db_status
 
 # Fix Windows charmap codec crashes when printing Unicode model output
@@ -69,15 +69,30 @@ jwt = JWTManager(app)
 # Audio file cache: filename → absolute path on disk
 _audio_cache: dict[str, str] = {}
 
+# All 22 scheduled Indian languages
 LANG_CODE_MAP = {
-    "en": "English",
-    "hi": "Hindi",
-    "ta": "Tamil",
-    "te": "Telugu",
-    "bn": "Bengali",
-    "mr": "Marathi",
-    "kn": "Kannada",
-    "ml": "Malayalam",
+    "en":  "English",
+    "hi":  "Hindi",
+    "ta":  "Tamil",
+    "te":  "Telugu",
+    "bn":  "Bengali",
+    "mr":  "Marathi",
+    "kn":  "Kannada",
+    "ml":  "Malayalam",
+    "gu":  "Gujarati",
+    "pa":  "Punjabi",
+    "or":  "Odia",
+    "as":  "Assamese",
+    "ur":  "Urdu",
+    "sa":  "Sanskrit",
+    "kok": "Konkani",
+    "mni": "Manipuri",
+    "ne":  "Nepali",
+    "sd":  "Sindhi",
+    "mai": "Maithili",
+    "doi": "Dogri",
+    "ks":  "Kashmiri",
+    "sat": "Santali",
 }
 
 
@@ -261,6 +276,40 @@ def health():
         "status": "ok",
         "database": db_status
     })
+
+
+# ─── Guide Generation (implement_D glue) ─────────────────────
+@app.route("/api/guides/generate", methods=["POST"])
+@jwt_required(optional=True)
+def api_generate_guides():
+    """
+    Accept a prescription analysis result dict (from /api/analyze/prescription)
+    and call the implement_D Next.js guide service to generate a medication guide
+    for every medicine found in the prescription.
+    
+    Request body (JSON):
+      { "analysis": { ...prescription analysis result... }, "language_code": "en" }
+    
+    Response body:
+      { "success": true, "guides": [ ...GuideApiResponse objects... ] }
+    """
+    data = request.get_json(force=True, silent=True) or {}
+    analysis = data.get("analysis")
+    language_code = data.get("language_code", "en")
+    language = LANG_CODE_MAP.get(language_code, "English")
+
+    if not analysis or not isinstance(analysis, dict):
+        return jsonify({"error": "Missing or invalid 'analysis' field."}), 400
+
+    if "medicines" not in analysis:
+        return jsonify({"error": "'analysis' must contain a 'medicines' list."}), 400
+
+    try:
+        guides = request_guide_generation(analysis, preferred_language=language)
+        return jsonify({"success": True, "guides": guides})
+    except Exception as e:
+        _safe_log(f"[ERROR] Guide generation failed: {e}")
+        return jsonify({"error": f"Guide generation error: {e}"}), 500
 
 
 if __name__ == "__main__":

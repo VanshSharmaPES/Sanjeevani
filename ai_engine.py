@@ -5,6 +5,7 @@ import os
 import io
 import re
 import sys
+import hashlib
 import tempfile
 from dotenv import load_dotenv
 from groq import Groq
@@ -20,6 +21,10 @@ from pillow_heif import register_heif_opener
 import pandas as pd
 import threading
 from rapidfuzz import process, fuzz
+try:
+    import requests as _requests
+except ImportError:
+    _requests = None
 
 # Support HEIC/HEIF (standard iPhone formats)
 register_heif_opener()
@@ -33,15 +38,21 @@ if sys.stderr.encoding and sys.stderr.encoding.lower() not in ("utf-8", "utf8"):
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 # ========== MODEL CONFIGURATION ==========
+# Default primary provider (groq or nvidia)
+PRIMARY_PROVIDER = os.getenv("PRIMARY_PROVIDER", "groq").lower()
+
 # Vision model: used for OCR (reading images)
 VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 # Analysis model: used for medical reasoning from extracted text
 ANALYSIS_MODEL = "llama-3.3-70b-versatile"
 
-# If NVIDIA Developer Platform key is present, override the defaults
-if os.getenv("NVIDIA_API_KEY"):
+# Override defaults if NVIDIA is explicitly set as the primary provider
+if PRIMARY_PROVIDER == "nvidia" and os.getenv("NVIDIA_API_KEY"):
     VISION_MODEL = os.getenv("NVIDIA_VISION_MODEL", "meta/llama-3.2-11b-vision-instruct")
     ANALYSIS_MODEL = os.getenv("NVIDIA_ANALYSIS_MODEL", "meta/llama-3.3-70b-instruct")
+    print(f"🚀 NVIDIA Developer Platform active as primary. Vision: {VISION_MODEL}, Analysis: {ANALYSIS_MODEL}")
+else:
+    print(f"⚡ Groq active as primary. Vision: {VISION_MODEL}, Analysis: {ANALYSIS_MODEL}")
 
 # Max characters for TTS (gTTS times out on very long inputs)
 MAX_AUDIO_CHARS = 1800
@@ -291,20 +302,43 @@ class UnifiedAIClient:
             model = kwargs.get("model", "")
             is_nvidia_model = model.startswith("meta/llama") or "nemotron" in model
             
-            if is_nvidia_model and self.outer.nvidia_client:
-                try:
-                    print(f"📡 Routing request to NVIDIA Platform (Model: {model})")
-                    return self.outer.nvidia_client.chat.completions.create(*args, **kwargs)
-                except Exception as ne:
-                    print(f"⚠️ NVIDIA API call failed: {ne}. Falling back to Groq client pool...")
-                    # Fallback to Groq equivalent models
+            if is_nvidia_model:
+                if self.outer.nvidia_client:
+                    try:
+                        print(f"📡 Routing request to NVIDIA Platform (Model: {model})")
+                        return self.outer.nvidia_client.chat.completions.create(*args, **kwargs)
+                    except Exception as ne:
+                        print(f"⚠️ NVIDIA API call failed: {ne}. Falling back to Groq client pool...")
+                        # Fallback to Groq equivalents
+                        if "llama-3.3-70b" in model:
+                            kwargs["model"] = "llama-3.3-70b-versatile"
+                        elif "llama-3.2-11b-vision" in model or "llama-3.2-90b-vision" in model:
+                            kwargs["model"] = "meta-llama/llama-4-scout-17b-16e-instruct"
+                        return self.outer.groq_client.chat.completions.create(*args, **kwargs)
+                else:
                     if "llama-3.3-70b" in model:
                         kwargs["model"] = "llama-3.3-70b-versatile"
                     elif "llama-3.2-11b-vision" in model or "llama-3.2-90b-vision" in model:
                         kwargs["model"] = "meta-llama/llama-4-scout-17b-16e-instruct"
                     return self.outer.groq_client.chat.completions.create(*args, **kwargs)
             else:
-                return self.outer.groq_client.chat.completions.create(*args, **kwargs)
+                try:
+                    return self.outer.groq_client.chat.completions.create(*args, **kwargs)
+                except Exception as ge:
+                    if self.outer.nvidia_client:
+                        print(f"⚠️ Groq API call failed: {ge}. Falling back to NVIDIA NIM Platform...")
+                        if "llama-3.3-70b-versatile" in model:
+                            kwargs["model"] = "meta/llama-3.3-70b-instruct"
+                        elif "llama-4-scout-17b-16e-instruct" in model:
+                            kwargs["model"] = "meta/llama-3.2-11b-vision-instruct"
+                        try:
+                            print(f"📡 Routing failover request to NVIDIA (Model: {kwargs['model']})")
+                            return self.outer.nvidia_client.chat.completions.create(*args, **kwargs)
+                        except Exception as ne:
+                            print(f"❌ NVIDIA NIM fallback also failed: {ne}")
+                            raise ge
+                    else:
+                        raise ge
 
     class ChatWrapper:
         def __init__(self, outer):
@@ -317,41 +351,62 @@ class UnifiedAIClient:
 
 client = UnifiedAIClient()
 
+# ========== LANGUAGE MAPS — ALL 22 SCHEDULED INDIAN LANGUAGES ==========
+# Mapping of display language name → BCP-47 language code
 LANG_MAP = {
-    'English': 'en',
-    'Hindi': 'hi',
-    'Kannada': 'kn',
-    'Tamil': 'ta',
-    'Telugu': 'te',
-    'Bengali': 'bn',
-    'Marathi': 'mr',
-    'Malayalam': 'ml',
+    # Core 8 (original)
+    "English":    "en",
+    "Hindi":      "hi",
+    "Tamil":      "ta",
+    "Telugu":     "te",
+    "Bengali":    "bn",
+    "Marathi":    "mr",
+    "Kannada":    "kn",
+    "Malayalam":  "ml",
+    # Remaining 14 scheduled languages
+    "Gujarati":   "gu",
+    "Punjabi":    "pa",
+    "Odia":       "or",
+    "Assamese":   "as",
+    "Urdu":       "ur",
+    "Sanskrit":   "sa",
+    "Konkani":    "kok",
+    "Manipuri":   "mni",
+    "Nepali":     "ne",
+    "Sindhi":     "sd",
+    "Maithili":   "mai",
+    "Dogri":      "doi",
+    "Kashmiri":   "ks",
+    "Santali":    "sat",
 }
-
 
 # Voice Mapping for Microsoft Edge TTS (Indian High-Fidelity Neural Voices)
+# Note: Edge TTS only has voices for languages it officially supports;
+# unsupported languages fall back to Hindi or English.
 VOICE_MAP = {
-    "en": "en-IN-NeerjaNeural",     # Indian English
-    "hi": "hi-IN-MadhurNeural",     # Hindi
-    "kn": "kn-IN-GaganNeural",      # Kannada
-    "ta": "ta-IN-PallaviNeural",    # Tamil
-    "te": "te-IN-MohanNeural",      # Telugu
-    "bn": "bn-IN-BashkarNeural",    # Bengali
-    "mr": "mr-IN-ManoharNeural",    # Marathi
-    "ml": "ml-IN-MidhunNeural",     # Malayalam
-}
-
-
-# Mapping of display language name to code
-LANG_MAP = {
-    "English": "en",
-    "Hindi": "hi",
-    "Tamil": "ta",
-    "Telugu": "te",
-    "Bengali": "bn",
-    "Marathi": "mr",
-    "Kannada": "kn",
-    "Malayalam": "ml",
+    "en":  "en-IN-NeerjaNeural",    # Indian English
+    "hi":  "hi-IN-MadhurNeural",    # Hindi
+    "kn":  "kn-IN-GaganNeural",     # Kannada
+    "ta":  "ta-IN-PallaviNeural",   # Tamil
+    "te":  "te-IN-MohanNeural",     # Telugu
+    "bn":  "bn-IN-BashkarNeural",   # Bengali
+    "mr":  "mr-IN-ManoharNeural",   # Marathi
+    "ml":  "ml-IN-MidhunNeural",    # Malayalam
+    "gu":  "gu-IN-NiranjanNeural",  # Gujarati
+    "pa":  "pa-IN-OjasNeural",      # Punjabi
+    "or":  "or-IN-SubhasiniNeural", # Odia
+    "as":  "as-IN-YashicaNeural",   # Assamese (fallback → Hindi if unavailable)
+    "ur":  "ur-IN-AsadNeural",      # Urdu
+    "ne":  "ne-NP-HemkalaNeural",   # Nepali
+    # Languages without dedicated Edge TTS voice → fallback to Hindi
+    "sa":  "hi-IN-MadhurNeural",    # Sanskrit (no TTS voice available)
+    "kok": "hi-IN-MadhurNeural",    # Konkani (no TTS voice available)
+    "mni": "hi-IN-MadhurNeural",    # Manipuri (no TTS voice available)
+    "sd":  "ur-IN-AsadNeural",      # Sindhi (use Urdu voice)
+    "mai": "hi-IN-MadhurNeural",    # Maithili (no TTS voice available)
+    "doi": "hi-IN-MadhurNeural",    # Dogri (no TTS voice available)
+    "ks":  "ur-IN-AsadNeural",      # Kashmiri (use Urdu voice)
+    "sat": "hi-IN-MadhurNeural",    # Santali (no TTS voice available)
 }
 
 
@@ -1496,6 +1551,18 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
                 "error": "Could not read text from the prescription image. Please upload a clearer, well-lit photo with good contrast."
             }, None
 
+        # ── Task 6: Prescription OCR cache lookup ──────────────────────────────
+        # Build a stable MD5 hash from the raw OCR text (normalised to lowercase+strip)
+        ocr_hash = hashlib.md5(extracted_text.strip().lower().encode("utf-8")).hexdigest()
+        try:
+            from db import find_cached_prescription
+            cached = find_cached_prescription(ocr_hash)
+            if cached:
+                _safe_print(f"[INFO] Prescription cache HIT (hash={ocr_hash[:8]}…). Returning cached result.")
+                return cached, None   # No new audio for cached results
+        except Exception as _cache_err:
+            _safe_print(f"[WARN] Cache lookup failed (non-fatal): {_cache_err}")
+
         # ── Stage 2: Two-Stage Prescription Processing ──
         lang_code = LANG_MAP.get(target_language, "en")
         
@@ -1672,6 +1739,17 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
 
         audio_text = _cap_text(translated_summary)
         audio_path = _generate_audio(audio_text, lang_code)
+
+        # ── Task 6: Store result in prescription cache ─────────────────────────
+        # We cache the structured data dict (without audio bytes to save space).
+        # Audio is regenerated on cache miss; the structured data is the expensive part.
+        try:
+            from db import cache_prescription
+            cache_prescription(ocr_hash, data)
+            _safe_print(f"[INFO] Prescription result cached (hash={ocr_hash[:8]}…)")
+        except Exception as _store_err:
+            _safe_print(f"[WARN] Could not cache prescription result (non-fatal): {_store_err}")
+
         return data, audio_path
 
     except Exception as e:
@@ -1682,6 +1760,111 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
         if "Image is too blurry" in err_msg:
             return {"error": err_msg}, None
         return {"error": f"Prescription Scan Failed: {err_msg}"}, None
+
+
+# ========== TASK 5 + 8: NEXT.JS GUIDE GENERATION GLUE ADAPTER ==========
+# GUIDE_SERVICE_BASE_URL: URL of the running implement_D Next.js service.
+# Set this environment variable when deploying. Defaults to localhost for dev.
+GUIDE_SERVICE_BASE_URL = os.getenv("GUIDE_SERVICE_BASE_URL", "http://localhost:3000")
+
+
+def to_guide_request(
+    medicine: dict,
+    patient_info: dict | None = None,
+    doctor_info: dict | None = None,
+    preferred_language: str = "English"
+) -> dict:
+    """
+    Build a PrescriptionInput payload for the implement_D guide generation API.
+    Maps a parsed medicine dict (from analyze_prescription_image) to the
+    exact schema expected by POST /api/v1/guides/generate.
+    """
+    patient = patient_info or {}
+    doctor = doctor_info or {}
+
+    return {
+        "patient": {
+            "name": patient.get("name") or "",
+            "age": str(patient.get("age") or ""),
+            "gender": str(patient.get("gender") or ""),
+            "preferredLanguage": preferred_language,
+        },
+        "doctor": {
+            "name": doctor.get("name") or "",
+            "registrationId": doctor.get("registration") or "",
+        },
+        "medicine": {
+            "name": medicine.get("name") or "Unknown Medicine",
+            "dosage": medicine.get("dosage") or "",
+            "frequency": medicine.get("frequency") or "as directed",
+            "duration": medicine.get("duration") or "as prescribed",
+            "instructions": (
+                f"{medicine.get('meal_relation', 'anytime').capitalize()}. "
+                f"{medicine.get('special_instructions', '')}".strip()
+            ) or "Take only as prescribed.",
+            "foodInstruction": medicine.get("food_interaction") or "",
+        },
+        "outputFormat": "pdf",
+        "source": "api",
+    }
+
+
+def request_guide_generation(
+    analysis_result: dict,
+    preferred_language: str = "English",
+    guide_service_url: str | None = None
+) -> list[dict]:
+    """
+    Task 5 + 8: Generate a medication guide for EACH medicine found in an
+    analysis_result dict returned by analyze_prescription_image.
+
+    Calls the implement_D Next.js service (POST /api/v1/guides/generate)
+    for every medicine in analysis_result["medicines"].
+
+    Returns a list of GuideApiResponse objects (one per medicine).
+    If the service is unavailable or _requests is not installed, returns [].
+    """
+    if _requests is None:
+        _safe_print("[WARN] 'requests' library not available. Guide generation skipped.")
+        return []
+
+    base_url = (guide_service_url or GUIDE_SERVICE_BASE_URL).rstrip("/")
+    endpoint = f"{base_url}/api/v1/guides/generate"
+
+    medicines = analysis_result.get("medicines") or []
+    patient_info = analysis_result.get("patient_info") or {}
+    doctor_info = analysis_result.get("doctor_info") or {}
+
+    if not medicines:
+        _safe_print("[INFO] No medicines found in analysis result. Skipping guide generation.")
+        return []
+
+    guides = []
+    for med in medicines:
+        payload = to_guide_request(
+            medicine=med,
+            patient_info=patient_info,
+            doctor_info=doctor_info,
+            preferred_language=preferred_language,
+        )
+        try:
+            resp = _requests.post(
+                endpoint,
+                json=payload,
+                timeout=15,
+                headers={"Content-Type": "application/json"}
+            )
+            if resp.status_code == 201:
+                guide_data = resp.json()
+                guide_data["medicine_name"] = med.get("name", "Unknown")
+                guides.append(guide_data)
+                _safe_print(f"[INFO] Guide generated for {med.get('name')}: {guide_data.get('guideId')}")
+            else:
+                _safe_print(f"[WARN] Guide service returned {resp.status_code} for {med.get('name')}: {resp.text[:200]}")
+        except Exception as guide_err:
+            _safe_print(f"[WARN] Guide generation failed for {med.get('name')}: {guide_err}")
+
+    return guides
 
 
 def get_medicine_dosage_info(medicine_name: str, composition: str = "") -> dict:

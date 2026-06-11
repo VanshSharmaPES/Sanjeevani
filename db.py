@@ -49,6 +49,14 @@ def init_db():
         )
     """)
     cursor.execute("""
+        CREATE TABLE IF NOT EXISTS prescription_cache (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ocr_hash TEXT UNIQUE NOT NULL,
+            result_json TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+    """)
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS medicines (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT UNIQUE NOT NULL,
@@ -368,7 +376,44 @@ def get_db_status() -> dict:
     return status
 
 
+def find_cached_prescription(ocr_hash: str) -> dict | None:
+    """Retrieve cached prescription details by MD5 hash of OCR text."""
+    if not ocr_hash:
+        return None
+    conn = _get_conn()
+    try:
+        row = conn.execute(
+            "SELECT result_json FROM prescription_cache WHERE ocr_hash = ?",
+            (ocr_hash,)
+        ).fetchone()
+        if row:
+            return json.loads(row["result_json"])
+        return None
+    except Exception:
+        return None
+    finally:
+        conn.close()
+
+
+def cache_prescription(ocr_hash: str, result_data: dict):
+    """Cache prescription details by MD5 hash of OCR text."""
+    if not ocr_hash or not result_data:
+        return
+    conn = _get_conn()
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO prescription_cache (ocr_hash, result_json, created_at) VALUES (?, ?, ?)",
+            (ocr_hash, json.dumps(result_data, ensure_ascii=False), datetime.now().isoformat())
+        )
+        conn.commit()
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+
 # Initialize database on import
 init_db()
+
 
 
