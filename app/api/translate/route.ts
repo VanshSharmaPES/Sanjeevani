@@ -16,14 +16,28 @@ const getApiKeys = (): string[] => {
 };
 
 const LANG_CODE_MAP: Record<string, string> = {
-  "en": "English",
-  "hi": "Hindi",
-  "ta": "Tamil",
-  "te": "Telugu",
-  "bn": "Bengali",
-  "mr": "Marathi",
-  "kn": "Kannada",
-  "ml": "Malayalam",
+  "en":  "English",
+  "hi":  "Hindi",
+  "ta":  "Tamil",
+  "te":  "Telugu",
+  "bn":  "Bengali",
+  "mr":  "Marathi",
+  "kn":  "Kannada",
+  "ml":  "Malayalam",
+  "gu":  "Gujarati",
+  "pa":  "Punjabi",
+  "or":  "Odia",
+  "as":  "Assamese",
+  "ur":  "Urdu",
+  "sa":  "Sanskrit",
+  "kok": "Konkani",
+  "mni": "Manipuri",
+  "ne":  "Nepali",
+  "sd":  "Sindhi",
+  "mai": "Maithili",
+  "doi": "Dogri",
+  "ks":  "Kashmiri",
+  "sat": "Santali",
 };
 
 export async function POST(request: NextRequest) {

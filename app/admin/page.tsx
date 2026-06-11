@@ -22,14 +22,28 @@ interface GuideData {
 }
 
 const languages = [
-  { code: "en", name: "English" },
-  { code: "hi", name: "Hindi" },
-  { code: "ta", name: "Tamil" },
-  { code: "te", name: "Telugu" },
-  { code: "bn", name: "Bengali" },
-  { code: "mr", name: "Marathi" },
-  { code: "kn", name: "Kannada" },
-  { code: "ml", name: "Malayalam" },
+  { code: "en",  name: "English" },
+  { code: "hi",  name: "Hindi" },
+  { code: "ta",  name: "Tamil" },
+  { code: "te",  name: "Telugu" },
+  { code: "bn",  name: "Bengali" },
+  { code: "mr",  name: "Marathi" },
+  { code: "kn",  name: "Kannada" },
+  { code: "ml",  name: "Malayalam" },
+  { code: "gu",  name: "Gujarati" },
+  { code: "pa",  name: "Punjabi" },
+  { code: "or",  name: "Odia" },
+  { code: "as",  name: "Assamese" },
+  { code: "ur",  name: "Urdu" },
+  { code: "sa",  name: "Sanskrit" },
+  { code: "kok", name: "Konkani" },
+  { code: "mni", name: "Manipuri" },
+  { code: "ne",  name: "Nepali" },
+  { code: "sd",  name: "Sindhi" },
+  { code: "mai", name: "Maithili" },
+  { code: "doi", name: "Dogri" },
+  { code: "ks",  name: "Kashmiri" },
+  { code: "sat", name: "Santali" },
 ];
 
 interface AutoResizeTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
