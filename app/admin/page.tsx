@@ -423,16 +423,26 @@ export default function AdminDashboard() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (!authorized) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen relative bg-background print:bg-white text-foreground print:text-black">
+    <AnimatePresence mode="wait">
+      {!authorized ? (
+        <motion.div
+          key="loading"
+          initial={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="min-h-screen bg-background flex items-center justify-center"
+        >
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </motion.div>
+      ) : (
+        <motion.div
+          key="admin-content"
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="min-h-screen relative bg-background print:bg-white text-foreground print:text-black print:!opacity-100 print:!transform-none"
+        >
       <div className="print:hidden">
         <MandalaBackground />
       </div>
@@ -813,6 +823,8 @@ export default function AdminDashboard() {
           </div>
         )}
       </AnimatePresence>
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
