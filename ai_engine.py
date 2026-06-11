@@ -16,6 +16,9 @@ import cv2
 import numpy as np
 from PIL import Image
 from pillow_heif import register_heif_opener
+import pandas as pd
+import threading
+from rapidfuzz import process, fuzz
 
 # Support HEIC/HEIF (standard iPhone formats)
 register_heif_opener()
@@ -297,6 +300,104 @@ LANG_MAP = {
     "Kannada": "kn",
     "Malayalam": "ml",
 }
+
+
+# ========== LAZY LOADING DATASET & FUZZY MATCHING ==========
+MEDICINE_DF = None
+MEDICINE_LOCK = threading.Lock()
+
+def load_medicine_df():
+    global MEDICINE_DF
+    if MEDICINE_DF is None:
+        with MEDICINE_LOCK:
+            if MEDICINE_DF is None:
+                csv_path = os.path.join(os.path.dirname(__file__), "A_Z_medicines_dataset_of_India.csv")
+                if os.path.exists(csv_path):
+                    try:
+                        _safe_print("[INFO] Loading A_Z_medicines_dataset_of_India.csv for fuzzy matching...")
+                        # Load only required columns to save memory & time: name, Is_discontinued, short_composition1, short_composition2
+                        df = pd.read_csv(csv_path, usecols=["name", "Is_discontinued", "short_composition1", "short_composition2"])
+                        # Filter to Is_discontinued == False
+                        df["Is_discontinued_bool"] = df["Is_discontinued"].astype(str).str.upper() != "TRUE"
+                        filtered_df = df[df["Is_discontinued_bool"]].copy()
+                        # Clean name column (lowercase, strip)
+                        filtered_df["name_clean"] = filtered_df["name"].astype(str).str.strip()
+                        MEDICINE_DF = filtered_df
+                        _safe_print(f"[INFO] Loaded {len(MEDICINE_DF)} active medicines into database.")
+                    except Exception as e:
+                        _safe_print(f"[WARN] Failed to load medicine dataset: {e}")
+                        MEDICINE_DF = pd.DataFrame(columns=["name", "Is_discontinued", "short_composition1", "short_composition2", "name_clean"])
+                else:
+                    _safe_print("[WARN] A_Z_medicines_dataset_of_India.csv not found!")
+                    MEDICINE_DF = pd.DataFrame(columns=["name", "Is_discontinued", "short_composition1", "short_composition2", "name_clean"])
+    return MEDICINE_DF
+
+def normalize_medicine_name(raw_name: str, medicine_df=None) -> dict:
+    """
+    Perform fuzzy matching against the brand name column using rapidfuzz.
+    If score >= 75, pull short_composition1 and short_composition2 to auto-populate salts.
+    If score < 75, keep raw name and set low_confidence: true.
+    """
+    if not raw_name or not raw_name.strip():
+        return {
+            "name": raw_name,
+            "active_salts": [],
+            "score": 0,
+            "low_confidence": True
+        }
+        
+    if medicine_df is None:
+        medicine_df = load_medicine_df()
+        
+    if medicine_df.empty:
+        return {
+            "name": raw_name.strip(),
+            "active_salts": [],
+            "score": 0,
+            "low_confidence": True
+        }
+        
+    raw_name_clean = raw_name.strip()
+    
+    # We want to match against the name column of the medicine_df
+    names_list = medicine_df["name_clean"].tolist()
+    matches = process.extract(raw_name_clean, names_list, scorer=fuzz.WRatio, limit=50)
+    
+    first_word_query = raw_name_clean.split()[0].lower() if raw_name_clean.split() else ""
+    best_match = None
+    for name, score, idx in matches:
+        if first_word_query in name.lower():
+            best_match = (name, score, idx)
+            break
+            
+    # Fallback to top match if score is extremely high (just in case of spelling typos in first word)
+    if not best_match and matches:
+        top_name, top_score, top_idx = matches[0]
+        if top_score >= 85:
+            best_match = (top_name, top_score, top_idx)
+            
+    if best_match:
+        matched_name, score, idx = best_match
+        if score >= 75:
+            row = medicine_df.iloc[idx]
+            salts = []
+            for col in ["short_composition1", "short_composition2"]:
+                val = row[col]
+                if pd.notna(val) and str(val).strip():
+                    salts.append(str(val).strip())
+            return {
+                "name": matched_name,
+                "active_salts": salts,
+                "score": score,
+                "low_confidence": False
+            }
+            
+    return {
+        "name": raw_name_clean,
+        "active_salts": [],
+        "score": matches[0][1] if matches else 0,
+        "low_confidence": True
+    }
 
 
 def _safe_print(*args, **kwargs):
@@ -712,6 +813,15 @@ If the image does not appear to be a medicine, return:
         data.setdefault("what_it_does", "")
         data.setdefault("suitable_age_group", "N/A")
         data.setdefault("advice", "")
+
+        # Apply fuzzy match post-processing
+        normalized = normalize_medicine_name(data.get("medicine_name", ""))
+        if not normalized["low_confidence"]:
+            data["medicine_name"] = normalized["name"]
+            data["active_salts"] = normalized["active_salts"]
+            data["low_confidence"] = False
+        else:
+            data["low_confidence"] = True
 
         # Ensure list fields are actual lists
         if isinstance(data.get("active_salts"), str):
