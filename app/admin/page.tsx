@@ -75,9 +75,9 @@ export default function AdminDashboard() {
   // Form Fields
   const [medName, setMedName] = useState("");
   const [salts, setSalts] = useState("");
-  const [dosage, setDosage] = useState("500mg");
-  const [frequency, setFrequency] = useState("Twice a day (1-0-1)");
-  const [timing, setTiming] = useState("After meals (PC)");
+  const [dosage, setDosage] = useState("");
+  const [frequency, setFrequency] = useState("");
+  const [timing, setTiming] = useState("");
   const [docNotes, setDocNotes] = useState("");
   const [doctorName, setDoctorName] = useState("Dr. Sanjeevani AI");
   const [generationTime, setGenerationTime] = useState("");
@@ -570,7 +570,7 @@ export default function AdminDashboard() {
                     value={dosage}
                     onChange={(e) => setDosage(e.target.value)}
                     disabled={aiGenerating}
-                    placeholder="e.g. 1 Tablet"
+                    placeholder="e.g. 500mg"
                     className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary disabled:opacity-60"
                   />
                 </div>
@@ -580,7 +580,7 @@ export default function AdminDashboard() {
                     value={frequency}
                     onChange={(e) => setFrequency(e.target.value)}
                     disabled={aiGenerating}
-                    placeholder="e.g. 1-0-1"
+                    placeholder="e.g. Twice a day (1-0-1)"
                     className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary disabled:opacity-60"
                   />
                 </div>
@@ -592,7 +592,7 @@ export default function AdminDashboard() {
                   value={timing}
                   onChange={(e) => setTiming(e.target.value)}
                   disabled={aiGenerating}
-                  placeholder="e.g. After meals"
+                  placeholder="e.g. After meals (PC)"
                   className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary disabled:opacity-60"
                 />
               </div>
