@@ -941,7 +941,7 @@ def _translate_text(text: str, target_language: str) -> str:
         return text
     try:
         response = client.chat.completions.create(
-            model=ANALYSIS_MODEL,
+            model="llama-3.3-70b-versatile",  # Force Groq LPU speed for fast translation
             messages=[
                 {
                     "role": "system",
@@ -962,6 +962,93 @@ def _translate_text(text: str, target_language: str) -> str:
     except Exception as te:
         _safe_print(f"[WARN] Translation failed: {te}")
         return text
+
+
+def _translate_fields(fields_dict: dict, target_language: str) -> dict:
+    """
+    Translate multiple fields in a dictionary to target_language in a single Groq call.
+    Returns a dictionary with translated values.
+    """
+    if target_language == "English" or not fields_dict:
+        return fields_dict
+        
+    to_translate = {k: v for k, v in fields_dict.items() if v and isinstance(v, str) and v.strip()}
+    if not to_translate:
+        return fields_dict
+        
+    system_prompt = (
+        f"You are a certified medical translator. Translate all values in this JSON object to {target_language}. "
+        "Keep all medicine names, dosages, and medical terms accurate. "
+        "Return ONLY a JSON object with the exact same keys and their translated values. "
+        "Return valid JSON structure."
+    )
+    user_prompt = f"Translate this JSON object:\n\n{json.dumps(to_translate)}"
+    
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",  # Force Groq LPU speed
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.1,
+            response_format={"type": "json_object"}
+        )
+        content = response.choices[0].message.content.strip()
+        translated_data = json.loads(content)
+        
+        res = fields_dict.copy()
+        for k, v in translated_data.items():
+            if k in res:
+                res[k] = v
+        return res
+    except Exception as e:
+        _safe_print(f"[WARN] Batch translation failed: {e}. Falling back to sequential translation...")
+        res = fields_dict.copy()
+        for k, v in to_translate.items():
+            res[k] = _translate_text(v, target_language)
+        return res
+
+
+def _translate_list(items_list: list[str], target_language: str) -> list[str]:
+    """
+    Translate a list of strings to target_language in a single Groq call.
+    """
+    if target_language == "English" or not items_list:
+        return items_list
+        
+    system_prompt = (
+        f"You are a certified medical translator. Translate all items in this JSON list to {target_language}. "
+        "Keep all medicine names, dosages, and medical terms accurate. "
+        "Return ONLY a JSON object with a list of strings under key 'translated_items'. "
+        "Example:\n"
+        "{\n"
+        "  \"translated_items\": [\"translated item 1\", \"translated item 2\"]\n"
+        "}\n"
+        "Return valid JSON structure."
+    )
+    user_prompt = f"List to translate:\n\n{json.dumps(items_list)}"
+    
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",  # Force Groq LPU speed
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.1,
+            response_format={"type": "json_object"}
+        )
+        content = response.choices[0].message.content.strip()
+        parsed = json.loads(content)
+        if isinstance(parsed, dict) and "translated_items" in parsed:
+            result = parsed["translated_items"]
+            if len(result) == len(items_list):
+                return result
+        raise ValueError("Translation list length mismatch")
+    except Exception as e:
+        _safe_print(f"[WARN] Batch list translation failed: {e}. Falling back to sequential translation...")
+        return [_translate_text(item, target_language) for item in items_list]
 
 
 # ─────────────────────────────────────────────────────────────
@@ -1248,45 +1335,23 @@ If no medicines are found, return an empty list:
         return [extracted_text]
 
 
-def _extract_medicine_name_from_segment(segment_text: str) -> str:
+def _parse_medicine_segment(segment_text: str) -> dict:
     """
-    Fast LLM call to extract just the raw medicine name from a segment.
-    """
-    system_prompt = "You are a pharmaceutical assistant. Extract only the brand name or generic name of the medicine from this line."
-    user_prompt = f"Line: \"{segment_text}\"\nReturn ONLY the clean medicine name (e.g. Dolo 650, Augmentin 625 Duo, Calpol). No dosage, frequency, or packaging words. Return JSON: {{\"name\": \"...\"}}"
-    try:
-        response = client.chat.completions.create(
-            model=ANALYSIS_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.1,
-            response_format={"type": "json_object"}
-        )
-        content = response.choices[0].message.content.strip()
-        return json.loads(content).get("name", segment_text)
-    except Exception:
-        return segment_text
-
-
-def _extract_dosage_structured(medicine_name: str, segment_text: str) -> dict:
-    """
-    Extract precise dosage details and pharmaceutical/clinical information for a specific
-    medicine based on its text segment from the prescription.
+    Extract the clean medicine name and structured dosage details from a prescription line segment
+    in a single LLM call. Returns all clinical/dosage information in English.
     """
     system_prompt = (
-        "You are an expert clinical pharmacist AI. Your task is to extract dosage details "
-        "and provide patient advice for a specific medicine from a prescription line."
+        "You are an expert clinical pharmacist AI. Your task is to extract the medicine name "
+        "and its detailed dosage information from a prescription line segment."
     )
     user_prompt = f"""
-Medicine: "{medicine_name}"
 Prescription segment: "{segment_text}"
 
-Extract the dosage details and provide detailed medical/clinical information for this medicine.
+Extract the clean brand or generic medicine name (e.g. Dolo 650, Augmentin 625 Duo, Calpol - no dosage/form/frequency/packaging words in the name itself) and all dosage details.
 Return ALL text fields in English.
 Return ONLY a JSON object matching this structure:
 {{
+    "name": "Clean brand or generic medicine name",
     "dosage": "e.g., 500mg, 1 tablet, 10ml",
     "form": "e.g., Tablet, Capsule, Syrup, Inhaler, Injection",
     "frequency": "e.g., twice a day, once daily, three times a day",
@@ -1314,8 +1379,9 @@ Return ONLY a JSON object matching this structure:
         content = response.choices[0].message.content.strip()
         return json.loads(content)
     except Exception as e:
-        _safe_print(f"[WARN] Error in _extract_dosage_structured for {medicine_name}: {e}")
+        _safe_print(f"[WARN] Error in _parse_medicine_segment: {e}")
         return {
+            "name": segment_text,
             "dosage": "",
             "form": "Tablet",
             "frequency": "as directed",
@@ -1453,7 +1519,8 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
         import concurrent.futures
         
         def process_segment(idx, segment):
-            raw_name = _extract_medicine_name_from_segment(segment)
+            parsed_data = _parse_medicine_segment(segment)
+            raw_name = parsed_data.get("name", segment)
             normalized = normalize_medicine_name(raw_name)
             
             confirmed_name = normalized["name"]
@@ -1461,8 +1528,7 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
             low_confidence = normalized["low_confidence"]
             fuzzy_score = normalized["score"]
             
-            dosage_data = _extract_dosage_structured(confirmed_name, segment)
-            dosage = dosage_data.get("dosage", "")
+            dosage = parsed_data.get("dosage", "")
             
             # Map reviewRequired for this medicine segment
             med_review_req = (
@@ -1480,17 +1546,17 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
                 "reviewRequired": med_review_req,
                 "fuzzy_score": fuzzy_score,
                 "dosage": dosage,
-                "form": dosage_data.get("form", "Tablet"),
-                "frequency": dosage_data.get("frequency", "as directed"),
-                "timing": dosage_data.get("timing", "as directed"),
-                "duration": dosage_data.get("duration", "as prescribed"),
-                "meal_relation": dosage_data.get("meal_relation", "anytime"),
-                "purpose": dosage_data.get("purpose", "Not available"),
-                "side_effects": dosage_data.get("side_effects", []),
-                "food_interaction": dosage_data.get("food_interaction", "No specific food restrictions."),
-                "warnings": dosage_data.get("warnings", ""),
-                "is_antibiotic": dosage_data.get("is_antibiotic", False),
-                "special_instructions": dosage_data.get("special_instructions", "")
+                "form": parsed_data.get("form", "Tablet"),
+                "frequency": parsed_data.get("frequency", "as directed"),
+                "timing": parsed_data.get("timing", "as directed"),
+                "duration": parsed_data.get("duration", "as prescribed"),
+                "meal_relation": parsed_data.get("meal_relation", "anytime"),
+                "purpose": parsed_data.get("purpose", "Not available"),
+                "side_effects": parsed_data.get("side_effects", []),
+                "food_interaction": parsed_data.get("food_interaction", "No specific food restrictions."),
+                "warnings": parsed_data.get("warnings", ""),
+                "is_antibiotic": parsed_data.get("is_antibiotic", False),
+                "special_instructions": parsed_data.get("special_instructions", "")
             }
             
         medicines_sorted = []
@@ -1573,24 +1639,34 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
 
         # Translate overall_advice (daily schedule), diet_advice, follow_up for display
         if target_language != "English":
-            for field in ("overall_advice", "diet_advice", "follow_up"):
-                val = data.get(field, "")
-                if val:
-                    data[field] = _translate_text(val, target_language)
+            advice_fields = {
+                "overall_advice": data.get("overall_advice", ""),
+                "diet_advice": data.get("diet_advice", ""),
+                "follow_up": data.get("follow_up", "")
+            }
+            translated_fields = _translate_fields(advice_fields, target_language)
+            data["overall_advice"] = translated_fields.get("overall_advice", "")
+            data["diet_advice"] = translated_fields.get("diet_advice", "")
+            data["follow_up"] = translated_fields.get("follow_up", "")
 
         # Generate individual medicine audios in parallel
-        async def _generate_all_meds_audio(meds):
-            async def process_med(med, sentence):
-                translated = _translate_text(sentence, target_language)
-                med["advice_en"] = sentence
-                med["advice_translated"] = translated
-                med["audio_b64"] = await _generate_audio_bytes_async(translated, lang_code)
+        translations = []
+        if target_language != "English" and medicines_sorted:
+            translations = _translate_list(med_parts_en, target_language)
+        else:
+            translations = med_parts_en.copy()
 
-            tasks = [process_med(m, s) for m, s in zip(meds, med_parts_en)]
+        async def _generate_all_meds_audio(meds, translations_list):
+            async def process_med(med, sentence, translated_sentence):
+                med["advice_en"] = sentence
+                med["advice_translated"] = translated_sentence
+                med["audio_b64"] = await _generate_audio_bytes_async(translated_sentence, lang_code)
+
+            tasks = [process_med(m, s, t) for m, s, t in zip(meds, med_parts_en, translations_list)]
             await asyncio.gather(*tasks)
 
         try:
-            asyncio.run(_generate_all_meds_audio(medicines_sorted))
+            asyncio.run(_generate_all_meds_audio(medicines_sorted, translations))
         except Exception as parallel_tts_err:
             _safe_print(f"[WARN] Parallel TTS generation failed: {parallel_tts_err}")
 
