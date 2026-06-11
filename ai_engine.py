@@ -332,6 +332,91 @@ def load_medicine_df():
                     MEDICINE_DF = pd.DataFrame(columns=["name", "Is_discontinued", "short_composition1", "short_composition2", "name_clean"])
     return MEDICINE_DF
 
+def _query_openfda(brand_name: str) -> dict | None:
+    """
+    Query the public OpenFDA drug label API to resolve missing brand names to their generic compositions.
+    Returns a dict with 'name', 'active_salts', 'score', and 'low_confidence', or None if not found/error.
+    """
+    if not brand_name or not brand_name.strip():
+        return None
+        
+    import requests
+    brand_clean = brand_name.strip()
+    url_brand = f'https://api.fda.gov/drug/label.json?search=openfda.brand_name:"{brand_clean}"&limit=1'
+    url_generic = f'https://api.fda.gov/drug/label.json?search=openfda.generic_name:"{brand_clean}"&limit=1'
+    
+    for url, search_type in [(url_brand, "brand_name"), (url_generic, "generic_name")]:
+        try:
+            r = requests.get(url, timeout=4)
+            if r.status_code == 200:
+                data = r.json()
+                results = data.get("results", [])
+                if results:
+                    result = results[0]
+                    openfda = result.get("openfda", {})
+                    generic_names = openfda.get("generic_name", [])
+                    salts = []
+                    if generic_names:
+                        for g in generic_names:
+                            salts.append(g.strip().title())
+                    else:
+                        active_ingredients = result.get("active_ingredient", [])
+                        if active_ingredients:
+                            for ai in active_ingredients:
+                                clean_ai = ai.replace("Active Ingredient (per tablet)", "").replace("Active Ingredient", "").strip()
+                                match = re.match(r'^([a-zA-Z\s\-]+)', clean_ai)
+                                if match:
+                                    salts.append(match.group(1).strip().title())
+                    if salts:
+                        return {
+                            "name": brand_clean,
+                            "active_salts": salts,
+                            "score": 90,  # Authority match score
+                            "low_confidence": False
+                        }
+        except Exception as e:
+            _safe_print(f"[WARN] OpenFDA {search_type} lookup failed for {brand_clean}: {e}")
+    return None
+
+
+def _infer_salts_via_llm(medicine_name: str) -> list[str]:
+    """
+    LLM fallback to dynamically infer active salts/compositions of a brand medicine
+    if it was not found in the local CSV dataset or OpenFDA.
+    """
+    if not medicine_name or not medicine_name.strip():
+        return []
+    system_prompt = "You are a clinical pharmacologist. Identify the active pharmaceutical ingredients (generic names) for the given brand medicine."
+    user_prompt = (
+        f"Brand name: \"{medicine_name}\"\n"
+        "Identify its active ingredients / compositions.\n"
+        "Return ONLY a JSON object with a list of strings under key 'active_salts'. "
+        "Example:\n"
+        "{\n"
+        "  \"active_salts\": [\"Pantoprazole\", \"Domperidone\"]\n"
+        "}\n"
+        "If you do not recognize the medicine, return an empty list."
+    )
+    try:
+        response = client.chat.completions.create(
+            model=ANALYSIS_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.1,
+            response_format={"type": "json_object"}
+        )
+        content = response.choices[0].message.content.strip()
+        parsed = json.loads(content)
+        if isinstance(parsed, dict) and "active_salts" in parsed:
+            return [s.strip().title() for s in parsed["active_salts"] if s.strip()]
+        return []
+    except Exception as e:
+        _safe_print(f"[WARN] LLM salt inference failed for {medicine_name}: {e}")
+        return []
+
+
 def normalize_medicine_name(raw_name: str, medicine_df=None) -> dict:
     """
     Perform fuzzy matching against the brand name column using rapidfuzz.
@@ -391,6 +476,24 @@ def normalize_medicine_name(raw_name: str, medicine_df=None) -> dict:
                 "score": score,
                 "low_confidence": False
             }
+            
+    # --- Local Match Failed (score < 75) ---
+    # Fallback 1: Query public OpenFDA API
+    fda_result = _query_openfda(raw_name_clean)
+    if fda_result:
+        _safe_print(f"[INFO] Resolved '{raw_name_clean}' via OpenFDA API: {fda_result['active_salts']}")
+        return fda_result
+        
+    # Fallback 2: Dynamically infer composition via LLM
+    llm_salts = _infer_salts_via_llm(raw_name_clean)
+    if llm_salts:
+        _safe_print(f"[INFO] Resolved '{raw_name_clean}' via LLM inference: {llm_salts}")
+        return {
+            "name": raw_name_clean,
+            "active_salts": llm_salts,
+            "score": 60,  # Below 75 threshold, maps to low_confidence/reviewRequired
+            "low_confidence": True
+        }
             
     return {
         "name": raw_name_clean,
