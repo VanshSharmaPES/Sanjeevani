@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import ParticleField from "@/components/ParticleField";
@@ -19,6 +19,15 @@ const Login = () => {
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  // Redirect to dashboard if already logged in
+  useEffect(() => {
+    const user = localStorage.getItem("sanjeevani_user");
+    const token = localStorage.getItem("sanjeevani_token");
+    if (user && token) {
+      router.push("/dashboard");
+    }
+  }, [router]);
 
   // Reset Password State
   const [showReset, setShowReset] = useState(false);
