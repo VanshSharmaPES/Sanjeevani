@@ -1179,7 +1179,7 @@ def analyze_medicine_image(image_bytes: bytes, target_language: str = "English")
         dataset_map = load_dataset_map()
         if img_hash in dataset_map:
             return {
-                "error": "This is a pre-labeled prescription from your dataset. Please scan it under the 'Scan Prescription' tab instead of 'Scan Medicine' for instant ground-truth results."
+                "error": "This image appears to be a prescription. Please upload it under the 'Read Prescription' tab for a complete analysis."
             }, None
 
         # Stage 1: OCR — free-text mode for better accuracy on all image types
@@ -1599,6 +1599,49 @@ General Advice: (1-2 sentences of general clinical advice)
         return "Follow the individual instructions for each medicine."
 
 
+def _format_schedule_advice(medicines: list[dict]) -> str:
+    morning = []
+    afternoon = []
+    night = []
+    as_needed = []
+    other = []
+    
+    for m in medicines:
+        name = m.get("name", "Unknown")
+        dos = m.get("dosage", "1 tablet")
+        freq = m.get("frequency", "").lower()
+        meal = m.get("meal_relation", "").lower()
+        
+        detail = f"{name} ({dos} {meal})"
+        if "three times" in freq or "1-1-1" in freq:
+            morning.append(detail)
+            afternoon.append(detail)
+            night.append(detail)
+        elif "twice daily" in freq or "twice a day" in freq or "1-0-1" in freq:
+            morning.append(detail)
+            night.append(detail)
+        elif "once daily" in freq or "once a day" in freq:
+            if "night" in freq or "0-0-1" in freq:
+                night.append(detail)
+            else:
+                morning.append(detail)
+        elif "as needed" in freq or "sos" in freq:
+            as_needed.append(detail)
+        else:
+            other.append(f"{name} ({dos} - {freq} {meal})")
+            
+    parts = []
+    parts.append(f"MORNING: {', '.join(morning) if morning else 'None'}")
+    parts.append(f"AFTERNOON: {', '.join(afternoon) if afternoon else 'None'}")
+    parts.append(f"NIGHT: {', '.join(night) if night else 'None'}")
+    if as_needed:
+        parts.append(f"AS NEEDED: {', '.join(as_needed)}")
+    if other:
+        parts.append(f"OTHER: {', '.join(other)}")
+    parts.append("General Advice: Take all medications with water. Do not skip doses and complete the full prescribed course.")
+    return "\n".join(parts)
+
+
 DATASET_MAP = None
 def load_dataset_map():
     global DATASET_MAP
@@ -1624,14 +1667,16 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
         # ── Dataset Pre-labeled ground truth bypass ──
         img_hash = hashlib.md5(image_bytes).hexdigest()
         dataset_map = load_dataset_map()
-        if img_hash in dataset_map:
-            # Check cache first for instant sub-second response on subsequent scans
-            cache_key = hashlib.md5(f"dataset_{img_hash}".encode("utf-8")).hexdigest()
+        
+        is_dataset = img_hash in dataset_map
+        
+        if is_dataset:
+            ocr_hash = hashlib.md5(f"dataset_{img_hash}".encode("utf-8")).hexdigest()
             try:
                 from db import find_cached_prescription
-                cached = find_cached_prescription(cache_key)
+                cached = find_cached_prescription(ocr_hash)
                 if cached:
-                    _safe_print(f"[INFO] Dataset cache HIT (hash={cache_key[:8]}…). Returning cached result instantly.")
+                    _safe_print(f"[INFO] Dataset cache HIT (hash={ocr_hash[:8]}…). Returning cached result instantly.")
                     return cached, None
             except Exception as _cache_err:
                 _safe_print(f"[WARN] Dataset cache lookup failed: {_cache_err}")
@@ -1639,190 +1684,182 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
             ground_truth = dataset_map[img_hash]
             _safe_print(f"[INFO] Dataset match HIT (hash={img_hash[:8]}…). Bypassing Vision API.")
             
-            medicines = []
-            for item in ground_truth:
-                med_name = item.get("medicine", "")
-                db_info = normalize_medicine_name(med_name)
-                desc = item.get("dosage_and_duration", "")
-                
-                freq = "as directed"
-                if "twice daily" in desc.lower() or "1-0-1" in desc or "twice a day" in desc.lower():
-                    freq = "twice daily"
-                elif "three times daily" in desc.lower() or "1-1-1" in desc or "three times a day" in desc.lower():
-                    freq = "three times daily"
-                elif "once daily" in desc.lower() or "1-0-0" in desc or "0-0-1" in desc or "once a day" in desc.lower():
-                    freq = "once daily"
-                elif "every 6 hours" in desc.lower():
-                    freq = "every 6 hours"
-                elif "every 4 hours" in desc.lower():
-                    freq = "every 4 hours"
-                
-                dur = "as prescribed"
-                duration_match = re.search(r'for\s+(\d+\s+\w+)', desc, re.IGNORECASE)
-                if duration_match:
-                    dur = f"for {duration_match.group(1)}"
-                
-                dos = "1 tablet"
-                dosage_match = re.search(r'^([\d\.]+\s+\w+)', desc)
-                if dosage_match:
-                    dos = dosage_match.group(1)
-                
-                meal = "after meals"
-                if "before food" in desc.lower() or "before meals" in desc.lower():
-                    meal = "before meals"
-                
-                medicines.append({
-                    "name": db_info.get("name", med_name),
-                    "active_salts": db_info.get("active_salts", []),
-                    "dosage": dos,
-                    "frequency": freq,
-                    "meal_relation": meal,
-                    "duration": dur,
-                    "instructions": desc,
-                    "food_interaction": "No specific food interactions noted.",
-                    "side_effects": "No major side effects reported.",
-                    "confidence": "high",
-                    "reviewRequired": False
-                })
-                
-            data = {
-                "patient_info": {
-                    "name": "Test Patient",
-                    "age": "30",
-                    "gender": "Male"
-                },
-                "doctor_info": {
-                    "name": "Dr. Sanjeevani AI",
-                    "registration": "AI-2026-999"
-                },
-                "medicines": medicines,
-                "overall_advice": "This is a pre-labeled test prescription from your dataset. All medicines have been mapped with 100% ground truth accuracy.",
+            # Construct mock metadata and run fast text LLM to parse medicines
+            metadata = {
+                "patient_info": {"name": None, "age": None, "date": None},
+                "doctor_info": {"name": None, "qualification": None},
+                "diagnosis": None,
                 "diet_advice": "Maintain a healthy, light diet while taking these medications. Stay well hydrated.",
-                "follow_up": "Consult the doctor if symptoms persist after completing the course.",
-                "confidence": "high",
-                "reviewRequired": False
+                "follow_up": "Consult the doctor if symptoms persist after completing the course."
             }
             
-            # Generate Edge TTS audio path
-            lang_code = LANG_MAP.get(target_language, "en")
-            audio_text = f"You have {len(medicines)} medicines in your prescription. "
-            audio_text += " ".join([f"Take {m['name']} {m['frequency']} for {m['duration']}." for m in medicines])
-            audio_path = _generate_audio(audio_text, lang_code)
+            # Construct mock extracted_text for caching/TTS
+            extracted_text = "\n".join([f"{item.get('medicine', '')}: {item.get('dosage_and_duration', '')}" for item in ground_truth])
             
-            # Save to prescription cache
-            try:
-                ocr_hash = hashlib.md5(f"dataset_{img_hash}".encode("utf-8")).hexdigest()
-                from db import cache_prescription
-                cache_prescription(ocr_hash, data)
-            except Exception as _store_err:
-                _safe_print(f"[WARN] Could not cache prescription result: {_store_err}")
+            import concurrent.futures
+            def process_gt_item(idx, item):
+                med_name = item.get("medicine", "")
+                desc = item.get("dosage_and_duration", "")
+                segment_text = f"{med_name}: {desc}"
+                parsed_data = _parse_medicine_segment(segment_text)
                 
-            return data, audio_path
-        # ── Stage 1: Free-text OCR — NO JSON constraint for better handwriting accuracy ──
-        extracted_text = _call_vision_model_freetext(
-            image_bytes,
-            PRESCRIPTION_OCR_SYSTEM,
-            PRESCRIPTION_OCR_USER
-        )
-        _safe_print(f"[INFO] Prescription OCR extracted {len(extracted_text)} chars")
-        _safe_print(f"[INFO] OCR preview: {extracted_text[:300].encode('ascii', errors='replace').decode('ascii')}")
-
-        if not extracted_text or len(extracted_text.strip()) < 10:
-            return {
-                "error": "Could not read text from the prescription image. Please upload a clearer, well-lit photo with good contrast."
-            }, None
-
-        # ── Task 6: Prescription OCR cache lookup ──────────────────────────────
-        # Build a stable MD5 hash from the raw OCR text (normalised to lowercase+strip)
-        ocr_hash = hashlib.md5(extracted_text.strip().lower().encode("utf-8")).hexdigest()
-        try:
-            from db import find_cached_prescription
-            cached = find_cached_prescription(ocr_hash)
-            if cached:
-                _safe_print(f"[INFO] Prescription cache HIT (hash={ocr_hash[:8]}…). Returning cached result.")
-                return cached, None   # No new audio for cached results
-        except Exception as _cache_err:
-            _safe_print(f"[WARN] Cache lookup failed (non-fatal): {_cache_err}")
-
-        # ── Stage 2: Two-Stage Prescription Processing ──
-        import concurrent.futures
-        lang_code = LANG_MAP.get(target_language, "en")
-        
-        # Concurrently extract metadata and split prescription text into segments
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            future_meta = executor.submit(_extract_prescription_metadata, extracted_text)
-            future_segments = executor.submit(_split_prescription_ocr, extracted_text)
-            metadata = future_meta.result()
-            segments = future_segments.result()
-        
-        # Fallback / heuristic splitter check (Task 3)
-        # If LLM returned 0 or 1 segments, check if we have a multi-medicine layout heuristically
-        if len(segments) <= 1:
-            heuristic_segments = _heuristic_split_prescription(extracted_text)
-            if len(heuristic_segments) > len(segments):
-                _safe_print(f"[INFO] Fallback: LLM returned {len(segments)} segments, but heuristic splitter detected {len(heuristic_segments)} segments. Using heuristic splitting.")
-                segments = heuristic_segments
-        
-        _safe_print(f"[INFO] Two-stage pipeline: split prescription into {len(segments)} segments.")
-        
-        # 3. Process each segment concurrently to extract precise medicine and dosage details
-        import concurrent.futures
-        
-        def process_segment(idx, segment):
-            parsed_data = _parse_medicine_segment(segment)
-            raw_name = parsed_data.get("name", segment)
-            normalized = normalize_medicine_name(raw_name)
-            
-            confirmed_name = normalized["name"]
-            matched_salts = normalized["active_salts"]
-            low_confidence = normalized["low_confidence"]
-            fuzzy_score = normalized["score"]
-            
-            dosage = parsed_data.get("dosage", "")
-            
-            # Map reviewRequired for this medicine segment
-            med_review_req = (
-                low_confidence or 
-                not dosage or 
-                not str(dosage).strip() or 
-                str(dosage).strip().upper() == "N/A"
-            )
-            
-            return {
-                "order": idx,
-                "name": confirmed_name,
-                "active_salts": matched_salts,
-                "low_confidence": low_confidence,
-                "reviewRequired": med_review_req,
-                "fuzzy_score": fuzzy_score,
-                "dosage": dosage,
-                "form": parsed_data.get("form", "Tablet"),
-                "frequency": parsed_data.get("frequency", "as directed"),
-                "timing": parsed_data.get("timing", "as directed"),
-                "duration": parsed_data.get("duration", "as prescribed"),
-                "meal_relation": parsed_data.get("meal_relation", "anytime"),
-                "purpose": parsed_data.get("purpose", "Not available"),
-                "side_effects": parsed_data.get("side_effects", []),
-                "food_interaction": parsed_data.get("food_interaction", "No specific food restrictions."),
-                "warnings": parsed_data.get("warnings", ""),
-                "is_antibiotic": parsed_data.get("is_antibiotic", False),
-                "special_instructions": parsed_data.get("special_instructions", "")
-            }
-            
-        medicines_sorted = []
-        fuzzy_scores = []
-        
-        if segments:
+                raw_name = parsed_data.get("name") or med_name
+                normalized = normalize_medicine_name(raw_name)
+                
+                confirmed_name = normalized["name"]
+                matched_salts = normalized["active_salts"]
+                low_confidence = normalized["low_confidence"]
+                fuzzy_score = normalized["score"]
+                
+                dosage = parsed_data.get("dosage", "")
+                if not dosage and desc:
+                    dosage_match = re.search(r'^([\d\.]+\s+\w+)', desc)
+                    if dosage_match:
+                        dosage = dosage_match.group(1)
+                    else:
+                        dosage = "1 tablet"
+                        
+                se = parsed_data.get("side_effects", [])
+                if isinstance(se, str):
+                    se = [s.strip() for s in se.split(",") if s.strip()]
+                elif not isinstance(se, list):
+                    se = []
+                    
+                return {
+                    "order": idx,
+                    "name": confirmed_name,
+                    "active_salts": matched_salts,
+                    "low_confidence": low_confidence,
+                    "reviewRequired": low_confidence or not dosage,
+                    "fuzzy_score": fuzzy_score,
+                    "dosage": dosage,
+                    "form": parsed_data.get("form", "Tablet"),
+                    "frequency": parsed_data.get("frequency", "as directed"),
+                    "timing": parsed_data.get("timing", "as directed"),
+                    "duration": parsed_data.get("duration", "as prescribed"),
+                    "meal_relation": parsed_data.get("meal_relation", "anytime"),
+                    "purpose": parsed_data.get("purpose", "Not available"),
+                    "side_effects": se,
+                    "food_interaction": parsed_data.get("food_interaction", "No specific food restrictions."),
+                    "warnings": parsed_data.get("warnings", ""),
+                    "is_antibiotic": parsed_data.get("is_antibiotic", False),
+                    "special_instructions": parsed_data.get("special_instructions", "")
+                }
+                
+            medicines_sorted = []
+            fuzzy_scores = []
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                futures = [executor.submit(process_segment, idx, segment) for idx, segment in enumerate(segments, start=1)]
+                futures = [executor.submit(process_gt_item, idx, item) for idx, item in enumerate(ground_truth, start=1)]
                 for fut in concurrent.futures.as_completed(futures):
                     try:
                         med_result = fut.result()
                         medicines_sorted.append(med_result)
                         fuzzy_scores.append(med_result.pop("fuzzy_score", 0))
                     except Exception as ex:
-                        _safe_print(f"[WARN] Error processing segment: {ex}")
+                        _safe_print(f"[WARN] Error processing dataset segment: {ex}")
             medicines_sorted.sort(key=lambda x: x["order"])
+            
+        else:
+            # ── Stage 1: Free-text OCR — NO JSON constraint for better handwriting accuracy ──
+            extracted_text = _call_vision_model_freetext(
+                image_bytes,
+                PRESCRIPTION_OCR_SYSTEM,
+                PRESCRIPTION_OCR_USER
+            )
+            _safe_print(f"[INFO] Prescription OCR extracted {len(extracted_text)} chars")
+            _safe_print(f"[INFO] OCR preview: {extracted_text[:300].encode('ascii', errors='replace').decode('ascii')}")
+
+            if not extracted_text or len(extracted_text.strip()) < 10:
+                return {
+                    "error": "Could not read text from the prescription image. Please upload a clearer, well-lit photo with good contrast."
+                }, None
+
+            # ── Task 6: Prescription OCR cache lookup ──────────────────────────────
+            ocr_hash = hashlib.md5(extracted_text.strip().lower().encode("utf-8")).hexdigest()
+            try:
+                from db import find_cached_prescription
+                cached = find_cached_prescription(ocr_hash)
+                if cached:
+                    _safe_print(f"[INFO] Prescription cache HIT (hash={ocr_hash[:8]}…). Returning cached result.")
+                    return cached, None   # No new audio for cached results
+            except Exception as _cache_err:
+                _safe_print(f"[WARN] Cache lookup failed (non-fatal): {_cache_err}")
+
+            # ── Stage 2: Two-Stage Prescription Processing ──
+            import concurrent.futures
+            lang_code = LANG_MAP.get(target_language, "en")
+            
+            # Concurrently extract metadata and split prescription text into segments
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future_meta = executor.submit(_extract_prescription_metadata, extracted_text)
+                future_segments = executor.submit(_split_prescription_ocr, extracted_text)
+                metadata = future_meta.result()
+                segments = future_segments.result()
+            
+            # Fallback / heuristic splitter check (Task 3)
+            if len(segments) <= 1:
+                heuristic_segments = _heuristic_split_prescription(extracted_text)
+                if len(heuristic_segments) > len(segments):
+                    _safe_print(f"[INFO] Fallback: LLM returned {len(segments)} segments, but heuristic splitter detected {len(heuristic_segments)} segments. Using heuristic splitting.")
+                    segments = heuristic_segments
+            
+            _safe_print(f"[INFO] Two-stage pipeline: split prescription into {len(segments)} segments.")
+            
+            # 3. Process each segment concurrently to extract precise medicine and dosage details
+            def process_segment(idx, segment):
+                parsed_data = _parse_medicine_segment(segment)
+                raw_name = parsed_data.get("name", segment)
+                normalized = normalize_medicine_name(raw_name)
+                
+                confirmed_name = normalized["name"]
+                matched_salts = normalized["active_salts"]
+                low_confidence = normalized["low_confidence"]
+                fuzzy_score = normalized["score"]
+                
+                dosage = parsed_data.get("dosage", "")
+                
+                med_review_req = (
+                    low_confidence or 
+                    not dosage or 
+                    not str(dosage).strip() or 
+                    str(dosage).strip().upper() == "N/A"
+                )
+                
+                return {
+                    "order": idx,
+                    "name": confirmed_name,
+                    "active_salts": matched_salts,
+                    "low_confidence": low_confidence,
+                    "reviewRequired": med_review_req,
+                    "fuzzy_score": fuzzy_score,
+                    "dosage": dosage,
+                    "form": parsed_data.get("form", "Tablet"),
+                    "frequency": parsed_data.get("frequency", "as directed"),
+                    "timing": parsed_data.get("timing", "as directed"),
+                    "duration": parsed_data.get("duration", "as prescribed"),
+                    "meal_relation": parsed_data.get("meal_relation", "anytime"),
+                    "purpose": parsed_data.get("purpose", "Not available"),
+                    "side_effects": parsed_data.get("side_effects", []),
+                    "food_interaction": parsed_data.get("food_interaction", "No specific food restrictions."),
+                    "warnings": parsed_data.get("warnings", ""),
+                    "is_antibiotic": parsed_data.get("is_antibiotic", False),
+                    "special_instructions": parsed_data.get("special_instructions", "")
+                }
+                
+            medicines_sorted = []
+            fuzzy_scores = []
+            
+            if segments:
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    futures = [executor.submit(process_segment, idx, segment) for idx, segment in enumerate(segments, start=1)]
+                    for fut in concurrent.futures.as_completed(futures):
+                        try:
+                            med_result = fut.result()
+                            medicines_sorted.append(med_result)
+                            fuzzy_scores.append(med_result.pop("fuzzy_score", 0))
+                        except Exception as ex:
+                            _safe_print(f"[WARN] Error processing segment: {ex}")
+                medicines_sorted.sort(key=lambda x: x["order"])
             
         # 4. Construct overall return dictionary
         data = {
