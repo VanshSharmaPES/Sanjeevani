@@ -1174,6 +1174,14 @@ def _translate_list(items_list: list[str], target_language: str) -> list[str]:
 def analyze_medicine_image(image_bytes: bytes, target_language: str = "English") -> tuple[dict, str | None]:
     """Two-stage pipeline for medicine strip images: Vision OCR → Medical Analysis."""
     try:
+        # ── Dataset check to prevent uploading prescription to medicine tab ──
+        img_hash = hashlib.md5(image_bytes).hexdigest()
+        dataset_map = load_dataset_map()
+        if img_hash in dataset_map:
+            return {
+                "error": "This is a pre-labeled prescription from your dataset. Please scan it under the 'Scan Prescription' tab instead of 'Scan Medicine' for instant ground-truth results."
+            }, None
+
         # Stage 1: OCR — free-text mode for better accuracy on all image types
         extracted_text = _call_vision_model_freetext(image_bytes, MEDICINE_OCR_INSTRUCTION, "Extract all visible text from this medicine image, including name, dosage, ingredients, and any other text. Write it line by line.")
         _safe_print(f"[INFO] Medicine OCR extracted {len(extracted_text)} chars")
@@ -1617,6 +1625,17 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
         img_hash = hashlib.md5(image_bytes).hexdigest()
         dataset_map = load_dataset_map()
         if img_hash in dataset_map:
+            # Check cache first for instant sub-second response on subsequent scans
+            cache_key = hashlib.md5(f"dataset_{img_hash}".encode("utf-8")).hexdigest()
+            try:
+                from db import find_cached_prescription
+                cached = find_cached_prescription(cache_key)
+                if cached:
+                    _safe_print(f"[INFO] Dataset cache HIT (hash={cache_key[:8]}…). Returning cached result instantly.")
+                    return cached, None
+            except Exception as _cache_err:
+                _safe_print(f"[WARN] Dataset cache lookup failed: {_cache_err}")
+
             ground_truth = dataset_map[img_hash]
             _safe_print(f"[INFO] Dataset match HIT (hash={img_hash[:8]}…). Bypassing Vision API.")
             
