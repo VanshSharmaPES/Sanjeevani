@@ -1671,7 +1671,7 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
         is_dataset = img_hash in dataset_map
         
         if is_dataset:
-            ocr_hash = hashlib.md5(f"dataset_{img_hash}".encode("utf-8")).hexdigest()
+            ocr_hash = hashlib.md5(f"dataset_v2_{img_hash}".encode("utf-8")).hexdigest()
             try:
                 from db import find_cached_prescription
                 cached = find_cached_prescription(ocr_hash)
