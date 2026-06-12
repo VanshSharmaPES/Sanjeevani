@@ -16,8 +16,8 @@ from functools import wraps
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, set_access_cookies, jwt_required, get_jwt_identity, unset_jwt_cookies
-from ai_engine import analyze_medicine_image, analyze_prescription_image, get_medicine_dosage_info, _translate_text, request_guide_generation
-from db import register_user, authenticate_user, save_scan, get_user_history, delete_scan, search_medicines, reset_password, get_db_status
+from ai_engine import analyze_medicine_image, analyze_prescription_image, get_medicine_dosage_info, _translate_text, request_guide_generation, search_medicine_fallback_ai
+from db import register_user, authenticate_user, save_scan, get_user_history, delete_scan, search_medicines, reset_password, get_db_status, save_custom_medicine
 
 # Fix Windows charmap codec crashes when printing Unicode model output
 if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
@@ -148,6 +148,22 @@ def api_reset_password():
 def api_search_medicines():
     query = request.args.get("q", "").strip()
     results = search_medicines(query)
+    
+    # Fallback to AI search if no matches found in local DB and query length >= 3
+    if not results and len(query) >= 3:
+        _safe_log(f"[INFO] Search miss for '{query}'. Invoking AI fallback search...")
+        ai_result = search_medicine_fallback_ai(query)
+        if ai_result:
+            _safe_log(f"[INFO] AI search found details for '{query}'. Caching to SQLite...")
+            save_custom_medicine(ai_result, query=query)
+            results = [ai_result]
+            
+            # If the AI corrected/normalized the name, also offer the user's exact typed query as an option
+            if query.lower() != ai_result["medicineName"].lower():
+                query_variation = ai_result.copy()
+                query_variation["medicineName"] = query.title()
+                results.insert(0, query_variation)
+            
     return jsonify(results)
 
 

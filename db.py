@@ -412,6 +412,53 @@ def cache_prescription(ocr_hash: str, result_data: dict):
         conn.close()
 
 
+def save_custom_medicine(med_data: dict, query: str = None) -> bool:
+    """Insert a dynamically generated custom medicine into the SQLite database."""
+    name = med_data.get("medicineName", "").strip()
+    if not name:
+        return False
+    
+    unit = med_data.get("unit", "").strip()
+    composition = med_data.get("activeSalts", "").strip()
+    uses = med_data.get("uses", "").strip()
+    side_effects = med_data.get("sideEffects", "").strip()
+    manufacturer = med_data.get("manufacturer", "").strip()
+    
+    conn = _get_conn()
+    try:
+        # Save under AI corrected name
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO medicines (
+                name, unit, composition, uses, side_effects, manufacturer,
+                excellent_review_pct, average_review_pct, poor_review_pct
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (name, unit, composition, uses, side_effects, manufacturer, 0, 0, 0)
+        )
+        
+        # Also save under search query if different so subsequent lookups hit the DB
+        if query and query.strip() and query.strip().lower() != name.lower():
+            query_name = query.strip()
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO medicines (
+                    name, unit, composition, uses, side_effects, manufacturer,
+                    excellent_review_pct, average_review_pct, poor_review_pct
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (query_name, unit, composition, uses, side_effects, manufacturer, 0, 0, 0)
+            )
+            
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"[WARN] Error saving custom medicine: {e}")
+        return False
+    finally:
+        conn.close()
+
+
 # Initialize database on import
 init_db()
 

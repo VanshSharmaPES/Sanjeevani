@@ -2135,3 +2135,61 @@ def get_medicine_dosage_info(medicine_name: str, composition: str = "") -> dict:
             "timing": "After meals (PC)",
             "doctorNotes": "Consult prescription details for specific instructions."
         }
+
+
+def search_medicine_fallback_ai(query: str) -> dict | None:
+    """
+    Search for a medicine using AI when it is not found in the local database.
+    Attempts to identify the correct spelling/brand name, standard packaging/unit,
+    active salts (composition), uses, side effects, and manufacturer in India.
+    """
+    try:
+        system_prompt = (
+            "You are an expert clinical pharmacist specializing in Indian pharmaceuticals.\n"
+            "Given a medicine name (which may contain typos or be incomplete), identify the closest correct brand name or generic medicine, "
+            "its composition, common unit/packaging, uses, side effects, and manufacturer in India.\n"
+            "Return JSON format."
+        )
+        
+        user_prompt = f"""
+        Searched Medicine Query: "{query}"
+        
+        Provide accurate details for this medicine in JSON format with exactly these keys:
+        {{
+            "medicineName": "e.g., Crocin 650 (corrected spelling/brand name)",
+            "unit": "e.g., 15 Tablets, 100ml Syrup, 1 Tube (typical package unit/size)",
+            "activeSalts": "e.g., Paracetamol IP 650mg (active ingredients/composition)",
+            "uses": "e.g., Fever, headache, body ache (brief clinical uses)",
+            "sideEffects": "e.g., Nausea, skin rash (common side effects)",
+            "manufacturer": "e.g., GlaxoSmithKline Pharmaceuticals Ltd (manufacturer name in India)"
+        }}
+        """
+        
+        response = client.chat.completions.create(
+            model=ANALYSIS_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.1,
+            response_format={"type": "json_object"}
+        )
+        
+        content = response.choices[0].message.content.strip()
+        data = json.loads(content)
+        
+        # Basic validation: ensure all keys are present
+        required_keys = ["medicineName", "unit", "activeSalts", "uses", "sideEffects", "manufacturer"]
+        for key in required_keys:
+            if key not in data:
+                data[key] = ""
+        
+        med_name_lower = data["medicineName"].strip().lower()
+        if not data["medicineName"] or "not found" in med_name_lower or "not applicable" in med_name_lower:
+            data["medicineName"] = query.title()
+            
+        return data
+    except Exception as e:
+        _safe_print(f"[WARN] AI medicine fallback search error for '{query}': {e}")
+        return None
+
