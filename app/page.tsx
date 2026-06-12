@@ -9,6 +9,7 @@ import SanjeevaniLogo from "@/components/SanjeevaniLogo";
 import { useRouter } from "next/navigation";
 
 const Login = () => {
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
@@ -26,6 +27,8 @@ const Login = () => {
     const token = localStorage.getItem("sanjeevani_token");
     if (user && token) {
       router.push("/dashboard");
+    } else {
+      setCheckingAuth(false);
     }
   }, [router]);
 
@@ -137,6 +140,15 @@ const Login = () => {
       setLoading(false);
     }
   };
+
+  if (checkingAuth) {
+    return (
+      <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
+        <ParticleField />
+        <MandalaBackground />
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
