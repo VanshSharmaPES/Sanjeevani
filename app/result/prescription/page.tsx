@@ -40,6 +40,7 @@ interface PrescriptionData {
   diagnosis?: string | null;
   diet_advice?: string;
   follow_up?: string;
+  ocr_hash?: string;
 }
 
 const timingToSlots = (timing: string): string[] => {
@@ -98,6 +99,12 @@ const PrescriptionResult = () => {
   // Embedded SDK state
   const [isEmbedded, setIsEmbedded] = useState(false);
 
+  // Edit & Train mode state variables
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedPrescription, setEditedPrescription] = useState<PrescriptionData | null>(null);
+  const [savingFeedback, setSavingFeedback] = useState(false);
+  const [feedbackSuccess, setFeedbackSuccess] = useState(false);
+
   useEffect(() => {
     setIsEmbedded(window.self !== window.top);
   }, []);
@@ -111,6 +118,116 @@ const PrescriptionResult = () => {
     }
   };
 
+  // Editing helper functions
+  const updatePatientInfo = (field: string, val: string) => {
+    setEditedPrescription(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        patient_info: {
+          ...(prev.patient_info || {}),
+          [field]: val
+        }
+      };
+    });
+  };
+
+  const updateMedicineField = (idx: number, field: string, val: any) => {
+    setEditedPrescription(prev => {
+      if (!prev) return null;
+      const newMeds = [...(prev.medicines || [])];
+      newMeds[idx] = {
+        ...newMeds[idx],
+        [field]: val
+      };
+      return { ...prev, medicines: newMeds };
+    });
+  };
+
+  const removeMedicine = (idx: number) => {
+    setEditedPrescription(prev => {
+      if (!prev) return null;
+      const newMeds = (prev.medicines || []).filter((_, i) => i !== idx);
+      return { ...prev, medicines: newMeds };
+    });
+  };
+
+  const addMedicine = () => {
+    setEditedPrescription(prev => {
+      if (!prev) return null;
+      const newMeds = [...(prev.medicines || [])];
+      newMeds.push({
+        name: "",
+        dosage: "",
+        form: "Tablet",
+        frequency: "",
+        timing: "",
+        meal_relation: "",
+        active_salts: [],
+        alternatives: [],
+        purpose: ""
+      });
+      return { ...prev, medicines: newMeds };
+    });
+  };
+
+  const handleSaltsChange = (idx: number, rawVal: string) => {
+    const arrFiltered = rawVal.split(",").map(s => s.trim()).filter(Boolean);
+    updateMedicineField(idx, "active_salts", arrFiltered);
+  };
+
+  const handleSideEffectsChange = (idx: number, rawVal: string) => {
+    const arrFiltered = rawVal.split(",").map(s => s.trim()).filter(Boolean);
+    updateMedicineField(idx, "side_effects", arrFiltered);
+  };
+
+  const handleSaveFeedback = async () => {
+    if (!prescription || !prescription.ocr_hash || !editedPrescription) return;
+    setSavingFeedback(true);
+    setFeedbackSuccess(false);
+
+    try {
+      const token = localStorage.getItem("sanjeevani_token");
+      const res = await fetch("/api/feedback/prescription", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          ocr_hash: prescription.ocr_hash,
+          corrected_data: editedPrescription
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFeedbackSuccess(true);
+        // Save the updated scanResult in sessionStorage so it persists on reload
+        const raw = sessionStorage.getItem("scanResult");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const updatedRaw = {
+            ...parsed,
+            data: editedPrescription
+          };
+          sessionStorage.setItem("scanResult", JSON.stringify(updatedRaw));
+        }
+        setPrescription(editedPrescription);
+        setTimeout(() => {
+          setIsEditing(false);
+          setFeedbackSuccess(false);
+        }, 1500);
+      } else {
+        alert(data.error || "Failed to save corrections.");
+      }
+    } catch (err) {
+      console.error("Feedback error:", err);
+      alert("Failed to connect to feedback API.");
+    } finally {
+      setSavingFeedback(false);
+    }
+  };
+
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem("scanResult");
@@ -118,6 +235,7 @@ const PrescriptionResult = () => {
       const parsed = JSON.parse(raw);
       const d = parsed.data || parsed;
       setPrescription(d);
+      setEditedPrescription(JSON.parse(JSON.stringify(d)));
 
       let src: string | null = null;
       if (parsed.audio_b64) {
@@ -242,11 +360,334 @@ const PrescriptionResult = () => {
 
   const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
   const fadeUp = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.35 } } };
-
   if (!prescription) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (isEditing && editedPrescription) {
+    const editMeds = editedPrescription.medicines || [];
+    const epi = editedPrescription.patient_info || {};
+    return (
+      <div className="min-h-screen relative">
+        <MandalaBackground />
+        <div className="relative z-10 p-6 lg:p-12 max-w-2xl mx-auto">
+          {/* Header */}
+          <div className="flex items-center gap-4 mb-6">
+            <button
+              onClick={() => setIsEditing(false)}
+              className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center text-foreground hover:bg-muted transition-colors"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <div className="flex-1">
+              <h1 className="font-display text-xl font-bold text-foreground">Edit & Train AI</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Correct values to train the model's in-context learning.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            {/* Patient Info Card */}
+            <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+              <h3 className="font-display font-bold text-foreground text-sm uppercase tracking-wider">Patient Details</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Patient Name</label>
+                  <input
+                    type="text"
+                    value={epi.name || ""}
+                    onChange={(e) => updatePatientInfo("name", e.target.value)}
+                    className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary text-foreground"
+                    placeholder="Patient Name"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Patient Age</label>
+                  <input
+                    type="text"
+                    value={epi.age || ""}
+                    onChange={(e) => updatePatientInfo("age", e.target.value)}
+                    className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary text-foreground"
+                    placeholder="Patient Age"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Prescription Date</label>
+                  <input
+                    type="text"
+                    value={epi.date || ""}
+                    onChange={(e) => updatePatientInfo("date", e.target.value)}
+                    className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary text-foreground"
+                    placeholder="Date"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Diagnosis</label>
+                  <input
+                    type="text"
+                    value={editedPrescription.diagnosis || ""}
+                    onChange={(e) => setEditedPrescription(prev => prev ? { ...prev, diagnosis: e.target.value } : null)}
+                    className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary text-foreground"
+                    placeholder="Diagnosis"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Medicines List */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-display font-bold text-foreground text-sm uppercase tracking-wider">Medicines</h3>
+                <button
+                  onClick={addMedicine}
+                  className="px-3 py-1 bg-primary/10 text-primary hover:bg-primary/20 transition-all text-xs font-semibold rounded-lg border border-primary/20"
+                >
+                  + Add Medicine
+                </button>
+              </div>
+
+              {editMeds.map((med, idx) => (
+                <div key={idx} className="bg-card border border-border rounded-2xl p-5 space-y-4 relative">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-primary">Medicine #{idx + 1}</span>
+                    <button
+                      onClick={() => removeMedicine(idx)}
+                      className="text-xs font-semibold text-destructive hover:underline"
+                    >
+                      Remove
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-muted-foreground block mb-1">Medicine Name</label>
+                      <input
+                        type="text"
+                        value={med.name || ""}
+                        onChange={(e) => updateMedicineField(idx, "name", e.target.value)}
+                        className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary text-foreground"
+                        placeholder="Medicine Name"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground block mb-1">Dosage</label>
+                      <input
+                        type="text"
+                        value={med.dosage || ""}
+                        onChange={(e) => updateMedicineField(idx, "dosage", e.target.value)}
+                        className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary text-foreground"
+                        placeholder="Dosage (e.g. 500mg)"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-muted-foreground block mb-1">Form</label>
+                      <input
+                        type="text"
+                        value={med.form || "Tablet"}
+                        onChange={(e) => updateMedicineField(idx, "form", e.target.value)}
+                        className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary text-foreground"
+                        placeholder="Tablet / Capsule / Syrup"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground block mb-1">Frequency</label>
+                      <input
+                        type="text"
+                        value={med.frequency || ""}
+                        onChange={(e) => updateMedicineField(idx, "frequency", e.target.value)}
+                        className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary text-foreground"
+                        placeholder="Twice a day (1-0-1)"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-muted-foreground block mb-1">Timing</label>
+                      <input
+                        type="text"
+                        value={med.timing || ""}
+                        onChange={(e) => updateMedicineField(idx, "timing", e.target.value)}
+                        className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary text-foreground"
+                        placeholder="Timing"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground block mb-1">Meal Relation</label>
+                      <input
+                        type="text"
+                        value={med.meal_relation || ""}
+                        onChange={(e) => updateMedicineField(idx, "meal_relation", e.target.value)}
+                        className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary text-foreground"
+                        placeholder="Before/After meals"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-muted-foreground block mb-1">Duration</label>
+                      <input
+                        type="text"
+                        value={med.duration || ""}
+                        onChange={(e) => updateMedicineField(idx, "duration", e.target.value)}
+                        className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary text-foreground"
+                        placeholder="e.g. 5 days"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground block mb-1">Antibiotic?</label>
+                      <div className="flex items-center h-10">
+                        <input
+                          type="checkbox"
+                          checked={!!med.is_antibiotic}
+                          onChange={(e) => updateMedicineField(idx, "is_antibiotic", e.target.checked)}
+                          className="w-4 h-4 rounded text-primary bg-muted border-border focus:ring-primary"
+                        />
+                        <span className="text-xs text-foreground ml-2">Is Antibiotic</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Active Salts (comma separated)</label>
+                    <input
+                      type="text"
+                      value={med.active_salts?.join(", ") || ""}
+                      onChange={(e) => handleSaltsChange(idx, e.target.value)}
+                      className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary text-foreground"
+                      placeholder="Paracetamol, Domperidone"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Purpose / Treatment</label>
+                    <input
+                      type="text"
+                      value={med.purpose || ""}
+                      onChange={(e) => updateMedicineField(idx, "purpose", e.target.value)}
+                      className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary text-foreground"
+                      placeholder="Purpose"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Side Effects (comma separated)</label>
+                    <input
+                      type="text"
+                      value={med.side_effects?.join(", ") || ""}
+                      onChange={(e) => handleSideEffectsChange(idx, e.target.value)}
+                      className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary text-foreground"
+                      placeholder="Nausea, Dizziness"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-muted-foreground block mb-1">Food Interactions</label>
+                      <input
+                        type="text"
+                        value={med.food_interaction || ""}
+                        onChange={(e) => updateMedicineField(idx, "food_interaction", e.target.value)}
+                        className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary text-foreground"
+                        placeholder="Food Interactions"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground block mb-1">Warnings</label>
+                      <input
+                        type="text"
+                        value={med.warnings || ""}
+                        onChange={(e) => updateMedicineField(idx, "warnings", e.target.value)}
+                        className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary text-foreground"
+                        placeholder="Warnings"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Advice & Advice En Card */}
+            <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+              <h3 className="font-display font-bold text-foreground text-sm uppercase tracking-wider">Overall Advice / Schedule</h3>
+              <div>
+                <label className="text-xs text-muted-foreground block mb-1">Overall Advice (Bilingual/Translated)</label>
+                <textarea
+                  value={editedPrescription.overall_advice || ""}
+                  onChange={(e) => setEditedPrescription(prev => prev ? { ...prev, overall_advice: e.target.value } : null)}
+                  className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary text-foreground h-24"
+                  placeholder="Daily schedule advice..."
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground block mb-1">Overall Advice (In English)</label>
+                <textarea
+                  value={editedPrescription.overall_advice_en || ""}
+                  onChange={(e) => setEditedPrescription(prev => prev ? { ...prev, overall_advice_en: e.target.value } : null)}
+                  className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary text-foreground h-24"
+                  placeholder="Overall advice in English..."
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Diet Advice</label>
+                  <textarea
+                    value={editedPrescription.diet_advice || ""}
+                    onChange={(e) => setEditedPrescription(prev => prev ? { ...prev, diet_advice: e.target.value } : null)}
+                    className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary text-foreground h-20"
+                    placeholder="Diet advice"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Follow Up</label>
+                  <textarea
+                    value={editedPrescription.follow_up || ""}
+                    onChange={(e) => setEditedPrescription(prev => prev ? { ...prev, follow_up: e.target.value } : null)}
+                    className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary text-foreground h-20"
+                    placeholder="Follow up"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-4">
+              <button
+                onClick={() => setIsEditing(false)}
+                className="flex-1 py-3 bg-muted text-foreground font-display font-semibold rounded-xl hover:bg-muted/80 transition-all text-center"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveFeedback}
+                disabled={savingFeedback}
+                className="flex-1 py-3 bg-secondary text-secondary-foreground font-display font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+              >
+                {savingFeedback ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Saving...
+                  </>
+                ) : feedbackSuccess ? (
+                  "Saved & Trained!"
+                ) : (
+                  "Save & Train AI"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -273,9 +714,15 @@ const PrescriptionResult = () => {
               </p>
             )}
           </div>
-        </motion.div>
-
-        {/* Audio Player Bar */}
+          {prescription.ocr_hash && (
+            <button
+              onClick={() => setIsEditing(!isEditing)}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all ${isEditing ? "bg-amber-500/10 text-amber-500 border-amber-500/30 animate-pulse" : "bg-card border-border hover:bg-muted hover:border-amber-500/30"}`}
+            >
+              {isEditing ? "Cancel Edit" : "Edit & Train AI"}
+            </button>
+          )}
+        </motion.div>        {/* Audio Player Bar */}
         {audioUrl && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}

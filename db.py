@@ -80,6 +80,14 @@ def init_db():
     if "role" not in columns:
         cursor.execute("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'patient'")
 
+    # Alter table if prescription_cache columns don't exist
+    cursor.execute("PRAGMA table_info(prescription_cache)")
+    cache_cols = [row[1] for row in cursor.fetchall()]
+    if "ocr_text" not in cache_cols:
+        cursor.execute("ALTER TABLE prescription_cache ADD COLUMN ocr_text TEXT")
+    if "corrected" not in cache_cols:
+        cursor.execute("ALTER TABLE prescription_cache ADD COLUMN corrected INTEGER DEFAULT 0")
+
     conn.commit()
     conn.close()
 
@@ -252,8 +260,24 @@ def find_db_drug_by_ocr(ocr_text: str) -> dict | None:
         return None
     import re
     ocr_lower = ocr_text.lower()
+    # Exclude common non-medical words from database matching to prevent false positives (Task 7 verification)
+    EXCLUDED_COMMON_WORDS = {
+        "about", "above", "after", "again", "against", "all", "am", "an", "and", "any", "are", "as", "at",
+        "be", "because", "been", "before", "being", "below", "between", "both", "but", "by", "could",
+        "did", "do", "does", "doing", "down", "during", "each", "few", "for", "from", "further", "had",
+        "has", "have", "having", "he", "her", "here", "hers", "him", "himself", "his", "how", "if", "in",
+        "into", "is", "it", "its", "itself", "more", "most", "my", "myself", "no", "nor", "not", "of", "off",
+        "on", "once", "only", "or", "other", "our", "ours", "ourselves", "out", "over", "own", "same", "she",
+        "should", "so", "some", "such", "than", "that", "the", "their", "theirs", "them", "themselves", "then",
+        "there", "these", "they", "this", "those", "through", "to", "too", "under", "until", "up", "very",
+        "was", "we", "were", "what", "when", "where", "which", "while", "who", "whom", "why", "with", "would",
+        "you", "your", "yours", "yourself", "yourselves",
+        "clouds", "sunny", "photo", "day", "water", "sun", "life", "heart", "sky", "trees", "beautiful", "landscape",
+        "image", "picture", "camera", "phone", "mobile", "screen", "screenshot", "glass", "wood", "table", "chair",
+        "house", "room", "office", "work", "paper", "book", "page", "text", "file", "document", "date", "time", "year"
+    }
     # Find all alphanumeric words/numbers of length > 3
-    words = [w.strip() for w in re.split(r'[^a-zA-Z0-9]', ocr_lower) if len(w.strip()) > 3]
+    words = [w.strip() for w in re.split(r'[^a-zA-Z0-9]', ocr_lower) if len(w.strip()) > 3 and w.strip() not in EXCLUDED_COMMON_WORDS]
     if not words:
         return None
         
@@ -395,19 +419,86 @@ def find_cached_prescription(ocr_hash: str) -> dict | None:
         conn.close()
 
 
-def cache_prescription(ocr_hash: str, result_data: dict):
+def cache_prescription(ocr_hash: str, result_data: dict, ocr_text: str = None):
     """Cache prescription details by MD5 hash of OCR text."""
     if not ocr_hash or not result_data:
         return
     conn = _get_conn()
     try:
         conn.execute(
-            "INSERT OR REPLACE INTO prescription_cache (ocr_hash, result_json, created_at) VALUES (?, ?, ?)",
-            (ocr_hash, json.dumps(result_data, ensure_ascii=False), datetime.now().isoformat())
+            """
+            INSERT OR REPLACE INTO prescription_cache (ocr_hash, result_json, ocr_text, corrected, created_at)
+            VALUES (?, ?, ?, COALESCE((SELECT corrected FROM prescription_cache WHERE ocr_hash = ?), 0), ?)
+            """,
+            (ocr_hash, json.dumps(result_data, ensure_ascii=False), ocr_text, ocr_hash, datetime.now().isoformat())
         )
         conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[WARN] Error caching prescription: {e}")
+    finally:
+        conn.close()
+
+
+def update_prescription_cache(ocr_hash: str, corrected_json: dict, ocr_text: str = None) -> bool:
+    """Overwrite cached prescription with doctor-corrected details and mark it as corrected."""
+    if not ocr_hash or not corrected_json:
+        return False
+    conn = _get_conn()
+    try:
+        if ocr_text:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO prescription_cache (ocr_hash, result_json, ocr_text, corrected, created_at)
+                VALUES (?, ?, ?, 1, ?)
+                """,
+                (ocr_hash, json.dumps(corrected_json, ensure_ascii=False), ocr_text, datetime.now().isoformat())
+            )
+        else:
+            conn.execute(
+                """
+                INSERT INTO prescription_cache (ocr_hash, result_json, corrected, created_at)
+                VALUES (?, ?, 1, ?)
+                ON CONFLICT(ocr_hash) DO UPDATE SET
+                    result_json = excluded.result_json,
+                    corrected = 1,
+                    created_at = excluded.created_at
+                """,
+                (ocr_hash, json.dumps(corrected_json, ensure_ascii=False), datetime.now().isoformat())
+            )
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"[WARN] Error updating prescription cache feedback: {e}")
+        return False
+    finally:
+        conn.close()
+
+
+def get_recent_corrected_prescriptions(limit: int = 2) -> list[dict]:
+    """Retrieve recently corrected prescriptions with original OCR text and JSON results for few-shot learning."""
+    conn = _get_conn()
+    try:
+        rows = conn.execute(
+            """
+            SELECT ocr_text, result_json 
+            FROM prescription_cache 
+            WHERE corrected = 1 AND ocr_text IS NOT NULL AND ocr_text != ''
+            ORDER BY id DESC 
+            LIMIT ?
+            """,
+            (limit,)
+        ).fetchall()
+        
+        results = []
+        for row in rows:
+            results.append({
+                "ocr_text": row["ocr_text"],
+                "result_json": json.loads(row["result_json"])
+            })
+        return results
+    except Exception as e:
+        print(f"[WARN] Error fetching recent corrected prescriptions: {e}")
+        return []
     finally:
         conn.close()
 

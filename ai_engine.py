@@ -1363,7 +1363,7 @@ If the image does not appear to be a medicine, return:
         return {"error": f"Scan Failed: {err_msg}"}, None
 
 
-def _extract_prescription_metadata(extracted_text: str) -> dict:
+def _extract_prescription_metadata(extracted_text: str, examples: list = None) -> dict:
     """
     Extract patient, doctor, diagnosis info, and a list of raw medicine names from the prescription OCR text.
     """
@@ -1371,7 +1371,24 @@ def _extract_prescription_metadata(extracted_text: str) -> dict:
         "You are a clinical transcription assistant. Your task is to extract prescription metadata "
         "and list the raw names of all medicines mentioned. Return ONLY valid JSON."
     )
+    
+    example_prompt = ""
+    if examples:
+        example_prompt = "\n=== EXAMPLES OF PAST CORRECTED METADATA EXTRACTIONS ===\n"
+        for idx, ex in enumerate(examples, start=1):
+            example_prompt += f"Example {idx}:\n"
+            example_prompt += f"--- OCR TEXT ---\n{ex.get('ocr_text', '')}\n"
+            meta_ex = {
+                "patient_info": ex["result_json"].get("patient_info"),
+                "doctor_info": ex["result_json"].get("doctor_info"),
+                "diagnosis": ex["result_json"].get("diagnosis"),
+                "diet_advice": ex["result_json"].get("diet_advice"),
+                "follow_up": ex["result_json"].get("follow_up")
+            }
+            example_prompt += f"--- METADATA JSON ---\n{json.dumps(meta_ex, ensure_ascii=False)}\n\n"
+
     user_prompt = f"""
+{example_prompt}
 Prescription text:
 \"\"\"
 {extracted_text}
@@ -1409,7 +1426,7 @@ Extract the metadata and list the raw medicine names. Return ONLY a JSON object:
         }
 
 
-def _split_prescription_ocr(extracted_text: str) -> list[str]:
+def _split_prescription_ocr(extracted_text: str, examples: list = None) -> list[str]:
     """
     Use the LLM to split the raw prescription OCR text into individual medicine lines/blocks.
     Returns a list of raw medicine text segments.
@@ -1420,7 +1437,20 @@ def _split_prescription_ocr(extracted_text: str) -> list[str]:
         "just split it into distinct text blocks, one for each medicine prescribed. "
         "Return the result as a JSON object with key 'medicines'."
     )
+    
+    example_prompt = ""
+    if examples:
+        example_prompt = "\n=== EXAMPLES OF PAST CORRECTED MEDICINE SPLITTING ===\n"
+        for idx, ex in enumerate(examples, start=1):
+            example_prompt += f"Example {idx}:\n"
+            example_prompt += f"--- OCR TEXT ---\n{ex.get('ocr_text', '')}\n"
+            split_ex = {
+                "medicines": [f"{m.get('name')}: {m.get('dosage')} {m.get('frequency')} {m.get('timing')} for {m.get('duration')}" for m in ex["result_json"].get("medicines", [])]
+            }
+            example_prompt += f"--- SPLIT MEDICINES JSON ---\n{json.dumps(split_ex, ensure_ascii=False)}\n\n"
+
     user_prompt = f"""
+{example_prompt}
 Prescription text:
 \"\"\"
 {extracted_text}
@@ -1459,7 +1489,7 @@ If no medicines are found, return an empty list:
         return [extracted_text]
 
 
-def _parse_medicine_segment(segment_text: str) -> dict:
+def _parse_medicine_segment(segment_text: str, examples: list = None) -> dict:
     """
     Extract the clean medicine name and structured dosage details from a prescription line segment
     in a single LLM call. Returns all clinical/dosage information in English.
@@ -1468,7 +1498,29 @@ def _parse_medicine_segment(segment_text: str) -> dict:
         "You are an expert clinical pharmacist AI. Your task is to extract the medicine name "
         "and its detailed dosage information from a prescription line segment."
     )
+    
+    example_prompt = ""
+    if examples:
+        example_prompt = "\n=== EXAMPLES OF PAST CORRECTED MEDICINE PARSING ===\n"
+        count = 0
+        for ex in examples:
+            for m in ex["result_json"].get("medicines", []):
+                segment_str = f"{m.get('name')}: {m.get('dosage')} {m.get('frequency')} {m.get('timing')} for {m.get('duration')}"
+                clean_m = m.copy()
+                clean_m.pop("order", None)
+                clean_m.pop("low_confidence", None)
+                clean_m.pop("reviewRequired", None)
+                example_prompt += f"Example {count+1}:\n"
+                example_prompt += f"--- SEGMENT ---\n\"{segment_str}\"\n"
+                example_prompt += f"--- PARSED JSON ---\n{json.dumps(clean_m, ensure_ascii=False)}\n\n"
+                count += 1
+                if count >= 3:
+                    break
+            if count >= 3:
+                break
+
     user_prompt = f"""
+{example_prompt}
 Prescription segment: "{segment_text}"
 
 Extract the clean brand or generic medicine name (e.g. Dolo 650, Augmentin 625 Duo, Calpol - no dosage/form/frequency/packaging words in the name itself) and all dosage details.
@@ -1659,6 +1711,125 @@ def load_dataset_map():
     return DATASET_MAP
 
 
+def _is_prescription_text(text: str) -> bool:
+    """
+    Lenient pre-flight check to verify if the OCR text resembles a medical prescription.
+    Returns True if any medical terms, abbreviation grids, dosage formats, patient markers,
+    or matches to our medicines database are present.
+    """
+    if not text or not text.strip():
+        return False
+        
+    text_lower = text.lower()
+    
+    # 1. First, check for common Indian medicine names to prevent skipping actual prescriptions
+    common_meds = [
+        "paracetamol", "crocin", "dolo", "calpol", "pcm", "combiflam", "brufen", "advil", "nurofen", "ibuprofen",
+        "naproxen", "naprosyn", "diclofenac", "voveran", "voltaren", "meftal", "mefenamic", "amoxicillin", "amox", "novamox",
+        "augmentin", "clavam", "amoxyclav", "azithromycin", "azee", "ciprofloxacin", "ciplox", "cefixime", "zifi", "cefpodoxime",
+        "cepodem", "cephalexin", "ceporex", "doxycycline", "doxy", "metronidazole", "flagyl", "metro", "clindamycin", "dalacin",
+        "pantoprazole", "pantop", "pan", "pantocid", "omeprazole", "omez", "ocid", "rabeprazole", "razo", "rablet",
+        "esomeprazole", "nexium", "nexpro", "domperidone", "domstal", "ondansetron", "emeset", "ondan", "zofran", "metoclopramide",
+        "perinorm", "ranitidine", "rantac", "zinetac", "levocetirizine", "levocet", "lecope", "xyzal", "cetirizine", "cetzine",
+        "zyrtec", "fexofenadine", "allegra", "fexo", "montelukast", "montair", "singulair", "loratadine", "clarityne", "salbutamol",
+        "asthalin", "ventolin", "budesonide", "budecort", "fluticasone", "flomist", "flixonase", "metformin", "glycomet", "glucophage",
+        "glibenclamide", "daonil", "glimepiride", "amaryl", "glimer", "insulin", "humulin", "novolin", "atorvastatin", "atorva",
+        "lipitor", "storvas", "rosuvastatin", "rosu", "crestor", "rozucor", "amlodipine", "amlodac", "amlong", "norvasc",
+        "telmisartan", "telma", "micardis", "ramipril", "cardace", "altace", "atenolol", "tenormin", "aten", "furosemide",
+        "lasix", "frusemide", "spironolactone", "aldactone", "laractone", "alprazolam", "alprax", "restyl", "clonazepam", "clonotril",
+        "klonopin", "escitalopram", "nexito", "cipralex", "amitriptyline", "amitril", "elavil", "gabapentin", "gabapin", "neurontin",
+        "pregabalin", "pregalin", "lyrica", "shelcal", "calcirol", "mecobalamin", "methylcobalamin", "cobadex", "folic", "folvite",
+        "orofer", "betadine", "povid", "mupirocin", "mupiderm", "bactroban", "hydrocortisone", "beclomethasone", "dexamethasone", "dexona",
+        "prednisolone", "wysolone", "omnacortil", "tramadol", "tramazac", "codeine", "acetylcysteine", "ambroxol", "ambrodil", "cetrimide",
+        "savlon"
+    ]
+    
+    # Compile a regex pattern to match any of these common medicine names with word boundaries
+    try:
+        med_pattern = r'\b(' + '|'.join(common_meds) + r')\b'
+        if re.search(med_pattern, text_lower):
+            _safe_print("[INFO] Prescription verification check passed via common medicine name regex match.")
+            return True
+    except Exception as e:
+        _safe_print(f"[WARN] Error matching common medicine names: {e}")
+        
+    # 2. Check SQLite database lookup for a matching medicine to handle less common/custom medicines
+    try:
+        from db import find_db_drug_by_ocr
+        db_drug = find_db_drug_by_ocr(text)
+        if db_drug:
+            _safe_print(f"[INFO] Prescription verification check passed via database medicine lookup match: {db_drug.get('medicine_name')}")
+            return True
+    except Exception as e:
+        _safe_print(f"[WARN] Database lookup in prescription verification failed: {e}")
+
+    # 3. Fallback to general indicators check if no specific medicines are matched
+    # Broad doctor / patient / clinic / diagnostic indicators
+    indicators = [
+        r'\brx\b', r'\bdr\b', r'\bdr\.', r'\bdoctor\b', r'\bpatient\b', r'\bpt\b', r'\bpt\.',
+        r'\bclinic\b', r'\bhospital\b', r'\bmbbs\b', r'\bmd\b', r'\bdiagnosis\b', r'\bhistory\b',
+        r'\bsymptoms\b', r'\bsign\b', r'\bdate\b', r'\bage\b', r'\bsex\b', r'\bgender\b',
+        r'\bopd\b', r'\bipd\b', r'\bsignature\b'
+    ]
+    
+    # Dosage forms (e.g. tablet, capsule, drops)
+    dosage_forms = [
+        r'\btab\b', r'\btablet\b', r'\btablets\b',
+        r'\bcap\b', r'\bcapsule\b', r'\bcapsules\b',
+        r'\bsyp\b', r'\bsyrup\b', r'\bsyr\b',
+        r'\binj\b', r'\binjection\b',
+        r'\bcream\b', r'\boint\b', r'\bointment\b',
+        r'\bdrops\b', r'\bsuspension\b', r'\bgel\b', r'\bpowder\b'
+    ]
+    
+    # Medical strengths & frequency indicators
+    frequencies_and_strengths = [
+        r'\b1-0-1\b', r'\b1-1-1\b', r'\b0-0-1\b', r'\b1-0-0\b', r'\b0-1-0\b',
+        r'\bod\b', r'\bbd\b', r'\btds\b', r'\btid\b', r'\bqid\b', r'\bsos\b', r'\bhs\b',
+        r'\bac\b', r'\bpc\b',
+        r'\bmg\b', r'\bml\b', r'\bmcg\b', r'\bgm\b', r'\b% w/v\b', r'\b%w/v\b'
+    ]
+    
+    # Count matching patterns
+    matches = 0
+    
+    # Check indicators
+    for pattern in indicators:
+        if re.search(pattern, text_lower):
+            matches += 1
+            if matches >= 2:
+                return True
+                
+    # Check dosage forms
+    for pattern in dosage_forms:
+        if re.search(pattern, text_lower):
+            matches += 1
+            if matches >= 2:
+                return True
+                
+    # Check frequencies & strengths
+    for pattern in frequencies_and_strengths:
+        if re.search(pattern, text_lower):
+            matches += 1
+            if matches >= 2:
+                return True
+                
+    # Let's count total match points
+    total_score = 0
+    for pattern in (indicators + dosage_forms + frequencies_and_strengths):
+        if re.search(pattern, text_lower):
+            total_score += 1
+            
+    # Also search for list-like indicators (e.g. numbered list of items: 1., 2., 3.)
+    if re.search(r'\b\d+[\.\)\-\s]', text_lower):
+        total_score += 1
+        
+    _safe_print(f"[INFO] Prescription verification score: {total_score}")
+    
+    # Extremely safe threshold: score >= 1 passes
+    return total_score >= 1
+
+
 def analyze_prescription_image(image_bytes: bytes, target_language: str = "English") -> tuple[dict, str | None]:
     """
     Two-stage pipeline for prescription images with ground-truth dataset bypass.
@@ -1774,6 +1945,12 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
                     "error": "Could not read text from the prescription image. Please upload a clearer, well-lit photo with good contrast."
                 }, None
 
+            if not _is_prescription_text(extracted_text):
+                _safe_print("[WARN] Uploaded image failed prescription verification check.")
+                return {
+                    "error": "No prescription uploaded"
+                }, None
+
             # ── Task 6: Prescription OCR cache lookup ──────────────────────────────
             ocr_hash = hashlib.md5(extracted_text.strip().lower().encode("utf-8")).hexdigest()
             try:
@@ -1785,14 +1962,24 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
             except Exception as _cache_err:
                 _safe_print(f"[WARN] Cache lookup failed (non-fatal): {_cache_err}")
 
+            # ── Retrieve corrected prescriptions for in-context few-shot learning ──
+            examples = []
+            try:
+                from db import get_recent_corrected_prescriptions
+                examples = get_recent_corrected_prescriptions(limit=2)
+                if examples:
+                    _safe_print(f"[INFO] Retrieved {len(examples)} corrected prescriptions from database for dynamic training.")
+            except Exception as e:
+                _safe_print(f"[WARN] Error fetching corrected prescriptions: {e}")
+
             # ── Stage 2: Two-Stage Prescription Processing ──
             import concurrent.futures
             lang_code = LANG_MAP.get(target_language, "en")
             
             # Concurrently extract metadata and split prescription text into segments
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                future_meta = executor.submit(_extract_prescription_metadata, extracted_text)
-                future_segments = executor.submit(_split_prescription_ocr, extracted_text)
+                future_meta = executor.submit(_extract_prescription_metadata, extracted_text, examples=examples)
+                future_segments = executor.submit(_split_prescription_ocr, extracted_text, examples=examples)
                 metadata = future_meta.result()
                 segments = future_segments.result()
             
@@ -1807,7 +1994,7 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
             
             # 3. Process each segment concurrently to extract precise medicine and dosage details
             def process_segment(idx, segment):
-                parsed_data = _parse_medicine_segment(segment)
+                parsed_data = _parse_medicine_segment(segment, examples=examples)
                 raw_name = parsed_data.get("name", segment)
                 normalized = normalize_medicine_name(raw_name)
                 
@@ -1876,6 +2063,7 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
         confidence = _compute_confidence(data, fuzzy_scores, len(extracted_text))
         data["confidence"] = confidence
         data["reviewRequired"] = (confidence == "low")
+        data["ocr_hash"] = ocr_hash
         
         # 5 & 6. Check drug-drug interactions and generate overall daily schedule advice concurrently
         med_names = [m["name"] for m in medicines_sorted if m["name"] != "Unknown"]
@@ -1969,7 +2157,7 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
         # Audio is regenerated on cache miss; the structured data is the expensive part.
         try:
             from db import cache_prescription
-            cache_prescription(ocr_hash, data)
+            cache_prescription(ocr_hash, data, ocr_text=extracted_text)
             _safe_print(f"[INFO] Prescription result cached (hash={ocr_hash[:8]}…)")
         except Exception as _store_err:
             _safe_print(f"[WARN] Could not cache prescription result (non-fatal): {_store_err}")
