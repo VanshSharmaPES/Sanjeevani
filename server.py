@@ -11,6 +11,7 @@ import sys
 import json
 import base64
 import time
+from datetime import timedelta
 from functools import wraps
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
@@ -64,6 +65,7 @@ app.config["JWT_TOKEN_LOCATION"] = ["headers", "cookies"]
 app.config["JWT_COOKIE_SECURE"] = os.getenv("JWT_COOKIE_SECURE", "False").lower() == "true"
 app.config["JWT_COOKIE_SAMESITE"] = "Lax"
 app.config["JWT_COOKIE_CSRF_PROTECT"] = False
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=30)
 jwt = JWTManager(app)
 
 # Audio file cache: filename → absolute path on disk
