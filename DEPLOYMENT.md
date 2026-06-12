@@ -14,7 +14,7 @@ The backend handles the AI vision OCR models, edge-tts bilingual translations, a
 3. Configure the service settings:
    * **Runtime:** `Python`
    * **Build Command:** `pip install -r requirements.txt`
-   * **Start Command:** `python server.py`
+   * **Start Command:** `gunicorn server:app`
 4. Set the following **Environment Variables** in the Render settings:
    * `GROQ_API_KEY`: *(Your Groq Cloud Vision API Key)*
    * `JWT_SECRET_KEY`: *(A long secure random string for signing JWT tokens)*

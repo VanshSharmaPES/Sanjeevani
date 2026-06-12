@@ -12,3 +12,4 @@ flask-jwt-extended>=4.5.3
 opencv-python-headless>=4.8.0
 numpy>=1.24.0
 rapidfuzz>=3.0.0
+gunicorn>=21.0.0
