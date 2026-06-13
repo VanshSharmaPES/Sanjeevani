@@ -17,7 +17,7 @@ from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, set_access_cookies, jwt_required, get_jwt_identity, unset_jwt_cookies
 from ai_engine import analyze_medicine_image, analyze_prescription_image, get_medicine_dosage_info, _translate_text, request_guide_generation, search_medicine_fallback_ai
-from db import register_user, authenticate_user, save_scan, get_user_history, delete_scan, search_medicines, reset_password, get_db_status, save_custom_medicine, update_prescription_cache
+from db import register_user, authenticate_user, save_scan, get_user_history, delete_scan, search_medicines, reset_password, get_db_status, save_custom_medicine
 
 # Fix Windows charmap codec crashes when printing Unicode model output
 if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
@@ -330,51 +330,6 @@ def api_generate_guides():
         return jsonify({"error": f"Guide generation error: {e}"}), 500
 
 
-@app.route("/api/feedback/prescription", methods=["POST"])
-@jwt_required(optional=True)
-def api_feedback_prescription():
-    """
-    Accept doctor-corrected prescription data and save it as ground truth in the cache.
-    Also, dynamically insert any corrected medicine entries into the SQLite medicines lookup index
-    to train/improve future fuzzy matching and autocomplete lookups.
-    """
-    data = request.get_json(force=True, silent=True) or {}
-    ocr_hash = data.get("ocr_hash")
-    corrected_data = data.get("corrected_data")
-
-    if not ocr_hash or not corrected_data or not isinstance(corrected_data, dict):
-        return jsonify({"error": "Missing or invalid ocr_hash or corrected_data."}), 400
-
-    try:
-        # 1. Overwrite the prescription cache with the corrected ground-truth JSON
-        success = update_prescription_cache(ocr_hash, corrected_data)
-        
-        # 2. Iterate through corrected medicines and save/index them to train medicines autocomplete DB
-        medicines = corrected_data.get("medicines", [])
-        for med in medicines:
-            med_name = med.get("name")
-            if med_name:
-                active_salts_val = med.get("active_salts", "")
-                if isinstance(active_salts_val, list):
-                    active_salts_str = " + ".join(active_salts_val)
-                else:
-                    active_salts_str = str(active_salts_val)
-                
-                # Convert the frontend schema back into the DB custom medicine save format
-                med_profile = {
-                    "medicineName": med_name,
-                    "unit": med.get("form", "Tablet"),
-                    "activeSalts": active_salts_str,
-                    "uses": med.get("purpose", ""),
-                    "sideEffects": ", ".join(med.get("side_effects", [])) if isinstance(med.get("side_effects"), list) else str(med.get("side_effects", "")),
-                    "manufacturer": "Custom / Corrected Entry"
-                }
-                save_custom_medicine(med_profile, query=med_name)
-                
-        return jsonify({"success": success})
-    except Exception as e:
-        _safe_log(f"[ERROR] Prescription feedback processing failed: {e}")
-        return jsonify({"error": f"Feedback processing error: {e}"}), 500
 
 
 if __name__ == "__main__":
