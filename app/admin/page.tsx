@@ -682,7 +682,7 @@ export default function AdminDashboard() {
                   `}} />
 
                   {/* ── HEADER ──────────────────────────────────────────────── */}
-                  <header className="pb-5 border-b border-zinc-100 print:border-zinc-200">
+                  <header className="pb-5 border-b-2 border-zinc-200 print:border-zinc-300">
                     {/* Brand mark */}
                     <div>
                       <div className="flex items-center gap-2">
@@ -698,7 +698,7 @@ export default function AdminDashboard() {
                   </header>
 
                   {/* ── MEDICINE ITEM ───────────────────────────────────────────── */}
-                  <section className="py-4 print:break-inside-avoid border-b border-zinc-100 print:border-zinc-200">
+                  <section className="py-4 print:break-inside-avoid border-b-2 border-zinc-200 print:border-zinc-300">
                     <p className="text-[10px] text-zinc-400 uppercase tracking-widest font-medium pb-2">
                       Prescribed Medicine
                     </p>
@@ -728,7 +728,7 @@ export default function AdminDashboard() {
                     </div>
 
                     {/* Core Instructions */}
-                    <div className="mt-4 ml-7 grid grid-cols-4 divide-x divide-zinc-100 print:divide-zinc-200">
+                    <div className="mt-4 ml-7 grid grid-cols-4 divide-x-2 divide-zinc-200 print:divide-zinc-300">
                       {[
                         { label: "Dose", value: dosage },
                         { label: "Frequency", value: frequency },
@@ -767,7 +767,7 @@ export default function AdminDashboard() {
                   </section>
 
                   {/* ── BILINGUAL INSTRUCTIONS ──────────────────────────────── */}
-                  <section className="py-4 border-b border-zinc-100 print:border-zinc-200">
+                  <section className="py-4 border-b-2 border-zinc-200 print:border-zinc-300">
                     <p className="text-[10px] text-zinc-400 uppercase tracking-widest font-medium mb-2">
                       Handout Instructions ({generatedGuide.language})
                     </p>
@@ -778,11 +778,11 @@ export default function AdminDashboard() {
 
                   {/* ── CLINICAL NOTES ────────────────────────────────────────── */}
                   {generatedGuide.doctorNotes && (
-                    <section className="py-4 border-b border-zinc-100 print:border-zinc-200 print:break-inside-avoid">
+                    <section className="py-4 border-b-2 border-zinc-200 print:border-zinc-300 print:break-inside-avoid">
                       <p className="text-[10px] text-zinc-400 uppercase tracking-widest font-medium mb-2">
                         Clinical Notes
                       </p>
-                      <div className="border border-zinc-100 rounded-sm px-4 py-3.5 print:border-zinc-300">
+                      <div className="border-2 border-zinc-200 rounded-sm px-4 py-3.5 print:border-zinc-300">
                         <p className="text-[12px] text-zinc-600 leading-relaxed print:text-black">
                           {generatedGuide.doctorNotes}
                         </p>
@@ -794,11 +794,11 @@ export default function AdminDashboard() {
                   <footer className="pt-4 flex items-center justify-between print:break-inside-avoid">
                     <div className="flex items-center gap-1.5">
                       <span className="text-emerald-500 text-sm">✓</span>
-                      <span className="text-[11px] text-emerald-600 font-medium print:text-zinc-600">
+                      <span className="text-[11px] text-emerald-600 font-bold print:text-zinc-600">
                         Digitally verified via Sanjeevani AI
                       </span>
                     </div>
-                    <p className="text-[10px] text-zinc-500 text-right max-w-[280px] leading-snug print:text-zinc-700">
+                    <p className="text-[10px] text-zinc-500 font-bold text-right max-w-[280px] leading-snug print:text-zinc-700">
                       For informational use only. Always consult a qualified healthcare professional before taking or changing medication.
                     </p>
                   </footer>
