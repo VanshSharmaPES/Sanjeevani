@@ -333,20 +333,48 @@ def cache_drug(medicine_name: str, result_data: dict):
 
 
 def search_medicines(query: str, limit: int = 15) -> list[dict]:
-    """Search medicines in the local medicines lookup table."""
+    """Search medicines in the local medicines lookup table sorted by match relevance."""
     if not query:
         return []
     conn = _get_conn()
     try:
-        # Search by name or composition using case-insensitive LIKE
+        q_lower = query.lower().strip()
         rows = conn.execute(
             """
             SELECT name, unit, composition, uses, side_effects, manufacturer
             FROM medicines
-            WHERE name LIKE ? OR composition LIKE ?
+            WHERE name LIKE ?
+            ORDER BY 
+                CASE 
+                    -- Exact match (case-insensitive)
+                    WHEN LOWER(name) = ? THEN 1
+                    
+                    -- Starts with query as a full word (e.g. "Dolo 650", "Dolo-M")
+                    WHEN LOWER(name) LIKE ? AND (SUBSTR(LOWER(name), LENGTH(?)+1, 1) NOT BETWEEN 'a' AND 'z') THEN 2
+                    
+                    -- Starts with query as a prefix of a word (e.g. "Dolonex")
+                    WHEN LOWER(name) LIKE ? THEN 3
+                    
+                    -- Contains query as a full word (e.g. "Vitamin Dolo")
+                    WHEN LOWER(name) LIKE ? AND (SUBSTR(LOWER(name), INSTR(LOWER(name), ?) + LENGTH(?), 1) NOT BETWEEN 'a' AND 'z') THEN 4
+                    
+                    -- Substring match (e.g. "Aldoloc")
+                    ELSE 5
+                END,
+                name ASC
             LIMIT ?
             """,
-            (f"%{query}%", f"%{query}%", limit)
+            (
+                f"%{query}%",
+                q_lower,
+                f"{q_lower}%",
+                q_lower,
+                f"{q_lower}%",
+                f"% {q_lower}%",
+                q_lower,
+                q_lower,
+                limit
+            )
         ).fetchall()
         
         results = []

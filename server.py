@@ -149,20 +149,31 @@ def api_search_medicines():
     query = request.args.get("q", "").strip()
     results = search_medicines(query)
     
-    # Fallback to AI search if no matches found in local DB and query length >= 3
-    if not results and len(query) >= 3:
-        _safe_log(f"[INFO] Search miss for '{query}'. Invoking AI fallback search...")
+    # Check if there is any high-quality match (exact or prefix/word-boundary match)
+    has_high_quality = any(
+        r["medicineName"].lower().startswith(query.lower()) or 
+        f" {query.lower()}" in r["medicineName"].lower()
+        for r in results
+    )
+    
+    # Fallback to AI search if no high-quality matches found in local DB and query length >= 3
+    if not has_high_quality and len(query) >= 3:
+        _safe_log(f"[INFO] Search miss (or no high-quality match) for '{query}'. Invoking AI fallback search...")
         ai_result = search_medicine_fallback_ai(query)
         if ai_result:
             _safe_log(f"[INFO] AI search found details for '{query}'. Caching to SQLite...")
             save_custom_medicine(ai_result, query=query)
-            results = [ai_result]
             
-            # If the AI corrected/normalized the name, also offer the user's exact typed query as an option
-            if query.lower() != ai_result["medicineName"].lower():
-                query_variation = ai_result.copy()
-                query_variation["medicineName"] = query.title()
-                results.insert(0, query_variation)
+            # Re-fetch from DB to merge and sort all results properly
+            results = search_medicines(query)
+            if not results:
+                results = [ai_result]
+                
+                # If the AI corrected/normalized the name, also offer the user's exact typed query as an option
+                if query.lower() != ai_result["medicineName"].lower():
+                    query_variation = ai_result.copy()
+                    query_variation["medicineName"] = query.title()
+                    results.insert(0, query_variation)
             
     return jsonify(results)
 
