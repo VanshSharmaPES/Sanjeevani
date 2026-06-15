@@ -327,7 +327,7 @@ export default function AdminDashboard() {
       const canvas = await html2canvas(element, {
         scale: 2, // High resolution
         useCORS: true,
-        backgroundColor: "#09090b", // Dark mode aesthetic match
+        backgroundColor: "#ffffff", // Minimalistic white design
       });
 
       const imgData = canvas.toDataURL("image/png");
@@ -670,70 +670,174 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Printable Handout Content */}
-                <div id="printable-handout" className="border-2 border-zinc-800 bg-[#09090b] text-zinc-100 print:border-0 rounded-3xl p-6 print:p-0 space-y-4 shadow-xl print:shadow-none print:bg-white print:text-black">
-                  
-                  {/* Digital Prescription Clinic Header (Doctor Details Only, No Rx header or line below it) */}
-                  <div className="flex justify-end items-start gap-4">
-                    <div className="text-right space-y-0.5 text-xs text-zinc-400 print:text-zinc-700">
-                      <p className="font-semibold text-zinc-100 print:text-black">{doctorName}</p>
-                      <p>Reg No: MCI-2026-98765</p>
-                      {generationTime && <p className="text-[10px] font-medium text-emerald-400 print:text-emerald-600">{generationTime}</p>}
-                    </div>
-                  </div>
+                <div id="printable-handout" className="w-full bg-white text-zinc-800 p-8 shadow-sm border border-zinc-100 rounded-3xl space-y-5 print:shadow-none print:border-0 print:p-0">
+                  <style dangerouslySetInnerHTML={{__html: `
+                    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+                    #printable-handout * { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+                    @media print {
+                      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                      #printable-handout { margin: 0; padding: 32px 40px; max-width: 100%; background: white !important; color: black !important; }
+                      @page { size: A4 portrait; margin: 0; }
+                    }
+                  `}} />
 
-                  <div className="flex justify-between items-start pt-1">
+                  {/* ── HEADER ──────────────────────────────────────────────── */}
+                  <header className="flex items-start justify-between pb-5 border-b border-zinc-100 print:border-zinc-200">
+                    {/* Brand mark */}
                     <div>
-                      <span className="text-[10px] px-2 py-1 rounded bg-secondary/15 text-secondary border border-secondary/20 font-semibold print:hidden">
-                        BILINGUAL PATIENT HANDOUT
-                      </span>
-                      <h3 className="font-display text-2xl font-bold mt-1.5 text-zinc-100 print:text-black">{generatedGuide.medicineName}</h3>
-                      <p className="text-zinc-400 print:text-zinc-700 text-xs mt-0.5">{generatedGuide.activeSalts}</p>
-                    </div>
-                    <div className="flex items-center gap-1.5 px-3 py-1 bg-muted border border-border rounded-lg text-xs print:hidden">
-                      <Globe size={13} className="text-muted-foreground" />
-                      <span>{generatedGuide.language}</span>
-                    </div>
-                  </div>
-
-
-                  {/* Instructions Block */}
-                  <div className="space-y-3">
-                    <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 print:bg-zinc-100 print:border-zinc-300">
-                      <h4 className="text-[10px] font-bold text-emerald-400 print:text-emerald-700 uppercase tracking-wider mb-1">
-                        Instructions ({generatedGuide.language})
-                      </h4>
-                      <p className="text-zinc-200 print:text-zinc-900 text-base leading-relaxed whitespace-pre-line">{generatedGuide.adviceText}</p>
-                    </div>
-                  </div>
-
-                  {/* Custom Doctor Notes */}
-                  {generatedGuide.doctorNotes && (
-                    <div className="border-t border-zinc-800 print:border-black pt-4">
-                      <h4 className="text-[10px] font-bold text-zinc-300 print:text-zinc-700 uppercase tracking-wider mb-1">
-                        Special Notes by Practitioner
-                      </h4>
-                      <p className="text-zinc-200 print:text-zinc-900 text-xs leading-relaxed bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl print:bg-zinc-100 print:border-zinc-300">
-                        {generatedGuide.doctorNotes}
+                      <div className="flex items-center gap-2">
+                        <span className="text-emerald-600 text-lg">✦</span>
+                        <span className="text-[13px] font-semibold tracking-[0.18em] text-zinc-800 uppercase print:text-black">
+                          Sanjeevani
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-zinc-400 mt-0.5 ml-6 tracking-wide">
+                        AI-Powered Medication Guide
                       </p>
                     </div>
+
+                    {/* Doctor block */}
+                    <div className="text-right">
+                      <p className="text-[13px] font-semibold text-zinc-800 print:text-black">
+                        {doctorName}
+                      </p>
+                      <p className="text-[11px] text-zinc-500 mt-0.5">MBBS, MD (General Medicine)</p>
+                      <p className="text-[11px] text-zinc-400">Sharma Medical Centre, Bengaluru</p>
+                      <p className="text-[10px] text-zinc-300 mt-1 print:text-zinc-400">
+                        Reg. KMC-2019-04812
+                      </p>
+                    </div>
+                  </header>
+
+                  {/* ── PATIENT & DIAGNOSIS ─────────────────────────────────── */}
+                  <section className="py-4 flex items-start justify-between border-b border-zinc-100 print:border-zinc-200">
+                    <div>
+                      <p className="text-[10px] text-zinc-400 uppercase tracking-widest font-medium">
+                        Patient
+                      </p>
+                      <p className="text-[15px] font-semibold text-zinc-900 mt-1 print:text-black">
+                        Valued Patient
+                      </p>
+                      <p className="text-[11px] text-zinc-500 mt-0.5">
+                        Adult · Gen-Med
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-zinc-400 uppercase tracking-widest font-medium">
+                        Diagnosis
+                      </p>
+                      <p className="text-[13px] text-zinc-700 mt-1 max-w-[240px] print:text-black">
+                        Prescribed Treatment
+                      </p>
+                      <p className="text-[11px] text-zinc-400 mt-1">{generationTime}</p>
+                    </div>
+                  </section>
+
+                  {/* ── MEDICINE ITEM ───────────────────────────────────────────── */}
+                  <section className="py-4 print:break-inside-avoid border-b border-zinc-100 print:border-zinc-200">
+                    <p className="text-[10px] text-zinc-400 uppercase tracking-widest font-medium pb-2">
+                      Prescribed Medicine
+                    </p>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-3.5">
+                        {/* Index number */}
+                        <span className="mt-0.5 text-xs font-semibold text-zinc-300 tabular-nums w-4 shrink-0 print:text-zinc-400">
+                          01
+                        </span>
+                        <div>
+                          <div className="flex flex-wrap items-baseline gap-2">
+                            <span className="text-[15px] font-semibold text-zinc-900 print:text-black">
+                              {generatedGuide.medicineName}
+                            </span>
+                            {/* Antibiotic indicator if name/notes mention it */}
+                            {(generatedGuide.medicineName.toLowerCase().includes("antibiotic") || (generatedGuide.doctorNotes && generatedGuide.doctorNotes.toLowerCase().includes("antibiotic"))) && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium tracking-wide uppercase bg-amber-50 text-amber-700 print:bg-transparent print:border print:border-amber-300">
+                                Antibiotic
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-zinc-400 mt-0.5 font-normal">
+                            {generatedGuide.activeSalts}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Core Instructions */}
+                    <div className="mt-4 ml-7 grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {[
+                        { label: "Dose", value: dosage },
+                        { label: "Frequency", value: frequency },
+                        { label: "Timing", value: timing },
+                        { label: "Duration", value: "As directed" },
+                      ].map(({ label, value }) => (
+                        <div key={label} className="col-span-1">
+                          <p className="text-[10px] text-zinc-400 uppercase tracking-widest font-medium">
+                            {label}
+                          </p>
+                          <p className="text-[12px] text-zinc-700 mt-0.5 leading-snug print:text-black">
+                            {value}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Active Salts tags */}
+                    {generatedGuide.activeSalts && (
+                      <div className="mt-4 ml-7">
+                        <p className="text-[10px] text-zinc-400 uppercase tracking-widest font-medium mb-1.5">
+                          Active Salts
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {generatedGuide.activeSalts.split('+').map(s => s.trim()).filter(Boolean).map((salt) => (
+                            <span
+                              key={salt}
+                              className="text-[10px] text-zinc-500 bg-zinc-50 border border-zinc-100 px-2 py-0.5 rounded print:bg-transparent print:border-zinc-200 print:text-zinc-600"
+                            >
+                              {salt}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </section>
+
+                  {/* ── BILINGUAL INSTRUCTIONS ──────────────────────────────── */}
+                  <section className="py-4 border-b border-zinc-100 print:border-zinc-200">
+                    <p className="text-[10px] text-zinc-400 uppercase tracking-widest font-medium mb-2">
+                      Handout Instructions ({generatedGuide.language})
+                    </p>
+                    <p className="text-[12px] text-zinc-600 leading-relaxed whitespace-pre-line print:text-black">
+                      {generatedGuide.adviceText}
+                    </p>
+                  </section>
+
+                  {/* ── CLINICAL NOTES ────────────────────────────────────────── */}
+                  {generatedGuide.doctorNotes && (
+                    <section className="py-4 border-b border-zinc-100 print:border-zinc-200 print:break-inside-avoid">
+                      <p className="text-[10px] text-zinc-400 uppercase tracking-widest font-medium mb-2">
+                        Clinical Notes
+                      </p>
+                      <div className="border border-zinc-100 rounded-sm px-4 py-3.5 print:border-zinc-300">
+                        <p className="text-[12px] text-zinc-600 leading-relaxed print:text-black">
+                          {generatedGuide.doctorNotes}
+                        </p>
+                      </div>
+                    </section>
                   )}
 
-                  {/* Digital Prescription Verification Footer */}
-                  <div className="border-t border-zinc-800 print:border-black pt-4 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-zinc-400 print:text-zinc-700">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 print:bg-zinc-800" />
-                      <span className="font-semibold text-zinc-200 print:text-black">Digital Prescription Verified</span>
+                  {/* ── FOOTER ──────────────────────────────────────────────── */}
+                  <footer className="pt-4 flex items-center justify-between print:break-inside-avoid">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-emerald-500 text-sm">✓</span>
+                      <span className="text-[11px] text-emerald-600 font-medium print:text-zinc-600">
+                        Digitally verified via Sanjeevani AI
+                      </span>
                     </div>
-                    <div className="text-center md:text-right text-[10px] italic font-medium text-zinc-400 print:text-zinc-600">
-                      This is a computer generated document, no physical signature required
-                    </div>
-                  </div>
-
-                  {/* Print Layout Footer (Paper Only) */}
-                  <div className="hidden print:block border-t border-black pt-4 mt-8 text-center text-xs">
-                    <p>Generated via Sanjeevani AI Patient Assistance Assistant.</p>
-                    <p className="mt-1 font-semibold">Please take medicine under supervision. Consult prescription for full details.</p>
-                  </div>
+                    <p className="text-[10px] text-zinc-300 text-right max-w-[280px] leading-snug print:text-zinc-400">
+                      For informational use only. Always consult a qualified healthcare professional before taking or changing medication.
+                    </p>
+                  </footer>
                 </div>
               </div>
             ) : (
