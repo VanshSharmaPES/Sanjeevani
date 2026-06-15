@@ -682,7 +682,7 @@ export default function AdminDashboard() {
                   `}} />
 
                   {/* ── HEADER ──────────────────────────────────────────────── */}
-                  <header className="flex items-start justify-between pb-5 border-b border-zinc-100 print:border-zinc-200">
+                  <header className="pb-5 border-b border-zinc-100 print:border-zinc-200">
                     {/* Brand mark */}
                     <div>
                       <div className="flex items-center gap-2">
@@ -695,43 +695,7 @@ export default function AdminDashboard() {
                         AI-Powered Medication Guide
                       </p>
                     </div>
-
-                    {/* Doctor block */}
-                    <div className="text-right">
-                      <p className="text-[13px] font-semibold text-zinc-800 print:text-black">
-                        {doctorName}
-                      </p>
-                      <p className="text-[11px] text-zinc-500 mt-0.5">MBBS, MD (General Medicine)</p>
-                      <p className="text-[11px] text-zinc-400">Sharma Medical Centre, Bengaluru</p>
-                      <p className="text-[10px] text-zinc-300 mt-1 print:text-zinc-400">
-                        Reg. KMC-2019-04812
-                      </p>
-                    </div>
                   </header>
-
-                  {/* ── PATIENT & DIAGNOSIS ─────────────────────────────────── */}
-                  <section className="py-4 flex items-start justify-between border-b border-zinc-100 print:border-zinc-200">
-                    <div>
-                      <p className="text-[10px] text-zinc-400 uppercase tracking-widest font-medium">
-                        Patient
-                      </p>
-                      <p className="text-[15px] font-semibold text-zinc-900 mt-1 print:text-black">
-                        Valued Patient
-                      </p>
-                      <p className="text-[11px] text-zinc-500 mt-0.5">
-                        Adult · Gen-Med
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] text-zinc-400 uppercase tracking-widest font-medium">
-                        Diagnosis
-                      </p>
-                      <p className="text-[13px] text-zinc-700 mt-1 max-w-[240px] print:text-black">
-                        Prescribed Treatment
-                      </p>
-                      <p className="text-[11px] text-zinc-400 mt-1">{generationTime}</p>
-                    </div>
-                  </section>
 
                   {/* ── MEDICINE ITEM ───────────────────────────────────────────── */}
                   <section className="py-4 print:break-inside-avoid border-b border-zinc-100 print:border-zinc-200">
@@ -764,14 +728,14 @@ export default function AdminDashboard() {
                     </div>
 
                     {/* Core Instructions */}
-                    <div className="mt-4 ml-7 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="mt-4 ml-7 grid grid-cols-4 divide-x divide-zinc-100 print:divide-zinc-200">
                       {[
                         { label: "Dose", value: dosage },
                         { label: "Frequency", value: frequency },
                         { label: "Timing", value: timing },
                         { label: "Duration", value: "As directed" },
                       ].map(({ label, value }) => (
-                        <div key={label} className="col-span-1">
+                        <div key={label} className="px-4 first:pl-0 last:pr-0">
                           <p className="text-[10px] text-zinc-400 uppercase tracking-widest font-medium">
                             {label}
                           </p>
@@ -834,7 +798,7 @@ export default function AdminDashboard() {
                         Digitally verified via Sanjeevani AI
                       </span>
                     </div>
-                    <p className="text-[10px] text-zinc-300 text-right max-w-[280px] leading-snug print:text-zinc-400">
+                    <p className="text-[10px] text-zinc-500 text-right max-w-[280px] leading-snug print:text-zinc-700">
                       For informational use only. Always consult a qualified healthcare professional before taking or changing medication.
                     </p>
                   </footer>
