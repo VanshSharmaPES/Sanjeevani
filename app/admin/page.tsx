@@ -72,6 +72,13 @@ const AutoResizeTextarea = ({ value, className = "", ...props }: AutoResizeTexta
   );
 };
 
+const containsTemplatePayload = (value: string): boolean => {
+  if (!value) return false;
+  const pattern = /(\{\{|\}\}|\{%|%\}|\$\{|\<%|%\>|\#\{|`|__|\b(eval|exec|import|globals|locals|subclasses|constructor|prototype|function)\b)/i;
+  const redosPattern = /\([^)]+[*+]\)[*+]/;
+  return pattern.test(value) || redosPattern.test(value);
+};
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
@@ -144,6 +151,10 @@ export default function AdminDashboard() {
   const handleSearch = async () => {
     const query = searchQuery.trim();
     if (!query) return;
+    if (containsTemplatePayload(query)) {
+      alert("Search query contains disallowed template patterns or unsafe code payloads.");
+      return;
+    }
     setSearching(true);
     try {
       const res = await fetch(`/api/medicines/search?q=${encodeURIComponent(query)}`);
@@ -211,6 +222,17 @@ export default function AdminDashboard() {
 
   const handleGenerate = async () => {
     if (!medName) return;
+    if (
+      containsTemplatePayload(medName) ||
+      containsTemplatePayload(salts) ||
+      containsTemplatePayload(dosage) ||
+      containsTemplatePayload(frequency) ||
+      containsTemplatePayload(timing) ||
+      containsTemplatePayload(docNotes)
+    ) {
+      alert("Error: Input contains disallowed template patterns or unsafe code payloads.");
+      return;
+    }
     setLoading(true);
     
     const now = new Date().toLocaleString("en-IN", {

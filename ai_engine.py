@@ -72,14 +72,21 @@ TEMPLATE_PAYLOAD_PATTERN = re.compile(
 
 
 def _contains_template_payload(value) -> bool:
-    """Detect template/code payload markers in untrusted medicine text."""
+    """Detect template/code payload markers or ReDoS pattern probes in untrusted medicine text."""
     if value is None:
         return False
     if isinstance(value, dict):
         return any(_contains_template_payload(v) for v in value.values())
     if isinstance(value, (list, tuple, set)):
         return any(_contains_template_payload(v) for v in value)
-    return bool(TEMPLATE_PAYLOAD_PATTERN.search(str(value)))
+    
+    val_str = str(value)
+    if TEMPLATE_PAYLOAD_PATTERN.search(val_str):
+        return True
+    # Detect nested repetitions like (a+)+ or (a*)* (potential ReDoS pattern probes)
+    if re.search(r'\([^)]+[*+]\)[*+]', val_str):
+        return True
+    return False
 
 
 def _sanitize_llm_text(value: str, max_len: int = 160) -> str:
@@ -896,12 +903,14 @@ def _extract_json_from_text(text: str) -> dict:
         pass
 
     # Grab first {...} block (handles leading/trailing prose)
-    match = re.search(r'\{.*\}', stripped, re.DOTALL)
-    if match:
-        try:
-            return json.loads(match.group(0))
-        except (json.JSONDecodeError, ValueError):
-            pass
+    start = stripped.find('{')
+    if start != -1:
+        end = stripped.rfind('}')
+        if end != -1 and end > start:
+            try:
+                return json.loads(stripped[start:end+1])
+            except (json.JSONDecodeError, ValueError):
+                pass
 
     raise ValueError(f"Could not parse JSON from model response (first 300 chars): {text[:300]}")
 
@@ -2286,6 +2295,10 @@ def request_guide_generation(
     """
     if _requests is None:
         _safe_print("[WARN] 'requests' library not available. Guide generation skipped.")
+        return []
+
+    if _contains_template_payload(analysis_result):
+        _safe_print("[WARN] Blocked guide generation: template-like payload detected in analysis result.")
         return []
 
     base_url = (guide_service_url or GUIDE_SERVICE_BASE_URL).rstrip("/")
