@@ -56,6 +56,10 @@ const Login = () => {
       setResetError("Password must be at least 4 characters.");
       return;
     }
+    if (p.length > 128) {
+      setResetError("Password must be at most 128 characters.");
+      return;
+    }
 
     setResetLoading(true);
     try {
@@ -86,6 +90,10 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (password.length > 128) {
+      setError("Password must be at most 128 characters.");
+      return;
+    }
     setLoading(true);
 
     try {
@@ -282,6 +290,7 @@ const Login = () => {
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                maxLength={128}
                 className="w-full bg-transparent border-b-2 border-border focus:border-primary py-3 px-1 text-foreground placeholder:text-muted-foreground outline-none transition-colors font-body pr-10"
               />
               <button
@@ -373,6 +382,7 @@ const Login = () => {
                     value={resetPasswordVal}
                     onChange={(e) => setResetPasswordVal(e.target.value)}
                     placeholder="Enter new password"
+                    maxLength={128}
                     className="w-full bg-muted border border-border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary text-foreground"
                   />
                 </div>

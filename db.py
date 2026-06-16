@@ -110,6 +110,9 @@ def register_user(username: str, password: str, role: str = "patient") -> tuple[
         return False, "Username and password are required."
     if len(password) < 4:
         return False, "Password must be at least 4 characters."
+    
+    if len(password) > 128:
+        return False, "Password cannot be more than 128 characters"
     if role not in ("patient", "doctor"):
         role = "patient"
 
@@ -133,6 +136,8 @@ def reset_password(username: str, new_password: str) -> tuple[bool, str]:
         return False, "Username and new password are required."
     if len(new_password) < 4:
         return False, "Password must be at least 4 characters."
+    if len(new_password) > 128:
+        return False, "Password cannot be more than 128 characters."
     
     conn = _get_conn()
     try:
@@ -156,6 +161,9 @@ def reset_password(username: str, new_password: str) -> tuple[bool, str]:
 def authenticate_user(username: str, password: str) -> tuple[bool, int | None, str | None]:
     """Authenticate a user. Returns (success, user_id, role)."""
     conn = _get_conn()
+    if len(password) > 128:
+        return False, None, None
+
     row = conn.execute(
         "SELECT id, password_hash, role FROM users WHERE username = ?",
         (username.strip().lower(),)
