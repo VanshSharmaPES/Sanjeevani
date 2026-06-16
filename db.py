@@ -421,8 +421,12 @@ def get_db_status() -> dict:
             status["tables"] = tables
             
             counts = {}
+            ALLOWED_TABLES = {"users", "scan_history", "drug_cache", "prescription_cache", "medicines"}
             for table in tables:
                 if table == "sqlite_sequence":
+                    continue
+                if table not in ALLOWED_TABLES:
+                    print(f"[WARN] Blocked potential SQL injection in table query: {table}")
                     continue
                 try:
                     cursor.execute(f"SELECT COUNT(*) FROM [{table}]")
