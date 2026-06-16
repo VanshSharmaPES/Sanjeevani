@@ -333,6 +333,12 @@ export default function AdminDashboard() {
       `_Generated via Sanjeevani AI Patient Assistant_`;
   };
 
+  // Strips invisible Unicode used in clipboard-hijack attacks:
+  // RTL override (\u202A-\u202E), zero-width chars (\u200B-\u200F),
+  // BOM (\uFEFF), and C0 control chars except \n and \t.
+  const sanitiseForClipboard = (text: string): string =>
+    text.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u200B-\u200F\u202A-\u202E\uFEFF]/g, "");
+
   const triggerPrint = () => {
     window.print();
   };
@@ -453,10 +459,18 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleCopyClipboard = () => {
-    navigator.clipboard.writeText(getShareText());
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopyClipboard = async () => {
+    if (!isSecureContext) {
+      console.warn("Clipboard API requires a secure context (HTTPS).");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(sanitiseForClipboard(getShareText()));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Clipboard write failed:", err);
+    }
   };
 
   return (
