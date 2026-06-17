@@ -749,9 +749,14 @@ def _check_image_quality(img_array: np.ndarray) -> tuple[bool, str]:
             gray = img_array
         variance = cv2.Laplacian(gray, cv2.CV_64F).var()
         _safe_print(f"[INFO] Image quality check: sharpness score = {variance:.2f}")
-        # Threshold: if variance < 45, it is considered too blurry to process
-        if variance < 45:
-            return False, f"Image is too blurry or low contrast (sharpness score: {variance:.1f}). Please upload a clearer photo."
+        
+        # Soft-check warning threshold: if variance < 30, log a warning but proceed.
+        # Hard-check error threshold: if variance < 8.0, block as completely blurry or blank.
+        if variance < 8.0:
+            return False, f"Image is too blurry, out of focus, or lacks contrast (sharpness score: {variance:.1f}). Please upload a clearer photo."
+        elif variance < 30.0:
+            _safe_print(f"[WARN] Image sharpness score ({variance:.2f}) is relatively low, but proceeding with OCR scan.")
+            
         return True, "Success"
     except Exception as e:
         _safe_print(f"[WARN] Error in _check_image_quality: {e}")
