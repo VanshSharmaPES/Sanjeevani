@@ -122,6 +122,23 @@ const Dashboard = () => {
         {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
       </button>
 
+      {/* Mobile logout button — always visible in top-right on small screens */}
+      <button
+        onClick={handleLogout}
+        className="fixed top-4 right-4 z-50 lg:hidden bg-card/90 backdrop-blur border border-border rounded-lg p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+        title="Logout"
+      >
+        <LogOut size={20} />
+      </button>
+
+      {/* Mobile sidebar backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <aside
         className={`fixed lg:sticky top-0 left-0 h-screen w-64 bg-sidebar border-r border-sidebar-border z-40 flex flex-col transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"

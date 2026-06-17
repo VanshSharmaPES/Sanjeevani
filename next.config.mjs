@@ -14,7 +14,7 @@ const nextConfig = {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob:",
-      "connect-src 'self'",
+      "connect-src 'self' https://sanjeevani-py8t.onrender.com",
       "frame-ancestors 'none'",
       "object-src 'none'",
       "base-uri 'self'",
