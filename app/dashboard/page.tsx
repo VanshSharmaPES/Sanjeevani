@@ -141,7 +141,7 @@ const Dashboard = () => {
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:sticky top-0 left-0 h-screen w-64 bg-sidebar border-r border-sidebar-border z-40 flex flex-col transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        className={`fixed lg:sticky top-0 left-0 h-[100dvh] w-64 bg-sidebar border-r border-sidebar-border z-40 flex flex-col transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
           }`}
       >
         <div className="p-6 border-b border-sidebar-border">
@@ -226,6 +226,13 @@ const Dashboard = () => {
                 <span>Admin Dashboard</span>
               </button>
             )}
+            <button
+              onClick={handleLogout}
+              className="flex lg:hidden items-center gap-3 w-full px-3 py-2.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors text-sm"
+            >
+              <LogOut size={18} />
+              <span>Logout</span>
+            </button>
           </nav>
         </div>
 
