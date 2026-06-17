@@ -3721,6 +3721,18 @@
       "dosage_and_duration": "1 tablet SOS"
     }
   ],
+  "84b041d5bf947821be9906765f487d8f": [
+    {
+      "medicine": "Enzoflam-MR Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1 tablet morning and night after food for 10 days"
+    },
+    {
+      "medicine": "PAN 40 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1 tablet in the morning before food for 10 days"
+    }
+  ],
   "a9b96431a8a437ca9488780c7c3c16c7": [
     {
       "medicine": "Ondem Syrup",

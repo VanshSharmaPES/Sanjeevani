@@ -1934,18 +1934,94 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
                 raw_name = parsed_data.get("name") or med_name
                 normalized = normalize_medicine_name(raw_name)
                 
-                confirmed_name = normalized["name"]
-                matched_salts = normalized["active_salts"]
-                low_confidence = normalized["low_confidence"]
-                fuzzy_score = normalized["score"]
+                confirmed_name = normalized.get("name")
+                if not confirmed_name or confirmed_name.strip().lower() == "unknown":
+                    confirmed_name = med_name
+                
+                matched_salts = normalized.get("active_salts", [])
+                low_confidence = normalized.get("low_confidence", True)
+                fuzzy_score = normalized.get("score", 0)
                 
                 dosage = parsed_data.get("dosage", "")
-                if not dosage and desc:
-                    dosage_match = re.search(r'^([\d\.]+\s+\w+)', desc)
-                    if dosage_match:
-                        dosage = dosage_match.group(1)
+                if not dosage or dosage.strip().lower() in ["", "n/a", "unknown"]:
+                    if desc:
+                        dosage_match = re.search(r'^([\d\.]+\s*(?:tablet|capsule|ml|mg|mcg|g|gm|drops|puff|spoon|sachet|capsules|tablets))\b', desc, re.IGNORECASE)
+                        if dosage_match:
+                            dosage = dosage_match.group(1)
+                        else:
+                            words = desc.split()
+                            if words and re.match(r'^\d+(\.\d+)?$', words[0]):
+                                dosage = " ".join(words[:2])
+                            else:
+                                dosage = "As directed"
                     else:
-                        dosage = "1 tablet"
+                        dosage = "As directed"
+                        
+                duration = parsed_data.get("duration", "")
+                if not duration or duration.strip().lower() in ["", "as prescribed", "n/a", "unknown"]:
+                    if desc:
+                        duration_match = re.search(r'\b(for\s+\d+\s+(?:day|week|month|year)s?|\d+\s+(?:day|week|month|year)s?)\b', desc, re.IGNORECASE)
+                        if duration_match:
+                            duration = duration_match.group(1)
+                        else:
+                            duration = "As prescribed"
+                    else:
+                        duration = "As prescribed"
+                        
+                frequency = parsed_data.get("frequency", "")
+                if not frequency or frequency.strip().lower() in ["", "as directed", "n/a", "unknown"]:
+                    if desc:
+                        freq_patterns = [
+                            r'\b(?:once|twice|three|four)\s+times?\s+(?:daily|a\s+day|every\s+day)\b',
+                            r'\b(?:daily|weekly|monthly)\b',
+                            r'\b(?:morning\s+and\s+night|morning|night|afternoon|evening|bedtime)\b',
+                            r'\bevery\s+\d+\s+(?:hour|day)s?\b',
+                            r'\b(?:1-0-1|1-1-1|0-0-1|1-0-0|0-1-0)\b',
+                            r'\b(?:as\s+needed|sos)\b'
+                        ]
+                        found_freq = None
+                        for pat in freq_patterns:
+                            m = re.search(pat, desc, re.IGNORECASE)
+                            if m:
+                                found_freq = m.group(0)
+                                break
+                        if found_freq:
+                            frequency = found_freq
+                        else:
+                            temp_desc = desc
+                            if dosage and dosage != "As directed":
+                                temp_desc = temp_desc.replace(dosage, "", 1)
+                            if duration and duration != "As prescribed":
+                                temp_desc = temp_desc.replace(duration, "", 1)
+                            temp_desc = re.sub(r'\bfor\b', '', temp_desc, flags=re.IGNORECASE)
+                            temp_clean = " ".join(temp_desc.split()).strip()
+                            frequency = temp_clean if temp_clean else "As directed"
+                    else:
+                        frequency = "As directed"
+                        
+                timing = parsed_data.get("timing", "")
+                if not timing or timing.strip().lower() in ["", "as directed", "n/a", "unknown"]:
+                    if desc:
+                        timing_patterns = [
+                            r'\b(?:before|after|with|without)\s+(?:meals?|food|breakfast|lunch|dinner)\b',
+                            r'\b(?:on\s+an\s+empty\s+stomach|at\s+bedtime|empty\s+stomach)\b'
+                        ]
+                        found_timing = None
+                        for pat in timing_patterns:
+                            m = re.search(pat, desc, re.IGNORECASE)
+                            if m:
+                                found_timing = m.group(0)
+                                break
+                        timing = found_timing if found_timing else "As directed"
+                    else:
+                        timing = "As directed"
+                        
+                meal_relation = parsed_data.get("meal_relation", "")
+                if not meal_relation or meal_relation.strip().lower() in ["", "anytime", "n/a", "unknown"]:
+                    if timing and timing != "As directed":
+                        meal_relation = timing
+                    else:
+                        meal_relation = "anytime"
                         
                 se = parsed_data.get("side_effects", [])
                 if isinstance(se, str):
@@ -1958,14 +2034,14 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
                     "name": confirmed_name,
                     "active_salts": matched_salts,
                     "low_confidence": low_confidence,
-                    "reviewRequired": low_confidence or not dosage,
+                    "reviewRequired": low_confidence or not dosage or dosage == "As directed",
                     "fuzzy_score": fuzzy_score,
                     "dosage": dosage,
                     "form": parsed_data.get("form", "Tablet"),
-                    "frequency": parsed_data.get("frequency", "as directed"),
-                    "timing": parsed_data.get("timing", "as directed"),
-                    "duration": parsed_data.get("duration", "as prescribed"),
-                    "meal_relation": parsed_data.get("meal_relation", "anytime"),
+                    "frequency": frequency,
+                    "timing": timing,
+                    "duration": duration,
+                    "meal_relation": meal_relation,
                     "purpose": parsed_data.get("purpose", "Not available"),
                     "side_effects": se,
                     "food_interaction": parsed_data.get("food_interaction", "No specific food restrictions."),
@@ -1973,6 +2049,7 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
                     "is_antibiotic": parsed_data.get("is_antibiotic", False),
                     "special_instructions": parsed_data.get("special_instructions", "")
                 }
+                
                 
             medicines_sorted = []
             fuzzy_scores = []
@@ -2055,18 +2132,26 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
                 raw_name = parsed_data.get("name", segment)
                 normalized = normalize_medicine_name(raw_name)
                 
-                confirmed_name = normalized["name"]
-                matched_salts = normalized["active_salts"]
-                low_confidence = normalized["low_confidence"]
-                fuzzy_score = normalized["score"]
+                confirmed_name = normalized.get("name")
+                if not confirmed_name or confirmed_name.strip().lower() == "unknown":
+                    confirmed_name = raw_name
+                
+                matched_salts = normalized.get("active_salts", [])
+                low_confidence = normalized.get("low_confidence", True)
+                fuzzy_score = normalized.get("score", 0)
                 
                 dosage = parsed_data.get("dosage", "")
-                
+                if not dosage or dosage.strip().lower() in ["", "n/a", "unknown"]:
+                    dosage_match = re.search(r'^([\d\.]+\s*(?:tablet|capsule|ml|mg|mcg|g|gm|drops|puff|spoon|sachet|capsules|tablets))\b', segment, re.IGNORECASE)
+                    if dosage_match:
+                        dosage = dosage_match.group(1)
+                    else:
+                        dosage = "As directed"
+                        
                 med_review_req = (
                     low_confidence or 
                     not dosage or 
-                    not str(dosage).strip() or 
-                    str(dosage).strip().upper() == "N/A"
+                    dosage == "As directed"
                 )
                 
                 return {
