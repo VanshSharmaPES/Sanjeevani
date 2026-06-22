@@ -256,16 +256,6 @@ const Dashboard = () => {
 
           {/* Nav items */}
           <nav className="space-y-1">
-            <button
-              onClick={() => router.push("/history")}
-              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors text-sm"
-            >
-              <History size={18} />
-              <span>Scan History</span>
-              {historyCount > 0 && (
-                <span className="ml-auto text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full font-semibold">{historyCount}</span>
-              )}
-            </button>
             {role === "doctor" && (
               <button
                 onClick={() => router.push("/admin")}
