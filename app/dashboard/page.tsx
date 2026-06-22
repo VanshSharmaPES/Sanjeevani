@@ -171,14 +171,7 @@ const Dashboard = () => {
         {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
       </button>
 
-      {/* Mobile logout button — always visible in top-right on small screens */}
-      <button
-        onClick={handleLogout}
-        className="fixed top-4 right-4 z-50 lg:hidden bg-card/90 backdrop-blur border border-border rounded-lg p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-        title="Logout"
-      >
-        <LogOut size={20} />
-      </button>
+
 
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
@@ -265,13 +258,7 @@ const Dashboard = () => {
                 <span>Admin Dashboard</span>
               </button>
             )}
-            <button
-              onClick={handleLogout}
-              className="flex lg:hidden items-center gap-3 w-full px-3 py-2.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors text-sm"
-            >
-              <LogOut size={18} />
-              <span>Logout</span>
-            </button>
+
           </nav>
         </div>
 
