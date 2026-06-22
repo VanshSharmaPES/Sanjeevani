@@ -138,15 +138,16 @@ const Dashboard = () => {
   }, [langOpen]);
 
   const handleLogout = () => {
-    fetch("/api/auth/logout", { method: "POST", credentials: "include" })
-      .catch(() => { })
-      .finally(() => {
-        localStorage.removeItem("sanjeevani_user");
-        localStorage.removeItem("sanjeevani_role");
-        localStorage.removeItem("sanjeevani_language");
-        localStorage.removeItem("sanjeevani_token");
-        router.push("/");
-      });
+    localStorage.removeItem("sanjeevani_user");
+    localStorage.removeItem("sanjeevani_role");
+    localStorage.removeItem("sanjeevani_language");
+    localStorage.removeItem("sanjeevani_token");
+    
+    // Clear cookie in background (best-effort)
+    fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {});
+    
+    // Force a hard redirect to clear router cache and state
+    window.location.href = "/";
   };
 
   const stagger = {
