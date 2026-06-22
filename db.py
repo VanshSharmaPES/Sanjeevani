@@ -4,7 +4,7 @@ import sqlite3
 import hashlib
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "sanjeevani.db")
 
@@ -120,7 +120,7 @@ def register_user(username: str, password: str, role: str = "patient") -> tuple[
     try:
         conn.execute(
             "INSERT INTO users (username, password_hash, role, created_at) VALUES (?, ?, ?, ?)",
-            (username.strip().lower(), _hash_password(password), role, datetime.now().isoformat())
+            (username.strip().lower(), _hash_password(password), role, datetime.now(timezone.utc).isoformat())
         )
         conn.commit()
         return True, "Account created successfully!"
@@ -183,7 +183,7 @@ def save_scan(user_id: int, scan_type: str, language: str, result_data: dict):
     conn = _get_conn()
     conn.execute(
         "INSERT INTO scan_history (user_id, scan_type, language, result_json, created_at) VALUES (?, ?, ?, ?, ?)",
-        (user_id, scan_type, language, json.dumps(result_data, ensure_ascii=False), datetime.now().isoformat())
+        (user_id, scan_type, language, json.dumps(result_data, ensure_ascii=False), datetime.now(timezone.utc).isoformat())
     )
     conn.commit()
     conn.close()
@@ -331,7 +331,7 @@ def cache_drug(medicine_name: str, result_data: dict):
     try:
         conn.execute(
             "INSERT OR REPLACE INTO drug_cache (medicine_name, result_json, created_at) VALUES (?, ?, ?)",
-            (medicine_name.strip().lower(), json.dumps(result_data, ensure_ascii=False), datetime.now().isoformat())
+            (medicine_name.strip().lower(), json.dumps(result_data, ensure_ascii=False), datetime.now(timezone.utc).isoformat())
         )
         conn.commit()
     except Exception:
@@ -470,7 +470,7 @@ def cache_prescription(ocr_hash: str, result_data: dict, ocr_text: str = None):
             INSERT OR REPLACE INTO prescription_cache (ocr_hash, result_json, ocr_text, corrected, created_at)
             VALUES (?, ?, ?, COALESCE((SELECT corrected FROM prescription_cache WHERE ocr_hash = ?), 0), ?)
             """,
-            (ocr_hash, json.dumps(result_data, ensure_ascii=False), ocr_text, ocr_hash, datetime.now().isoformat())
+            (ocr_hash, json.dumps(result_data, ensure_ascii=False), ocr_text, ocr_hash, datetime.now(timezone.utc).isoformat())
         )
         conn.commit()
     except Exception as e:
@@ -491,7 +491,7 @@ def update_prescription_cache(ocr_hash: str, corrected_json: dict, ocr_text: str
                 INSERT OR REPLACE INTO prescription_cache (ocr_hash, result_json, ocr_text, corrected, created_at)
                 VALUES (?, ?, ?, 1, ?)
                 """,
-                (ocr_hash, json.dumps(corrected_json, ensure_ascii=False), ocr_text, datetime.now().isoformat())
+                (ocr_hash, json.dumps(corrected_json, ensure_ascii=False), ocr_text, datetime.now(timezone.utc).isoformat())
             )
         else:
             conn.execute(
@@ -503,7 +503,7 @@ def update_prescription_cache(ocr_hash: str, corrected_json: dict, ocr_text: str
                     corrected = 1,
                     created_at = excluded.created_at
                 """,
-                (ocr_hash, json.dumps(corrected_json, ensure_ascii=False), datetime.now().isoformat())
+                (ocr_hash, json.dumps(corrected_json, ensure_ascii=False), datetime.now(timezone.utc).isoformat())
             )
         conn.commit()
         return True

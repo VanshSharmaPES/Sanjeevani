@@ -73,7 +73,12 @@ const ScanHistory = () => {
 
   const formatDate = (iso: string) => {
     try {
-      const d = new Date(iso);
+      // If the ISO string doesn't have a timezone offset or Z suffix, assume it is in UTC
+      let dateStr = iso;
+      if (iso && !iso.endsWith("Z") && !/[+-]\d{2}:\d{2}$/.test(iso)) {
+        dateStr = iso + "Z";
+      }
+      const d = new Date(dateStr);
       return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
     } catch {
       return iso;
