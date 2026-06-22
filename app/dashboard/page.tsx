@@ -32,6 +32,14 @@ const languages = [
   { code: "sat", name: "Santali",   native: "ᱥᱟᱱᱛᱟᱲᱤ" },
 ];
 
+interface HistoryItem {
+  id: number;
+  scan_type: string;
+  language: string;
+  result: any;
+  created_at: string;
+}
+
 const Dashboard = () => {
   const router = useRouter();
   const [userName, setUserName] = useState("User");
@@ -42,6 +50,8 @@ const Dashboard = () => {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [historyCount, setHistoryCount] = useState(0);
+  const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
 
   useEffect(() => {
     const name = localStorage.getItem("sanjeevani_user") || "User";
@@ -53,14 +63,48 @@ const Dashboard = () => {
     const savedLang = localStorage.getItem("sanjeevani_language") || "en";
     setLanguage(savedLang);
 
-    // Fetch history count
+    // Fetch history
     fetch(`/api/history`, { credentials: "include" })
       .then((r) => r.json())
       .then((data) => {
-        if (data.success) setHistoryCount((data.history || []).length);
+        if (data.success) {
+          const hist = data.history || [];
+          setHistoryItems(hist);
+          setHistoryCount(hist.length);
+        }
       })
-      .catch(() => { });
+      .catch(() => { })
+      .finally(() => setHistoryLoading(false));
   }, []);
+
+  const getDisplayName = (item: HistoryItem) => {
+    const r = item.result;
+    if (item.scan_type === "medicine") {
+      return r?.medicine_name || "Unknown Medicine";
+    }
+    const meds = r?.medicines || [];
+    if (meds.length > 0) return meds.map((m: any) => m.name).join(", ");
+    return "Prescription";
+  };
+
+  const formatDate = (iso: string) => {
+    try {
+      const d = new Date(iso);
+      return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    } catch {
+      return iso;
+    }
+  };
+
+  const handleViewDetails = (item: HistoryItem) => {
+    sessionStorage.setItem("scanResult", JSON.stringify(item.result));
+    sessionStorage.setItem("scanType", item.scan_type);
+    if (item.scan_type === "prescription") {
+      router.push("/result/prescription");
+    } else {
+      router.push("/result/medicine");
+    }
+  };
 
   const handleLanguageChange = (code: string) => {
     setLanguage(code);
@@ -284,6 +328,64 @@ const Dashboard = () => {
               variant="amber"
               onClick={() => router.push("/scan?type=prescription")}
             />
+          </motion.div>
+
+          {/* Recent Scans Widget */}
+          <motion.div variants={fadeUp} className="mt-8 bg-card/60 backdrop-blur border border-border rounded-2xl p-6 shadow-lg">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2">
+                <History size={20} className="text-primary" />
+                Recent Scans
+              </h2>
+              {historyItems.length > 0 && (
+                <button
+                  onClick={() => router.push("/history")}
+                  className="text-primary hover:text-primary/80 hover:underline text-sm font-semibold transition-colors"
+                >
+                  View All
+                </button>
+              )}
+            </div>
+
+            {historyLoading ? (
+              <div className="text-center py-8">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                <p className="text-muted-foreground text-xs font-display">Loading scans...</p>
+              </div>
+            ) : historyItems.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-sm font-display">
+                No recent scans. Your analyzed medicines and prescriptions will appear here.
+              </div>
+            ) : (
+              <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
+                {historyItems.slice(0, 5).map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => handleViewDetails(item)}
+                    className="flex items-center justify-between p-4 bg-muted/20 hover:bg-muted/50 border border-border/40 rounded-xl cursor-pointer transition-all group hover:scale-[1.005] hover:shadow-sm"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                        item.scan_type === "medicine" ? "bg-secondary/15 text-secondary" : "bg-primary/15 text-primary"
+                      }`}>
+                        {item.scan_type === "medicine" ? <Pill size={16} /> : <FileText size={16} />}
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="font-display font-bold text-sm text-foreground group-hover:text-primary transition-colors truncate">
+                          {getDisplayName(item)}
+                        </h4>
+                        <p className="text-[10px] text-muted-foreground mt-0.5 font-display">
+                          {formatDate(item.created_at)} &bull; {languages.find(l => l.code === item.language)?.name || item.language}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs text-secondary group-hover:text-secondary/80 group-hover:underline font-bold font-display shrink-0 ml-4 flex items-center gap-1">
+                      View Details &rarr;
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </motion.div>
         </motion.div>
       </main>

@@ -153,13 +153,25 @@ const ScanHistory = () => {
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
-                      className="flex items-center gap-1 text-secondary text-xs font-display font-semibold hover:underline"
-                    >
-                      Details
-                      {expandedId === item.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                    </button>
+                    <div className="flex items-center gap-4 mt-2">
+                      <button
+                        onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                        className="flex items-center gap-1 text-muted-foreground text-xs font-display font-semibold hover:text-foreground hover:underline"
+                      >
+                        Summary
+                        {expandedId === item.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      </button>
+                      <button
+                        onClick={() => {
+                          sessionStorage.setItem("scanResult", JSON.stringify(item.result));
+                          sessionStorage.setItem("scanType", item.scan_type);
+                          router.push(item.scan_type === "prescription" ? "/result/prescription" : "/result/medicine");
+                        }}
+                        className="flex items-center gap-1 text-primary text-xs font-display font-bold hover:underline"
+                      >
+                        View Interactive Results &rarr;
+                      </button>
+                    </div>
 
                     {expandedId === item.id && (
                       <motion.p
