@@ -309,7 +309,7 @@ const Login = () => {
               whileTap={{ scale: 0.98 }}
               className="w-full py-3.5 bg-primary text-primary-foreground font-display font-bold rounded-xl glow-pulse-saffron transition-all text-lg tracking-wide disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {loading ? "Please wait..." : "Enter Sanjeevani"}
+              {loading ? "Please wait..." : isLogin ? "Enter Sanjeevani" : "Register Account"}
             </motion.button>
           </form>
 
