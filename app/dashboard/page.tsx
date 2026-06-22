@@ -312,80 +312,87 @@ const Dashboard = () => {
             </p>
           </motion.div>
 
-          {/* Action cards */}
-          <motion.div variants={fadeUp} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <ActionCard
-              title="Scan Medicine Strip"
-              description="Identify medicines, ingredients, dosage & more using AI vision"
-              icon={<Pill size={36} />}
-              variant="teal"
-              onClick={() => router.push("/scan?type=medicine")}
-            />
-            <ActionCard
-              title="Read Prescription"
-              description="Decode handwritten prescriptions into clear, structured results"
-              icon={<FileText size={36} />}
-              variant="amber"
-              onClick={() => router.push("/scan?type=prescription")}
-            />
-          </motion.div>
-
-          {/* Recent Scans Widget */}
-          <motion.div variants={fadeUp} className="mt-8 bg-card/60 backdrop-blur border border-border rounded-2xl p-6 shadow-lg">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2">
-                <History size={20} className="text-primary" />
-                Recent Scans
-              </h2>
-              {historyItems.length > 0 && (
-                <button
-                  onClick={() => router.push("/history")}
-                  className="text-primary hover:text-primary/80 hover:underline text-sm font-semibold transition-colors"
-                >
-                  View All
-                </button>
-              )}
+          {/* Symmetrical Layout for Dashboard Actions & Recent Scans */}
+          <motion.div variants={fadeUp} className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+            {/* Left side: A & B stacked */}
+            <div className="lg:col-span-5 flex flex-col gap-6">
+              <ActionCard
+                title="Scan Medicine Strip"
+                description="Identify medicines, active ingredients, dosage, and warnings using AI vision."
+                icon={<Pill size={32} />}
+                variant="teal"
+                onClick={() => router.push("/scan?type=medicine")}
+              />
+              <ActionCard
+                title="Read Prescription"
+                description="Decode handwritten prescriptions into clear, structured daily schedules."
+                icon={<FileText size={32} />}
+                variant="amber"
+                onClick={() => router.push("/scan?type=prescription")}
+              />
             </div>
 
-            {historyLoading ? (
-              <div className="text-center py-8">
-                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                <p className="text-muted-foreground text-xs font-display">Loading scans...</p>
-              </div>
-            ) : historyItems.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground text-sm font-display">
-                No recent scans. Your analyzed medicines and prescriptions will appear here.
-              </div>
-            ) : (
-              <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
-                {historyItems.slice(0, 5).map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => handleViewDetails(item)}
-                    className="flex items-center justify-between p-4 bg-muted/20 hover:bg-muted/50 border border-border/40 rounded-xl cursor-pointer transition-all group hover:scale-[1.005] hover:shadow-sm"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                        item.scan_type === "medicine" ? "bg-secondary/15 text-secondary" : "bg-primary/15 text-primary"
-                      }`}>
-                        {item.scan_type === "medicine" ? <Pill size={16} /> : <FileText size={16} />}
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="font-display font-bold text-sm text-foreground group-hover:text-primary transition-colors truncate">
-                          {getDisplayName(item)}
-                        </h4>
-                        <p className="text-[10px] text-muted-foreground mt-0.5 font-display">
-                          {formatDate(item.created_at)} &bull; {languages.find(l => l.code === item.language)?.name || item.language}
-                        </p>
-                      </div>
-                    </div>
-                    <span className="text-xs text-secondary group-hover:text-secondary/80 group-hover:underline font-bold font-display shrink-0 ml-4 flex items-center gap-1">
-                      View Details &rarr;
-                    </span>
+            {/* Right side: C (Recent Scans Box) */}
+            <div className="lg:col-span-7 flex flex-col">
+              <div className="bg-card/60 backdrop-blur border border-border rounded-2xl p-6 shadow-lg flex flex-col h-full justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2">
+                      <History size={20} className="text-primary" />
+                      Recent Scans
+                    </h2>
+                    {historyItems.length > 0 && (
+                      <button
+                        onClick={() => router.push("/history")}
+                        className="text-primary hover:text-primary/80 hover:underline text-sm font-semibold transition-colors"
+                      >
+                        View All
+                      </button>
+                    )}
                   </div>
-                ))}
+
+                  {historyLoading ? (
+                    <div className="text-center py-16">
+                      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                      <p className="text-muted-foreground text-xs font-display">Loading scans...</p>
+                    </div>
+                  ) : historyItems.length === 0 ? (
+                    <div className="text-center py-16 text-muted-foreground text-sm font-display">
+                      No recent scans. Your analyzed medicines and prescriptions will appear here.
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5 max-h-[290px] overflow-y-auto pr-1">
+                      {historyItems.slice(0, 5).map((item) => (
+                        <div
+                          key={item.id}
+                          onClick={() => handleViewDetails(item)}
+                          className="flex items-center justify-between p-4 bg-muted/20 hover:bg-muted/50 border border-border/40 rounded-xl cursor-pointer transition-all group hover:scale-[1.005] hover:shadow-sm"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                              item.scan_type === "medicine" ? "bg-secondary/15 text-secondary" : "bg-primary/15 text-primary"
+                            }`}>
+                              {item.scan_type === "medicine" ? <Pill size={16} /> : <FileText size={16} />}
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="font-display font-bold text-sm text-foreground group-hover:text-primary transition-colors truncate">
+                                {getDisplayName(item)}
+                              </h4>
+                              <p className="text-[10px] text-muted-foreground mt-0.5 font-display">
+                                {formatDate(item.created_at)} &bull; {languages.find(l => l.code === item.language)?.name || item.language}
+                              </p>
+                            </div>
+                          </div>
+                          <span className="text-xs text-secondary group-hover:text-secondary/80 group-hover:underline font-bold font-display shrink-0 ml-4 flex items-center gap-1">
+                            View &rarr;
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
+            </div>
           </motion.div>
         </motion.div>
       </main>
@@ -413,16 +420,16 @@ const ActionCard = ({
   return (
     <motion.button
       onClick={onClick}
-      whileHover={{ scale: 1.03, rotateY: 3, rotateX: -2 }}
+      whileHover={{ scale: 1.02, rotateY: 2, rotateX: -1 }}
       whileTap={{ scale: 0.98 }}
-      className={`${bgClass} border border-border ${borderHover} rounded-2xl p-8 text-left transition-all group cursor-pointer`}
+      className={`${bgClass} border border-border ${borderHover} rounded-2xl p-6 md:p-7 text-left transition-all group cursor-pointer w-full flex-1 flex flex-col`}
       style={{ perspective: 800 }}
     >
-      <div className={`w-16 h-16 rounded-xl bg-background/20 flex items-center justify-center mb-5 text-foreground group-hover:${glowClass} transition-all`}>
+      <div className={`w-12 h-12 rounded-xl bg-background/20 flex items-center justify-center mb-4 text-foreground group-hover:${glowClass} transition-all`}>
         {icon}
       </div>
-      <h3 className="font-display text-xl font-bold text-foreground mb-2">{title}</h3>
-      <p className="text-muted-foreground text-sm leading-relaxed">{description}</p>
+      <h3 className="font-display text-lg font-bold text-foreground mb-1">{title}</h3>
+      <p className="text-muted-foreground text-xs md:text-sm leading-relaxed flex-1">{description}</p>
     </motion.button>
   );
 };
