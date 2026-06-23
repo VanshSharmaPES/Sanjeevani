@@ -1,151 +1,193 @@
 # Sanjeevani
 
-Sanjeevani is an AI-powered healthcare assistant designed to read medicine strips and prescriptions. It utilizes an AI model to extract critical details from images—such as medication names, usage instructions, and expiry dates—and provides an accessible audio output of this information in the user's selected language.
+Sanjeevani is an AI-powered, mobile-first healthcare accessibility platform designed to read medicine packaging and decipher handwritten prescriptions. By combining advanced vision models with deterministic pharmaceutical matching and high-fidelity text-to-speech, Sanjeevani translates medical jargon and handwritten notes into easy-to-understand daily schedules and audio summaries in any of the **22 scheduled languages of India**.
 
-## Detailed Functionalities
+---
 
-* **Medicine Strip Analysis:** - **Information Extraction:** Upload a photo of any medicine strip or bottle. The AI engine extracts the primary drug name, active ingredients, manufacturer details, and expiry date.
-* **Usage & Warnings:** It outlines the standard dosage and highlights important medical warnings or side effects associated with the drug.
+## 🌟 Core Features & Detailed Functionalities
 
+### 1. Medicine Strip & Packaging Analysis
+* **High-Accuracy OCR:** Extracts text from rotated, warped, or reflective packaging labels using `meta-llama/llama-4-scout-17b-16e-instruct` (falls back to NVIDIA vision NIMs).
+* **Fuzzy Brand & Composition Normalization:** Cleans extracted names and queries a local database of Indian medicines (`A_Z_medicines_dataset_of_India.csv` via SQLite). If missing, it queries the public **OpenFDA API** and uses clinical reasoning fallbacks to determine generic composition.
+* **Automatic Tab Selection Safety:** Prevents users from uploading prescription images in the medicine scan tab by cross-referencing against a dataset map.
+* **Dosage & Usage Warnings:** Identifies standard usages, dosage levels, active salts, side effects, and warning groups.
 
-* **Prescription Decoding:** - **Handwriting Recognition:** Upload images of handwritten doctor prescriptions. The AI deciphers the handwriting to list the prescribed medications.
-* **Dosage Instructions:** It breaks down the frequency of the dosage (e.g., morning/evening, before/after meals) into easy-to-understand instructions.
+### 2. Handwritten Prescription Decoding
+* **Handwriting Transcription:** Deciphers scribbled doctor notes using specialized, low-temperature Vision LLMs.
+* **Intelligent Parsing & Segmentation:** Split prescription text into discrete entries (patient info, doctor info, diagnosis, diet advice, follow-up date, and individual medication blocks).
+* **Shorthand & Abbreviations Expansion:** Translates medical shorthand like `OD` (once daily), `BD` (twice daily), `TDS` (thrice daily), `1-0-1` (morning & night), `AC` (before meals), `PC` (after meals), `HS` (bedtime), and `SOS` (as needed).
+* **Missing Duration Inference:** Automatically estimates duration if omitted (e.g., Antibiotics: 5-7 days, Analgesics: 3-5 days, Antacids: 14 days).
+* **Antibiotic Classification & Drug-Drug Interactions:** Flags antibiotic medications and computes severe interaction warnings if multiple conflicting drugs are prescribed together.
+* **Dynamic Few-Shot Learning (RAG):** Integrates doctor-corrected history to feed high-fidelity examples back to the parser, improving handwriting transcription over time.
 
+### 3. Alternate Medicine Recommendation Engine
+* **Deterministic Matching:** Normalizes and matches active composition keys, dosage form, route of administration, and release type (e.g., extended-release `ER`, dispersible `DT`).
+* **Price-Sorted Substitution:** Finds cheaper, active alternatives from the local database sorted by price.
+* **Formulation Warnings:** Flags potential differences in special formulations (e.g., fast-absorption optizorb).
+* **Doctor-Curated Alternates:** Allows authenticated doctors or pharmacists to manually curate and verify custom alternatives with detailed reasons.
 
-* **Multilingual Audio Output (TTS):** - Designed for accessibility, particularly for elderly users or the visually impaired.
-* Converts the extracted text into spoken audio using `edge-tts`.
-* **Supported Languages:** English, Hindi, Tamil, Telugu, Bengali, Marathi, Kannada, and Malayalam.
+### 4. Medication Guide Generation (implement_D Glue)
+* **API Integration:** Connects with the `implement_D` Next.js guide service to generate detailed, printable, and audio-guided patient medication pamphlets for every drug in a prescription.
 
+### 5. Multilingual Audio & Accessibility
+* **Translational Pipeline:** Translates summaries and daily schedule tables to a user's selected language using fast Groq LPUs.
+* **High-Fidelity Text-To-Speech (TTS):** Generates spoken audio files using `edge-tts` (Azure Neural Voices) matched to local Indian dialects.
+* **Full Multilingual Support:** English, Hindi, Tamil, Telugu, Bengali, Marathi, Kannada, Malayalam, Gujarati, Punjabi, Odia, Assamese, Urdu, Nepali, Sanskrit, Konkani, Manipuri, Sindhi, Maithili, Dogri, Kashmiri, and Santali.
 
-* **User Dashboard & Scan History:** - **Secure Authentication:** Users can create an account and log in securely.
-* **History Tracking:** All past medicine and prescription scans are saved to the user's profile, allowing them to revisit old prescriptions or check drug details without rescanning. Users also have full control to delete past records.
+---
 
+## 🔒 Security & Reliability Guardrails
 
-* **Modern, Accessible UI:** - Built with Next.js, Tailwind CSS, and Radix UI components, ensuring a highly responsive, animated, and accessible user experience across all devices.
+### 1. Image Quality Verification Gate
+* Uses **Laplacian variance computation** to verify image sharpness. It warns users for low-quality uploads and completely blocks blank, out-of-focus, or blurry photos (sharpness score < 2.0) to prevent vision model API wastage.
 
-## Tech Stack
+### 2. Multi-Key API Rotation & Failover
+* **Rotating Client Pool:** Rotates between up to 10 Groq API keys (`GROQ_API_KEY_1` to `10`) dynamically to prevent rate limits or credential exhaustion.
+* **NVIDIA NIM Fallover:** Automatically reroutes calls to the **NVIDIA Developer Platform** if the primary Groq endpoints fail or exceed limits.
 
-* **Frontend:** Next.js (App Router), React, Tailwind CSS, Framer Motion, Radix UI Primitives.
-* **Backend:** Python, Flask, Flask-CORS.
-* **AI & Processing:** Groq API for fast model inference, Pillow for image processing, Edge-TTS for text-to-speech generation.
-* **Data & State Management:** React Query (`@tanstack/react-query`), React Hook Form, Zod for validation.
+### 3. Defense-in-Depth Security
+* **SQL Injection Protection:** Input validation filters out malicious query parameters, and common non-medical search keywords are excluded from database lookups to prevent blind SQLi.
+* **XSS & Template Injection Guards:** Scans OCR/User text for code execution hooks, prototype pollution patterns, and nested repetitions designed to cause Regular Expression Denial of Service (ReDoS).
+* **Password DoS Protection:** Implements length caps (4 to 128 characters) and hashes user passwords using SHA-256 with a static salt.
+* **Scans Rate Limiter:** Protects vision model endpoints from spam using an in-memory rate limiter capped at 15 requests per minute per IP.
 
-## Project Structure
+---
+
+## 🛠️ Tech Stack
+
+* **Frontend:** Next.js (App Router), React, Tailwind CSS, Framer Motion, Radix UI Primitives, Lucide React, HTML5 Audio API.
+* **Backend:** Python (Flask), Flask-CORS, Flask-JWT-Extended (secure cookie tokens).
+* **Database:** SQLite (local persistent relational database).
+* **AI & Processing:** Groq API, NVIDIA NIMs, RapidFuzz (fuzzy matching), edge-tts (Azure Neural TTS), OpenCV & Pillow (image processing), pillow-heif (HEIC support).
+
+---
+
+## 📂 Project Structure
 
 ```text
 sanjeevani/
-├── app/                    # Next.js App Router frontend
-│   ├── api/                # Next.js API Routes (if any)
-│   ├── globals.css         # Global Tailwind styles
-│   ├── layout.tsx          # Root layout
-│   └── page.tsx            # Main landing page
-├── components/             # Reusable UI components
-│   └── ui/                 # Radix UI / shadcn components (accordion, dialog, etc.)
-├── public/                 # Static assets and icons
-├── backend/                # Core Python backend files
-│   ├── ai_engine.py        # Core AI logic (Groq API, image analysis, TTS generation)
-│   ├── db.py               # Database connection, auth, and user history logic
-│   └── server.py           # Flask API server routing and endpoints
-├── package.json            # Node.js dependencies and frontend scripts
-├── requirements.txt        # Python backend dependencies
-├── tailwind.config.ts      # Tailwind CSS configuration
-└── tsconfig.json           # TypeScript configuration
-
+├── app/                        # Next.js App Router Frontend
+│   ├── admin/                  # Admin dashboard for doctor/pharmacist curation
+│   ├── api/                    # Frontend proxy API routes (auth, analyze, medicines, alternatives, translation)
+│   ├── dashboard/              # Patient / Doctor control center
+│   ├── history/                # Scanned history records
+│   ├── result/                 # Detailed scan results (Medicine and Prescription tabs)
+│   ├── scan/                   # Camera scanning interface
+│   ├── globals.css             # Main styling system
+│   └── page.tsx                # Dynamic landing page
+├── components/                 # Reusable UI components (DNASpinner, MandalaBackground, NavLink, etc.)
+│   └── ui/                     # Radix UI and shadcn primitives
+├── backend/                    # Python API and core services (located in root directory)
+│   ├── ai_engine.py            # AI Pipeline (Vision OCR, Translation, Edge-TTS, Image Preprocessing)
+│   ├── db.py                   # SQLite Schema, User auth, history storage, custom caches, few-shot retrieval
+│   ├── server.py               # Flask Routing, rate-limiting, failover wrappers, guide generation glue
+│   └── medicine_matcher.py     # Deterministic active ingredient and dosage profile matcher
+├── A_Z_medicines_dataset_of_India.csv  # Raw Indian medicines catalog for fuzzy lookup
+├── dataset_map.json            # Map of known prescription image hashes to prevent cross-uploading
+├── sanjeevani.db               # SQLite database file
+├── requirements.txt            # Python backend package requirements
+├── package.json                # Frontend Node dependencies & build script
+├── setup.py                    # Repository setup scripts
+├── tailwind.config.ts          # Tailwind styling tokens
+└── tsconfig.json               # TypeScript config
 ```
 
-## Installation & Setup
+---
+
+## 🗄️ Database Schema & Caches
+
+Sanjeevani utilizes SQLite (`sanjeevani.db`) with optimized indexes for sub-second retrieval times:
+* `users`: Stores user credentials (`username`, `password_hash`, `role` [patient, doctor], and registration timestamps).
+* `scan_history`: Stores past scans for logged-in users, mapping type, language, and structured output.
+* `drug_cache`: Key-value cache matching normalized medicine names to analysis results to save on LLM inference costs.
+* `prescription_cache`: Matches prescription MD5 OCR hashes to structured results, tracking `corrected` states for dynamic few-shot prompt injection.
+* `medicines`: Local medicines database with indexed columns for composition, dosage form, route of administration, release type, formulation variant, and pricing.
+* `medicine_alternatives`: Stores manually curated alternatives verified by doctors or pharmacists.
+
+---
+
+## 🚀 Installation & Setup
 
 ### Prerequisites
+* **Node.js** (v18+)
+* **Python** (v3.10+)
+* A **Groq API Key** (or NVIDIA NIM key)
 
-* Node.js (v18+)
-* Python (v3.8+)
-* Groq API Key (for the AI engine)
+### 1. Backend Setup
+1. Open a terminal in the project root folder.
+2. Create and activate a Python virtual environment:
+   ```bash
+   python -m venv venv
+   # On Windows:
+   .\venv\Scripts\activate
+   # On MacOS/Linux:
+   source venv/bin/activate
+   ```
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Create a `.env` file in the root directory:
+   ```env
+   GROQ_API_KEY=your_groq_api_key_here
+   # Optional key rotation:
+   GROQ_API_KEY_1=key_1
+   GROQ_API_KEY_2=key_2
+   # Optional NVIDIA NIM configuration:
+   NVIDIA_API_KEY=your_nvidia_api_key_here
+   # JWT Configuration:
+   JWT_SECRET_KEY=secure_sanjeevani_jwt_secret
+   ```
+5. Run the Flask server:
+   ```bash
+   python server.py
+   ```
+   *The server runs locally on `http://127.0.0.1:5000`.*
 
-### Backend Setup
+### 2. Frontend Setup
+1. Open a new terminal session in the root folder.
+2. Install Node packages:
+   ```bash
+   npm install
+   ```
+3. Run the development server:
+   ```bash
+   npm run dev
+   ```
+   *The app is served locally at `https://localhost:3000` (HTTPS enabled).*
 
-1. Navigate to the project directory.
-2. (Optional) Create and activate a Python virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows use: venv\Scripts\activate
-```
-
-3. Install the required Python dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-4. Create a `.env` file in the root directory and add your environment variables:
-```env
-GROQ_API_KEY=your_groq_api_key_here
-JWT_SECRET_KEY=your_secure_jwt_secret_key_here
-```
-
-5. Start the Flask server:
-```bash
-python server.py
-```
-
-*The server runs on `http://127.0.0.1:5000`, making it accessible across your local network.*
-
-### Frontend Setup
-
-1. Open a new terminal instance and install Node modules:
-```bash
-npm install
-
-```
-
-
-2. Start the Next.js development server:
-```bash
-npm run dev
-```
-
-*The app will be available at `https://localhost:3000`. Note: It uses Next.js experimental HTTPS, so your browser might show a standard "Not Secure" self-signed certificate warning upon first load. You can safely proceed past it for local testing.*
-
----
-
-## 📱 How to Use on Mobile Devices
-
-Sanjeevani is built with a mobile-first responsive design using Tailwind CSS, meaning the UI automatically adapts to fit smartphone and tablet screens seamlessly. You do not need to install a separate mobile app to use it.
-
-To access Sanjeevani on your mobile phone while developing or hosting locally:
-
-1. **Connect to the same network:** Ensure your mobile device and the computer running the Sanjeevani servers are connected to the same Wi-Fi network.
-2. **Find your computer's local IP Address:**
-* *Windows:* Open Command Prompt and type `ipconfig` (look for "IPv4 Address", e.g., `192.168.1.5`).
-* *Mac/Linux:* Open Terminal and type `ifconfig` or `ip a`.
-
-
-3. **Run the Backend:** The Flask server is already configured to host on `0.0.0.0` (all interfaces). Start it normally with `python server.py`.
-4. **Run the Frontend (Network Access):** Start your Next.js frontend binding it to your local IP address:
-```bash
-npm run dev -- -H 0.0.0.0
-
-```
-
-
-5. **Update API URLs (if necessary):** If your frontend relies on an environment variable for the backend API URL (e.g., `NEXT_PUBLIC_API_URL`), ensure it is pointed to your computer's local IP address instead of `localhost` (e.g., `http://192.168.1.5:5000`).
-6. **Access via Mobile Browser:** Open Safari or Chrome on your phone and navigate to `http://<YOUR_COMPUTER_IP>:3000`. You can now use the phone's camera directly to snap pictures of medicine strips and prescriptions and upload them to the web app.
+### 📱 Accessing via Mobile Devices (Local Network)
+1. Connect both your computer and mobile device to the same Wi-Fi network.
+2. Find your computer's local IP address (e.g., `192.168.1.5`).
+3. Run the frontend bound to all interfaces:
+   ```bash
+   npm run dev -- -H 0.0.0.0
+   ```
+4. Navigate to `http://192.168.1.5:3000` on your mobile browser. You can now use your smartphone camera to scan strips and prescriptions.
 
 ---
 
-## API Endpoints
+## 🔌 API Endpoints Reference
 
-**Auth**
+### 🔐 Authentication
+* `POST /api/auth/register` - Create a new user (Patients or Doctor curation roles)
+* `POST /api/auth/login` - Authenticate user, receive JWT cookie tokens
+* `POST /api/auth/logout` - Clear cookies and terminate session
+* `POST /api/auth/reset-password` - Updates hashed passwords securely (Admin/User action)
 
-* `POST /api/auth/register` - Register a new user
-* `POST /api/auth/login` - Authenticate an existing user
-* `POST /api/auth/logout` - Logout the current user using JWT cookie
+### 🩺 Scanning & OCR Analysis
+* `POST /api/analyze/medicine` - Extracts medicine packaging text, normalizes name, checks database, translates output, and yields Edge-TTS base64 audio.
+* `POST /api/analyze/prescription` - Verbatim OCR transcribe of prescription handwriting, segments patient/doctor/drugs, scans drug interactions, translates, and generates edge-TTS audio.
 
-**Analysis**
+### 💊 Medicines & Alternatives
+* `GET /api/medicines/search?q=<query>` - Searches local database for active products. Automatically falls back to AI search to correct typos if database misses.
+* `GET /api/medicines/dosage-info?name=<name>&composition=<composition>` - Fetches clinical dosage and usage guidance.
+* `GET /api/medicines/alternatives?name=<name>` - Deterministically matches active substitutes by composition, form, route, and release.
+* `POST /api/medicines/alternatives` - Submits a doctor-verified substitute recommendation.
 
-* `POST /api/analyze/medicine` - Upload a medicine for Groq analysis and edge-TTS audio bytes
-* `POST /api/analyze/prescription` - Upload a prescription for analysis and TTS audio bytes
-
-**Media & History**
-
-* `GET /api/history` - Fetch the authenticated user's scan history
-* `DELETE /api/history/<scan_id>` - Remove a specific history entry
-* `GET /api/health` - Check backend server health status
+### 📚 Extras & Utilities
+* `POST /api/translate` - Translates medical texts into target Indian language formats.
+* `POST /api/guides/generate` - Generates printable, patient-centric drug guides for prescription medicines.
+* `GET /api/history` - Fetches JWT-authenticated user scan history.
+* `DELETE /api/history/<scan_id>` - Removes a scan record from history.
+* `GET /api/health` - Inspects backend server status and SQLite connection health.
