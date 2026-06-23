@@ -180,11 +180,11 @@ def init_db():
     conn.commit()
     conn.close()
 
-    # Register default test accounts for peer testing
-    register_user("hemanth", "admin@123", "doctor")
-    register_user("pranay", "admin@123", "doctor")
-    register_user("vansh", "admin@123", "doctor")
-    register_user("patient1", "sanjeevani_patient_2026", "patient")
+    # Register default test accounts for peer testing (commented out to allow self-registration via OTP)
+    # register_user("hemanth", "admin@123", "doctor")
+    # register_user("pranay", "admin@123", "doctor")
+    # register_user("vansh", "admin@123", "doctor")
+    # register_user("patient1", "sanjeevani_patient_2026", "patient")
 
 
 def _hash_password(password: str) -> str:
