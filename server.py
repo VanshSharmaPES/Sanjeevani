@@ -17,7 +17,7 @@ from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, set_access_cookies, jwt_required, get_jwt_identity, get_jwt, unset_jwt_cookies
 from ai_engine import analyze_medicine_image, analyze_prescription_image, get_medicine_dosage_info, _translate_text, request_guide_generation, search_medicine_fallback_ai
-from db import register_user, authenticate_user, save_scan, get_user_history, delete_scan, search_medicines, reset_password, get_db_status, save_custom_medicine, get_medicine_alternatives, save_medicine_alternative
+from db import register_user, authenticate_user, save_scan, get_user_history, delete_scan, search_medicines, reset_password, get_db_status, save_custom_medicine, get_medicine_alternatives, save_medicine_alternative, create_otp_verification, verify_otp_verification, register_user_with_hash, get_user_email
 
 # Fix Windows charmap codec crashes when printing Unicode model output
 if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
@@ -101,14 +101,59 @@ LANG_CODE_MAP = {
 # ─── Auth ────────────────────────────────────────────────────
 @app.route("/api/auth/register", methods=["POST"])
 def api_register():
-    data = request.get_json()
-    username = data.get("username", "")
-    password = data.get("password", "")
-    role = data.get("role", "patient")
-    success, msg = register_user(username, password, role)
-    if success:
-        return jsonify({"success": True, "message": msg})
-    return jsonify({"success": False, "message": msg}), 400
+    data = request.get_json() or {}
+    action = data.get("action", "verify")  # Default to verify for backward compatibility
+    username = data.get("username", "").strip()
+    
+    if action == "request":
+        password = data.get("password", "")
+        role = data.get("role", "patient")
+        email = data.get("email", "").strip()
+        
+        if not username or not password or not email:
+            return jsonify({"success": False, "message": "Username, password, and email address are required."}), 400
+        if len(password) < 4:
+            return jsonify({"success": False, "message": "Password must be at least 4 characters."}), 400
+        if len(password) > 128:
+            return jsonify({"success": False, "message": "Password cannot be more than 128 characters."}), 400
+            
+        # Check if user already exists
+        import sqlite3
+        from db import DB_PATH
+        conn = sqlite3.connect(DB_PATH)
+        row = conn.execute("SELECT id FROM users WHERE username = ?", (username.lower(),)).fetchone()
+        conn.close()
+        if row:
+            return jsonify({"success": False, "message": "Username already exists. Please choose a different one."}), 400
+            
+        # Hash password and create temporary registration record
+        from db import _hash_password
+        pwd_hash = _hash_password(password)
+        success, otp = create_otp_verification(username, "register", password_hash=pwd_hash, role=role, email=email)
+        if success:
+            return jsonify({"success": True, "message": "OTP verification code sent via Email."})
+        return jsonify({"success": False, "message": "Failed to generate verification code."}), 500
+        
+    elif action == "verify":
+        otp = data.get("otp", "").strip()
+        if not username or not otp:
+            return jsonify({"success": False, "message": "Username and OTP code are required."}), 400
+            
+        success, otp_data = verify_otp_verification(username, "register", otp)
+        if success and otp_data:
+            # Register user
+            reg_ok, reg_msg = register_user_with_hash(
+                username=username,
+                password_hash=otp_data["password_hash"],
+                role=otp_data["role"],
+                email=otp_data["email"]
+            )
+            if reg_ok:
+                return jsonify({"success": True, "message": reg_msg})
+            return jsonify({"success": False, "message": reg_msg}), 400
+        return jsonify({"success": False, "message": "Invalid or expired verification code."}), 400
+        
+    return jsonify({"success": False, "message": "Invalid action."}), 400
 
 
 @app.route("/api/auth/login", methods=["POST"])
@@ -135,12 +180,38 @@ def api_logout():
 @app.route("/api/auth/reset-password", methods=["POST"])
 def api_reset_password():
     data = request.get_json() or {}
-    username = data.get("username", "")
-    new_password = data.get("new_password", "")
-    success, msg = reset_password(username, new_password)
-    if success:
-        return jsonify({"success": True, "message": msg})
-    return jsonify({"success": False, "message": msg}), 400
+    action = data.get("action", "verify")  # Default to verify for backward compatibility
+    username = data.get("username", "").strip()
+    
+    if action == "request":
+        if not username:
+            return jsonify({"success": False, "message": "Username is required."}), 400
+            
+        # Get email associated with user
+        email = get_user_email(username)
+        if not email:
+            return jsonify({"success": False, "message": "Username not found or no email is registered for this account."}), 400
+            
+        success, otp = create_otp_verification(username, "reset", email=email)
+        if success:
+            return jsonify({"success": True, "message": "OTP verification code sent via Email."})
+        return jsonify({"success": False, "message": "Failed to generate verification code."}), 500
+        
+    elif action == "verify":
+        otp = data.get("otp", "").strip()
+        new_password = data.get("new_password", "")
+        if not username or not otp or not new_password:
+            return jsonify({"success": False, "message": "Username, OTP code, and new password are required."}), 400
+            
+        success, otp_data = verify_otp_verification(username, "reset", otp)
+        if success:
+            reset_ok, reset_msg = reset_password(username, new_password)
+            if reset_ok:
+                return jsonify({"success": True, "message": reset_msg})
+            return jsonify({"success": False, "message": reset_msg}), 400
+        return jsonify({"success": False, "message": "Invalid or expired verification code."}), 400
+        
+    return jsonify({"success": False, "message": "Invalid action."}), 400
 
 
 # ─── Medicines search ────────────────────────────────────────

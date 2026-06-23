@@ -34,6 +34,17 @@ Sanjeevani is an AI-powered, mobile-first healthcare accessibility platform desi
 * **High-Fidelity Text-To-Speech (TTS):** Generates spoken audio files using `edge-tts` (Azure Neural Voices) matched to local Indian dialects.
 * **Full Multilingual Support:** English, Hindi, Tamil, Telugu, Bengali, Marathi, Kannada, Malayalam, Gujarati, Punjabi, Odia, Assamese, Urdu, Nepali, Sanskrit, Konkani, Manipuri, Sindhi, Maithili, Dogri, Kashmiri, and Santali.
 
+### 6. Automated OTP Authentication Engine (Email & Console Fallback)
+* **Email Integration:** Registration and password reset actions require a 6-digit OTP sent via secure **SMTP Email dispatches** to the user's registered email address.
+* **Mock Fallback Console:** In development environments where SMTP variables are not configured in the `.env` file, OTPs are outputted to the server logs automatically so registrations/resets can proceed.
+* **Security Stashing:** Registration requests hash the password first and stashes verification states (`username`, `password_hash`, `role`, `email`, `otp`) in SQLite, verifying them within a 5-minute expiry window to mitigate raw password handling over transient requests.
+
+### 7. Remember Me / "Save login info" Session Guard
+* **Granular Login Control:** On the login screen, a "Save login info" toggle controls where JWT tokens, usernames, and roles are kept in the client browser.
+* **Persistent Session:** Selecting the option writes credentials to `localStorage`, allowing the user to stay logged in across browser closes.
+* **Temporary Session:** Disabling the option routes storing credentials to `sessionStorage`. Closing the browser tab/window immediately destroys all local keys, protecting against session replay or shoulder-surfing compromises.
+* **Universal Safeguards:** Scanning interfaces, dashboards, admin views, and logout handlers have been fully upgraded to query, update, and clear state keys from both storage mechanisms.
+
 ---
 
 ## 🔒 Security & Reliability Guardrails
@@ -50,6 +61,7 @@ Sanjeevani is an AI-powered, mobile-first healthcare accessibility platform desi
 * **XSS & Template Injection Guards:** Scans OCR/User text for code execution hooks, prototype pollution patterns, and nested repetitions designed to cause Regular Expression Denial of Service (ReDoS).
 * **Password DoS Protection:** Implements length caps (4 to 128 characters) and hashes user passwords using SHA-256 with a static salt.
 * **Scans Rate Limiter:** Protects vision model endpoints from spam using an in-memory rate limiter capped at 15 requests per minute per IP.
+* **OTP Replay Guard:** Deletes OTP verification tokens immediately upon first successful use or expiration in SQLite, preventing reuse and brute-force attempts on reset or registration.
 
 ---
 
@@ -59,6 +71,7 @@ Sanjeevani is an AI-powered, mobile-first healthcare accessibility platform desi
 * **Backend:** Python (Flask), Flask-CORS, Flask-JWT-Extended (secure cookie tokens).
 * **Database:** SQLite (local persistent relational database).
 * **AI & Processing:** Groq API, NVIDIA NIMs, RapidFuzz (fuzzy matching), edge-tts (Azure Neural TTS), OpenCV & Pillow (image processing), pillow-heif (HEIC support).
+* **OTP Integration:** SMTP Email Dispatcher (secure smtplib TLS connection).
 
 ---
 
@@ -79,8 +92,8 @@ sanjeevani/
 │   └── ui/                     # Radix UI and shadcn primitives
 ├── backend/                    # Python API and core services (located in root directory)
 │   ├── ai_engine.py            # AI Pipeline (Vision OCR, Translation, Edge-TTS, Image Preprocessing)
-│   ├── db.py                   # SQLite Schema, User auth, history storage, custom caches, few-shot retrieval
-│   ├── server.py               # Flask Routing, rate-limiting, failover wrappers, guide generation glue
+│   ├── db.py                   # SQLite Schema, User auth, history storage, custom caches, few-shot retrieval, SMTP/OTP helpers
+│   ├── server.py               # Flask Routing, rate-limiting, failover wrappers, guide generation glue, OTP request handler
 │   └── medicine_matcher.py     # Deterministic active ingredient and dosage profile matcher
 ├── A_Z_medicines_dataset_of_India.csv  # Raw Indian medicines catalog for fuzzy lookup
 ├── dataset_map.json            # Map of known prescription image hashes to prevent cross-uploading
@@ -97,12 +110,13 @@ sanjeevani/
 ## 🗄️ Database Schema & Caches
 
 Sanjeevani utilizes SQLite (`sanjeevani.db`) with optimized indexes for sub-second retrieval times:
-* `users`: Stores user credentials (`username`, `password_hash`, `role` [patient, doctor], and registration timestamps).
+* `users`: Stores user credentials (`username`, `password_hash`, `role` [patient, doctor], `email` [registered email used for OTP], and registration timestamps).
 * `scan_history`: Stores past scans for logged-in users, mapping type, language, and structured output.
 * `drug_cache`: Key-value cache matching normalized medicine names to analysis results to save on LLM inference costs.
 * `prescription_cache`: Matches prescription MD5 OCR hashes to structured results, tracking `corrected` states for dynamic few-shot prompt injection.
 * `medicines`: Local medicines database with indexed columns for composition, dosage form, route of administration, release type, formulation variant, and pricing.
 * `medicine_alternatives`: Stores manually curated alternatives verified by doctors or pharmacists.
+* `otp_verifications`: Stashes OTP records (`username`, `action` [register, reset], `password_hash`, `role`, `email`, `otp` code, `expires_at`, and `created_at`) used in two-step verification.
 
 ---
 
@@ -112,6 +126,7 @@ Sanjeevani utilizes SQLite (`sanjeevani.db`) with optimized indexes for sub-seco
 * **Node.js** (v18+)
 * **Python** (v3.10+)
 * A **Groq API Key** (or NVIDIA NIM key)
+* *Optional:* **SMTP Configuration** (for automated Email OTP notifications)
 
 ### 1. Backend Setup
 1. Open a terminal in the project root folder.
@@ -137,6 +152,16 @@ Sanjeevani utilizes SQLite (`sanjeevani.db`) with optimized indexes for sub-seco
    NVIDIA_API_KEY=your_nvidia_api_key_here
    # JWT Configuration:
    JWT_SECRET_KEY=secure_sanjeevani_jwt_secret
+   
+   # Optional SMTP credentials for Email OTP:
+   SMTP_SERVER=smtp.gmail.com
+   SMTP_PORT=587
+   SMTP_USERNAME=your_email@gmail.com
+   SMTP_PASSWORD=your_gmail_app_password
+   SMTP_SENDER=your_email@gmail.com
+   
+   # Optional Resend API credentials (alternative to SMTP):
+   RESEND_API_KEY=re_your_api_key_here
    ```
 5. Run the Flask server:
    ```bash
@@ -170,10 +195,14 @@ Sanjeevani utilizes SQLite (`sanjeevani.db`) with optimized indexes for sub-seco
 ## 🔌 API Endpoints Reference
 
 ### 🔐 Authentication
-* `POST /api/auth/register` - Create a new user (Patients or Doctor curation roles)
-* `POST /api/auth/login` - Authenticate user, receive JWT cookie tokens
-* `POST /api/auth/logout` - Clear cookies and terminate session
-* `POST /api/auth/reset-password` - Updates hashed passwords securely (Admin/User action)
+* `POST /api/auth/register` - Registers users via a two-step verification flow:
+  - Request OTP Phase: Payload `{ "action": "request", "username": "user", "password": "pwd", "role": "patient", "email": "user@example.com" }`
+  - Verify OTP Phase: Payload `{ "action": "verify", "username": "user", "otp": "123456" }`
+* `POST /api/auth/login` - Authenticates user, sets JWT cookies, and returns user configuration details.
+* `POST /api/auth/logout` - Clears active JWT cookie tokens and terminates active session scope.
+* `POST /api/auth/reset-password` - Resets passwords via a two-step verification flow:
+  - Request OTP Phase: Payload `{ "action": "request", "username": "user" }`
+  - Verify OTP Phase: Payload `{ "action": "verify", "username": "user", "otp": "123456", "new_password": "pwd" }`
 
 ### 🩺 Scanning & OCR Analysis
 * `POST /api/analyze/medicine` - Extracts medicine packaging text, normalizes name, checks database, translates output, and yields Edge-TTS base64 audio.

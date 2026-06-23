@@ -189,7 +189,7 @@ function ScanUploadContent() {
       if (isDeployed) {
         // Direct browser-to-backend request: avoids Vercel's 10s serverless function timeout
         const headers: Record<string, string> = {};
-        const token = localStorage.getItem("sanjeevani_token");
+        const token = localStorage.getItem("sanjeevani_token") || sessionStorage.getItem("sanjeevani_token");
         if (token) {
           headers["Authorization"] = `Bearer ${token}`;
         }

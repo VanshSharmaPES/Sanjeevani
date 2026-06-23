@@ -54,13 +54,13 @@ const Dashboard = () => {
   const [historyLoading, setHistoryLoading] = useState(true);
 
   useEffect(() => {
-    const name = localStorage.getItem("sanjeevani_user") || "User";
+    const name = localStorage.getItem("sanjeevani_user") || sessionStorage.getItem("sanjeevani_user") || "User";
     setUserName(name);
 
-    const savedRole = localStorage.getItem("sanjeevani_role") || "patient";
+    const savedRole = localStorage.getItem("sanjeevani_role") || sessionStorage.getItem("sanjeevani_role") || "patient";
     setRole(savedRole);
 
-    const savedLang = localStorage.getItem("sanjeevani_language") || "en";
+    const savedLang = localStorage.getItem("sanjeevani_language") || sessionStorage.getItem("sanjeevani_language") || "en";
     setLanguage(savedLang);
 
     // Fetch history
@@ -115,6 +115,7 @@ const Dashboard = () => {
     setLanguage(code);
     setLangOpen(false);
     localStorage.setItem("sanjeevani_language", code);
+    sessionStorage.setItem("sanjeevani_language", code);
   };
 
   const openDropdown = () => {
@@ -142,6 +143,11 @@ const Dashboard = () => {
     localStorage.removeItem("sanjeevani_role");
     localStorage.removeItem("sanjeevani_language");
     localStorage.removeItem("sanjeevani_token");
+
+    sessionStorage.removeItem("sanjeevani_user");
+    sessionStorage.removeItem("sanjeevani_role");
+    sessionStorage.removeItem("sanjeevani_language");
+    sessionStorage.removeItem("sanjeevani_token");
     
     // Clear cookie in background (best-effort)
     fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {});

@@ -116,6 +116,20 @@ def init_db():
             UNIQUE(medicine_name, alternate_name)
         )
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS otp_verifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            action TEXT NOT NULL,
+            password_hash TEXT,
+            role TEXT,
+            phone TEXT,
+            email TEXT,
+            otp TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+    """)
 
     cursor.execute("PRAGMA table_info(medicines)")
     medicine_columns = {row[1] for row in cursor.fetchall()}
@@ -144,6 +158,16 @@ def init_db():
     columns = [row[1] for row in cursor.fetchall()]
     if "role" not in columns:
         cursor.execute("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'patient'")
+    if "phone" not in columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN phone TEXT")
+    if "email" not in columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN email TEXT")
+
+    # Alter table if email column doesn't exist on otp_verifications
+    cursor.execute("PRAGMA table_info(otp_verifications)")
+    otp_columns = [row[1] for row in cursor.fetchall()]
+    if "email" not in otp_columns:
+        cursor.execute("ALTER TABLE otp_verifications ADD COLUMN email TEXT")
 
     # Alter table if prescription_cache columns don't exist
     cursor.execute("PRAGMA table_info(prescription_cache)")
@@ -169,7 +193,7 @@ def _hash_password(password: str) -> str:
     return hashlib.sha256(salted.encode()).hexdigest()
 
 
-def register_user(username: str, password: str, role: str = "patient") -> tuple[bool, str]:
+def register_user(username: str, password: str, role: str = "patient", email: str = None) -> tuple[bool, str]:
     """Register a new user. Returns (success, message)."""
     if not username or not password:
         return False, "Username and password are required."
@@ -184,8 +208,29 @@ def register_user(username: str, password: str, role: str = "patient") -> tuple[
     conn = _get_conn()
     try:
         conn.execute(
-            "INSERT INTO users (username, password_hash, role, created_at) VALUES (?, ?, ?, ?)",
-            (username.strip().lower(), _hash_password(password), role, datetime.now(timezone.utc).isoformat())
+            "INSERT INTO users (username, password_hash, role, email, created_at) VALUES (?, ?, ?, ?, ?)",
+            (username.strip().lower(), _hash_password(password), role, email, datetime.now(timezone.utc).isoformat())
+        )
+        conn.commit()
+        return True, "Account created successfully!"
+    except sqlite3.IntegrityError:
+        return False, "Username already exists. Please choose a different one."
+    finally:
+        conn.close()
+
+
+def register_user_with_hash(username: str, password_hash: str, role: str = "patient", email: str = None) -> tuple[bool, str]:
+    """Register a new user with an already-computed password hash. Returns (success, message)."""
+    if not username or not password_hash:
+        return False, "Username and password are required."
+    if role not in ("patient", "doctor"):
+        role = "patient"
+
+    conn = _get_conn()
+    try:
+        conn.execute(
+            "INSERT INTO users (username, password_hash, role, email, created_at) VALUES (?, ?, ?, ?, ?)",
+            (username.strip().lower(), password_hash, role, email, datetime.now(timezone.utc).isoformat())
         )
         conn.commit()
         return True, "Account created successfully!"
@@ -859,6 +904,173 @@ def save_custom_medicine(med_data: dict, query: str = None) -> bool:
     except Exception as e:
         print(f"[WARN] Error saving custom medicine: {e}")
         return False
+    finally:
+        conn.close()
+
+
+def send_email_otp(to_email: str, subject: str, body: str) -> bool:
+    """Send an email using Resend REST API or SMTP fallback."""
+    import urllib.request
+    import urllib.parse
+    import json
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    resend_key = os.getenv("RESEND_API_KEY")
+    sender_email = os.getenv("SMTP_SENDER", "onboarding@resend.dev")
+
+    # 1. Try Resend REST API if key is present
+    if resend_key:
+        url = "https://api.resend.com/emails"
+        payload = {
+            "from": f"Sanjeevani <{sender_email}>",
+            "to": [to_email],
+            "subject": subject,
+            "text": body
+        }
+        headers = {
+            "Authorization": f"Bearer {resend_key}",
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+        try:
+            data = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=8) as response:
+                res_body = response.read().decode("utf-8")
+                res_json = json.loads(res_body)
+                print(f"[RESEND] Email successfully sent to {to_email}: {res_json}")
+                return "id" in res_json
+        except Exception as e:
+            print(f"[ERROR] Resend API failed: {e}")
+            # If Resend API fails, fallback to SMTP if configured
+
+    # 2. Try SMTP fallback if configured
+    smtp_server = os.getenv("SMTP_SERVER")
+    smtp_port = os.getenv("SMTP_PORT", "587")
+    smtp_username = os.getenv("SMTP_USERNAME")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+
+    if smtp_server and smtp_username and smtp_password:
+        try:
+            msg = MIMEMultipart()
+            msg["From"] = sender_email
+            msg["To"] = to_email
+            msg["Subject"] = subject
+            msg.attach(MIMEText(body, "plain"))
+
+            server = smtplib.SMTP(smtp_server, int(smtp_port))
+            server.starttls()
+            server.login(smtp_username, smtp_password)
+            server.sendmail(msg["From"], to_email, msg.as_string())
+            server.close()
+            print(f"[SMTP] Email successfully sent to {to_email}")
+            return True
+        except Exception as e:
+            print(f"[ERROR] SMTP failed to send email: {e}")
+
+    # 3. Fallback to console print if neither is configured
+    if not resend_key and not (smtp_server and smtp_username and smtp_password):
+        print(f"\n[MOCK OTP EMAIL] To: {to_email}\nSubject: {subject}\nBody: {body}\n")
+        return True
+
+    return False
+
+
+
+def create_otp_verification(username: str, action: str, password_hash: str = None, role: str = None, email: str = None) -> tuple[bool, str]:
+    """Generate and send a 6-digit OTP code for registration or reset."""
+    import secrets
+    from datetime import datetime, timedelta, timezone
+    
+    # Generate a cryptographically secure random 6-digit OTP
+    otp = f"{secrets.randbelow(900000) + 100000}"
+    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
+    created_at = datetime.now(timezone.utc).isoformat()
+    
+    conn = _get_conn()
+    try:
+        # Clear existing OTPs for the same user & action
+        conn.execute(
+            "DELETE FROM otp_verifications WHERE LOWER(username) = ? AND action = ?",
+            (username.strip().lower(), action)
+        )
+        conn.execute(
+            """
+            INSERT INTO otp_verifications (username, action, password_hash, role, email, otp, expires_at, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (username.strip().lower(), action, password_hash, role, email, otp, expires_at, created_at)
+        )
+        conn.commit()
+        
+        # Prepare the email subject and body
+        if action == "register":
+            subject = "Sanjeevani Registration OTP"
+            body = f"Welcome to Sanjeevani!\n\nYour 6-digit verification code (OTP) is {otp}.\nThis code expires in 5 minutes.\n\nThank you,\nSanjeevani Team"
+        else:
+            subject = "Sanjeevani Password Reset OTP"
+            body = f"Hello,\n\nYou requested a password reset for your Sanjeevani account.\n\nYour 6-digit verification code (OTP) is {otp}.\nThis code expires in 5 minutes.\n\nIf you did not request this, please ignore this email.\n\nThank you,\nThe Sanjeevani Team"
+            
+        print(f"\n[OTP] Generated verification code for user '{username}' ({action}): {otp}\n")
+        
+        # Send Email if email is provided
+        if email:
+            send_email_otp(email, subject, body)
+            
+        return True, otp
+    except Exception as e:
+        print(f"[ERROR] Failed to create OTP verification: {e}")
+        return False, ""
+    finally:
+        conn.close()
+
+
+def verify_otp_verification(username: str, action: str, otp: str) -> tuple[bool, dict | None]:
+    """Verify code correctness and expiration state. If valid, deletes the record."""
+    from datetime import datetime, timezone
+    
+    conn = _get_conn()
+    try:
+        row = conn.execute(
+            """
+            SELECT * FROM otp_verifications 
+            WHERE LOWER(username) = ? AND action = ? AND otp = ?
+            """,
+            (username.strip().lower(), action, otp.strip())
+        ).fetchone()
+        
+        if not row:
+            return False, None
+            
+        expires_at = datetime.fromisoformat(row["expires_at"])
+        if datetime.now(timezone.utc) > expires_at:
+            # Delete expired code
+            conn.execute("DELETE FROM otp_verifications WHERE id = ?", (row["id"],))
+            conn.commit()
+            return False, None
+            
+        # Valid code: delete it and return its values
+        res_data = dict(row)
+        conn.execute("DELETE FROM otp_verifications WHERE id = ?", (row["id"],))
+        conn.commit()
+        return True, res_data
+    except Exception as e:
+        print(f"[ERROR] Failed to verify OTP verification: {e}")
+        return False, None
+    finally:
+        conn.close()
+
+
+def get_user_email(username: str) -> str | None:
+    """Retrieve the email associated with a username."""
+    conn = _get_conn()
+    try:
+        row = conn.execute("SELECT email FROM users WHERE username = ?", (username.strip().lower(),)).fetchone()
+        return row["email"] if row else None
+    except Exception:
+        return None
     finally:
         conn.close()
 

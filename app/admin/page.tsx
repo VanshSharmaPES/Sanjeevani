@@ -131,8 +131,8 @@ export default function AdminDashboard() {
 
   // Role Guard
   useEffect(() => {
-    const savedRole = localStorage.getItem("sanjeevani_role");
-    const savedUser = localStorage.getItem("sanjeevani_user") || "Doctor";
+    const savedRole = localStorage.getItem("sanjeevani_role") || sessionStorage.getItem("sanjeevani_role");
+    const savedUser = localStorage.getItem("sanjeevani_user") || sessionStorage.getItem("sanjeevani_user") || "Doctor";
     if (savedRole !== "doctor") {
       router.push("/dashboard");
     } else {
