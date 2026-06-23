@@ -297,15 +297,8 @@ const Dashboard = () => {
 
           {/* Symmetrical Layout for Dashboard Actions & Recent Scans */}
           <motion.div variants={fadeUp} className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-            {/* Left side: A & B stacked */}
-            <div className="lg:col-span-5 flex flex-col gap-6">
-              <ActionCard
-                title="Scan Medicine Strip"
-                description="Identify medicines, active ingredients, dosage, and warnings using AI vision."
-                icon={<Pill size={32} />}
-                variant="teal"
-                onClick={() => router.push("/scan?type=medicine")}
-              />
+            {/* Left side: Action Card */}
+            <div className="lg:col-span-5 flex flex-col">
               <ActionCard
                 title="Read Prescription"
                 description="Decode handwritten prescriptions into clear, structured daily schedules."
