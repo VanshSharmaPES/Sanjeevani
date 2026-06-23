@@ -15,9 +15,9 @@ from datetime import timedelta
 from functools import wraps
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
-from flask_jwt_extended import JWTManager, create_access_token, set_access_cookies, jwt_required, get_jwt_identity, unset_jwt_cookies
+from flask_jwt_extended import JWTManager, create_access_token, set_access_cookies, jwt_required, get_jwt_identity, get_jwt, unset_jwt_cookies
 from ai_engine import analyze_medicine_image, analyze_prescription_image, get_medicine_dosage_info, _translate_text, request_guide_generation, search_medicine_fallback_ai
-from db import register_user, authenticate_user, save_scan, get_user_history, delete_scan, search_medicines, reset_password, get_db_status, save_custom_medicine
+from db import register_user, authenticate_user, save_scan, get_user_history, delete_scan, search_medicines, reset_password, get_db_status, save_custom_medicine, get_medicine_alternatives, save_medicine_alternative
 
 # Fix Windows charmap codec crashes when printing Unicode model output
 if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
@@ -186,6 +186,26 @@ def api_medicine_dosage_info():
         return jsonify({"error": "Missing medicine name"}), 400
     results = get_medicine_dosage_info(name, composition)
     return jsonify(results)
+
+
+@app.route("/api/medicines/alternatives", methods=["GET"])
+def api_get_medicine_alternatives():
+    name = request.args.get("name", "").strip()
+    if not name:
+        return jsonify({"error": "Missing medicine name"}), 400
+    return jsonify(get_medicine_alternatives(name))
+
+
+@app.route("/api/medicines/alternatives", methods=["POST"])
+@jwt_required()
+def api_save_medicine_alternative():
+    claims = get_jwt()
+    if claims.get("role") != "doctor":
+        return jsonify({"success": False, "message": "Doctor/pharmacist authorization required."}), 403
+    data = request.get_json(silent=True) or {}
+    data["createdBy"] = str(get_jwt_identity())
+    success, message = save_medicine_alternative(data)
+    return jsonify({"success": success, "message": message}), 200 if success else 400
 
 
 @app.route("/api/translate", methods=["POST"])

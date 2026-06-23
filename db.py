@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 from datetime import datetime, timezone
+from medicine_matcher import build_medicine_profile, compare_medicine_profiles
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "sanjeevani.db")
 
@@ -14,6 +15,23 @@ def _get_conn():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def _backfill_formulation_variants(cursor: sqlite3.Cursor) -> None:
+    rows = cursor.execute(
+        """
+        SELECT id, name, unit
+        FROM medicines
+        WHERE formulation_variant IS NULL OR formulation_variant = ''
+        """
+    ).fetchall()
+    if not rows:
+        return
+    updates = []
+    for row in rows:
+        profile = build_medicine_profile({"name": row["name"], "unit": row["unit"] or ""})
+        updates.append((profile["formulation_variant"], row["id"]))
+    cursor.executemany("UPDATE medicines SET formulation_variant = ? WHERE id = ?", updates)
 
 
 def init_db():
@@ -68,11 +86,58 @@ def init_db():
             manufacturer TEXT,
             excellent_review_pct INTEGER,
             average_review_pct INTEGER,
-            poor_review_pct INTEGER
+            poor_review_pct INTEGER,
+            price REAL,
+            is_discontinued INTEGER DEFAULT 0,
+            medicine_type TEXT,
+            composition_key TEXT,
+            ingredient_key TEXT,
+            dosage_form TEXT,
+            route TEXT,
+            release_type TEXT,
+            formulation_variant TEXT,
+            created_at TEXT
         )
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS medicine_alternatives (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            medicine_name TEXT NOT NULL,
+            medicine_composition TEXT,
+            alternate_name TEXT NOT NULL,
+            alternate_composition TEXT,
+            manufacturer TEXT,
+            price REAL,
+            reason TEXT,
+            source TEXT DEFAULT 'doctor_curated',
+            status TEXT DEFAULT 'doctor_curated',
+            created_by TEXT,
+            created_at TEXT NOT NULL,
+            UNIQUE(medicine_name, alternate_name)
+        )
+    """)
+
+    cursor.execute("PRAGMA table_info(medicines)")
+    medicine_columns = {row[1] for row in cursor.fetchall()}
+    medicine_migrations = {
+        "price": "REAL", "is_discontinued": "INTEGER DEFAULT 0",
+        "medicine_type": "TEXT", "composition_key": "TEXT",
+        "ingredient_key": "TEXT", "dosage_form": "TEXT", "route": "TEXT",
+        "release_type": "TEXT", "formulation_variant": "TEXT",
+        "created_at": "TEXT",
+    }
+    for column, definition in medicine_migrations.items():
+        if column not in medicine_columns:
+            cursor.execute(f"ALTER TABLE medicines ADD COLUMN {column} {definition}")
+    _backfill_formulation_variants(cursor)
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_medicines_name ON medicines(name)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_medicines_composition ON medicines(composition)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_medicines_composition_key ON medicines(composition_key)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_medicines_ingredient_key ON medicines(ingredient_key)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_medicines_form_route_release ON medicines(dosage_form, route, release_type)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_medicines_formulation_variant ON medicines(formulation_variant)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_medicines_discontinued ON medicines(is_discontinued)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_medicines_alternate_lookup ON medicines(composition_key, is_discontinued, dosage_form, route, release_type)")
 
     # Alter table if role column doesn't exist
     cursor.execute("PRAGMA table_info(users)")
@@ -349,9 +414,11 @@ def search_medicines(query: str, limit: int = 15) -> list[dict]:
         q_lower = query.lower().strip()
         rows = conn.execute(
             """
-            SELECT name, unit, composition, uses, side_effects, manufacturer
+            SELECT id, name, unit, composition, uses, side_effects, manufacturer,
+                   price, is_discontinued, medicine_type, dosage_form, route,
+                   release_type, formulation_variant
             FROM medicines
-            WHERE name LIKE ?
+            WHERE name LIKE ? AND COALESCE(is_discontinued, 0) = 0
             ORDER BY 
                 CASE 
                     -- Exact match (case-insensitive)
@@ -394,11 +461,207 @@ def search_medicines(query: str, limit: int = 15) -> list[dict]:
                 "uses": row["uses"],
                 "sideEffects": row["side_effects"],
                 "manufacturer": row["manufacturer"]
+                ,"price": row["price"]
+                ,"isDiscontinued": bool(row["is_discontinued"])
+                ,"medicineType": row["medicine_type"]
+                ,"dosageForm": row["dosage_form"]
+                ,"route": row["route"]
+                ,"releaseType": row["release_type"]
+                ,"formulationVariant": row["formulation_variant"]
+                ,"id": row["id"]
             })
         return results
     except Exception as e:
         print(f"[WARN] Error searching medicines: {e}")
         return []
+    finally:
+        conn.close()
+
+
+ALTERNATE_WARNINGS = [
+    "Use-case/indication is not available in the local CSV.",
+    "Do not substitute without doctor/pharmacist approval.",
+    "Verify allergies, contraindications, interactions, pregnancy status, age, renal/hepatic status, and patient-specific suitability.",
+]
+FORMULATION_REVIEW_WARNING = (
+    "Selected medicine may have a special formulation such as fast absorption. "
+    "Verify formulation equivalence before substitution."
+)
+
+
+def _alternate_response(row: dict, comparison: dict, curated: bool = False) -> dict:
+    formulation_review = not comparison.get("formulationMatch", True)
+    status = "doctor_curated" if curated else "review_required"
+    if curated:
+        status_label = "Doctor/pharmacist curated"
+        confidence_score = 100
+    elif formulation_review:
+        status_label = "Composition match — formulation review required"
+        confidence_score = 85
+    else:
+        status_label = "Composition/form match - use-case review required"
+        confidence_score = 95
+    warnings = list(ALTERNATE_WARNINGS)
+    if formulation_review:
+        warnings.insert(0, FORMULATION_REVIEW_WARNING)
+    return {
+        "medicineName": row.get("name") or row.get("alternate_name"),
+        "activeSalts": row.get("composition") or row.get("alternate_composition") or "",
+        "manufacturer": row.get("manufacturer") or "",
+        "price": row.get("price"),
+        "unit": row.get("unit") or "",
+        "source": "doctor_curated" if curated else "local_database",
+        "substitutionSafety": status,
+        "confidenceScore": confidence_score,
+        "statusLabel": status_label,
+        "compositionMatch": "exact",
+        "formMatch": comparison["formMatch"],
+        "routeMatch": comparison["routeMatch"],
+        "releaseMatch": comparison["releaseMatch"],
+        "formulationMatch": comparison.get("formulationMatch", True),
+        "useCaseStatus": status,
+        "matchReasons": comparison["matchReasons"],
+        "safetyWarnings": warnings,
+        "reason": row.get("reason") or "",
+        "createdBy": row.get("created_by") or "",
+    }
+
+
+def get_medicine_alternatives(medicine_name: str, limit: int = 10) -> list[dict]:
+    """Return strict local and manually curated alternate candidates."""
+    if not medicine_name:
+        return []
+    conn = _get_conn()
+    try:
+        selected_row = conn.execute("SELECT * FROM medicines WHERE name = ? LIMIT 1", (medicine_name.strip(),)).fetchone()
+        if not selected_row:
+            selected_row = conn.execute(
+                "SELECT * FROM medicines WHERE LOWER(name) = LOWER(?) LIMIT 1", (medicine_name.strip(),)
+            ).fetchone()
+        if not selected_row:
+            return []
+        selected = build_medicine_profile(dict(selected_row))
+        if (
+            not selected["composition_key"]
+            or selected["composition"].casefold() in {"not specified", "unknown", "n/a"}
+            or selected.get("medicine_type") == "ai_generated"
+        ):
+            return []
+
+        curated_rows = conn.execute(
+            """
+            SELECT ma.*, m.unit, m.dosage_form, m.route, m.release_type,
+                   m.formulation_variant,
+                   m.composition_key, m.ingredient_key, m.is_discontinued
+            FROM medicine_alternatives ma
+            LEFT JOIN medicines m ON LOWER(m.name) = LOWER(ma.alternate_name)
+            WHERE LOWER(ma.medicine_name) = LOWER(?)
+              AND ma.status = 'doctor_curated'
+              AND COALESCE(m.is_discontinued, 0) = 0
+            ORDER BY ma.alternate_name COLLATE NOCASE
+            """,
+            (selected["name"],),
+        ).fetchall()
+        candidates = conn.execute(
+            """
+            SELECT * FROM medicines
+            WHERE composition_key = ?
+              AND LOWER(name) != LOWER(?)
+              AND COALESCE(is_discontinued, 0) = 0
+              AND COALESCE(medicine_type, '') != 'ai_generated'
+              AND dosage_form = ? AND route = ? AND release_type = ?
+            ORDER BY CASE WHEN price IS NULL OR price <= 0 THEN 1 ELSE 0 END,
+                     price ASC, name COLLATE NOCASE ASC
+            LIMIT 100
+            """,
+            (
+                selected["composition_key"], selected["name"], selected["dosage_form"],
+                selected["route"], selected["release_type"],
+            ),
+        ).fetchall()
+
+        output: list[dict] = []
+        seen: set[str] = set()
+        for raw in curated_rows:
+            row = dict(raw)
+            candidate = build_medicine_profile({
+                "name": row["alternate_name"],
+                "composition": row["alternate_composition"],
+                "unit": row.get("unit") or "",
+                "dosage_form": row.get("dosage_form") or "",
+                "route": row.get("route") or "",
+                "release_type": row.get("release_type") or "",
+                "formulation_variant": row.get("formulation_variant") or "",
+                "composition_key": row.get("composition_key") or "",
+            })
+            comparison = compare_medicine_profiles(selected, candidate)
+            if comparison["eligible"]:
+                output.append(_alternate_response(row, comparison, curated=True))
+                seen.add(row["alternate_name"].casefold())
+
+        for raw in candidates:
+            row = dict(raw)
+            if row["name"].casefold() in seen:
+                continue
+            comparison = compare_medicine_profiles(selected, row)
+            if comparison["eligible"]:
+                output.append(_alternate_response(row, comparison))
+                seen.add(row["name"].casefold())
+            if len(output) >= limit:
+                break
+        return output[:limit]
+    finally:
+        conn.close()
+
+
+def save_medicine_alternative(data: dict) -> tuple[bool, str]:
+    required = ("medicineName", "alternateName", "reason", "createdBy")
+    missing = [field for field in required if not str(data.get(field) or "").strip()]
+    if missing:
+        return False, f"Missing required fields: {', '.join(missing)}"
+    conn = _get_conn()
+    try:
+        selected_row = conn.execute(
+            "SELECT * FROM medicines WHERE LOWER(name) = LOWER(?) LIMIT 1",
+            (data["medicineName"].strip(),),
+        ).fetchone()
+        candidate_row = conn.execute(
+            "SELECT * FROM medicines WHERE LOWER(name) = LOWER(?) AND COALESCE(is_discontinued, 0) = 0 LIMIT 1",
+            (data["alternateName"].strip(),),
+        ).fetchone()
+        if not selected_row or not candidate_row:
+            return False, "Both medicines must exist as active products in the local database."
+        if selected_row["medicine_type"] == "ai_generated" or candidate_row["medicine_type"] == "ai_generated":
+            return False, "AI-generated catalog entries cannot be used for alternate curation."
+        comparison = compare_medicine_profiles(dict(selected_row), dict(candidate_row))
+        if not comparison["eligible"]:
+            return False, "Curated alternate rejected: " + "; ".join(comparison["blockReasons"])
+        now = datetime.now(timezone.utc).isoformat()
+        conn.execute(
+            """
+            INSERT INTO medicine_alternatives (
+                medicine_name, medicine_composition, alternate_name,
+                alternate_composition, manufacturer, price, reason,
+                source, status, created_by, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'doctor_curated', 'doctor_curated', ?, ?)
+            ON CONFLICT(medicine_name, alternate_name) DO UPDATE SET
+                medicine_composition=excluded.medicine_composition,
+                alternate_composition=excluded.alternate_composition,
+                manufacturer=excluded.manufacturer, price=excluded.price,
+                reason=excluded.reason, created_by=excluded.created_by,
+                created_at=excluded.created_at
+            """,
+            (
+                selected_row["name"], selected_row["composition"],
+                candidate_row["name"], candidate_row["composition"],
+                candidate_row["manufacturer"], candidate_row["price"],
+                str(data["reason"]).strip(), str(data["createdBy"]).strip(), now,
+            ),
+        )
+        conn.commit()
+        return True, "Doctor/pharmacist-curated alternate saved."
+    except sqlite3.IntegrityError as exc:
+        return False, f"Could not save curated alternate: {exc}"
     finally:
         conn.close()
 
@@ -554,18 +817,24 @@ def save_custom_medicine(med_data: dict, query: str = None) -> bool:
     uses = med_data.get("uses", "").strip()
     side_effects = med_data.get("sideEffects", "").strip()
     manufacturer = med_data.get("manufacturer", "").strip()
+    profile = build_medicine_profile({"name": name, "composition": composition, "unit": unit})
+    created_at = datetime.now(timezone.utc).isoformat()
     
     conn = _get_conn()
     try:
         # Save under AI corrected name
         conn.execute(
             """
-            INSERT OR REPLACE INTO medicines (
+            INSERT OR IGNORE INTO medicines (
                 name, unit, composition, uses, side_effects, manufacturer,
-                excellent_review_pct, average_review_pct, poor_review_pct
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                excellent_review_pct, average_review_pct, poor_review_pct,
+                is_discontinued, medicine_type, composition_key, ingredient_key,
+                dosage_form, route, release_type, formulation_variant, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'ai_generated', ?, ?, ?, ?, ?, ?, ?)
             """,
-            (name, unit, composition, uses, side_effects, manufacturer, 0, 0, 0)
+            (name, unit, composition, uses, side_effects, manufacturer, 0, 0, 0,
+             profile["composition_key"], profile["ingredient_key"], profile["dosage_form"],
+             profile["route"], profile["release_type"], profile["formulation_variant"], created_at)
         )
         
         # Also save under search query if different so subsequent lookups hit the DB
@@ -573,12 +842,16 @@ def save_custom_medicine(med_data: dict, query: str = None) -> bool:
             query_name = query.strip()
             conn.execute(
                 """
-                INSERT OR REPLACE INTO medicines (
+                INSERT OR IGNORE INTO medicines (
                     name, unit, composition, uses, side_effects, manufacturer,
-                    excellent_review_pct, average_review_pct, poor_review_pct
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    excellent_review_pct, average_review_pct, poor_review_pct,
+                    is_discontinued, medicine_type, composition_key, ingredient_key,
+                    dosage_form, route, release_type, formulation_variant, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'ai_generated', ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (query_name, unit, composition, uses, side_effects, manufacturer, 0, 0, 0)
+                (query_name, unit, composition, uses, side_effects, manufacturer, 0, 0, 0,
+                 profile["composition_key"], profile["ingredient_key"], profile["dosage_form"],
+                 profile["route"], profile["release_type"], profile["formulation_variant"], created_at)
             )
             
         conn.commit()
@@ -592,6 +865,3 @@ def save_custom_medicine(med_data: dict, query: str = None) -> bool:
 
 # Initialize database on import
 init_db()
-
-
-

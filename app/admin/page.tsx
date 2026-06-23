@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Printer, Share2, Search, PlusCircle, FileText, CheckCircle, 
-  ArrowLeft, Globe, Send, User, ChevronRight, UserCheck 
+  ArrowLeft, Globe, Send, User, ChevronRight, UserCheck, ShieldAlert, BadgeCheck, Save
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import MandalaBackground from "@/components/MandalaBackground";
@@ -19,6 +19,21 @@ interface GuideData {
   doctorNotes: string;
   adviceText: string;
   adviceTextEn: string;
+  alternates: AlternateCandidate[];
+}
+
+interface AlternateCandidate {
+  medicineName: string;
+  activeSalts: string;
+  manufacturer: string;
+  price: number | null;
+  unit: string;
+  source: "local_database" | "doctor_curated";
+  substitutionSafety: "review_required" | "doctor_curated";
+  statusLabel: string;
+  formulationMatch: boolean;
+  matchReasons: string[];
+  safetyWarnings: string[];
 }
 
 const languages = [
@@ -102,6 +117,14 @@ export default function AdminDashboard() {
   const [docNotes, setDocNotes] = useState("");
   const [doctorName, setDoctorName] = useState("Dr. Sanjeevani AI");
   const [generationTime, setGenerationTime] = useState("");
+  const [alternatives, setAlternatives] = useState<AlternateCandidate[]>([]);
+  const [alternativesLoading, setAlternativesLoading] = useState(false);
+  const [selectedAlternateNames, setSelectedAlternateNames] = useState<string[]>([]);
+  const [curationSaving, setCurationSaving] = useState(false);
+  const [curationMessage, setCurationMessage] = useState("");
+  const [curationForm, setCurationForm] = useState({
+    alternateName: "", alternateComposition: "", manufacturer: "", price: "", reason: "",
+  });
 
   // Generated Guide state
   const [generatedGuide, setGeneratedGuide] = useState<GuideData | null>(null);
@@ -178,6 +201,9 @@ export default function AdminDashboard() {
   const handleSelectMedicine = async (med: any) => {
     setMedName(med.medicineName);
     setSalts(med.activeSalts);
+    setSelectedAlternateNames([]);
+    setCurationMessage("");
+    void loadAlternatives(med.medicineName);
     
     // Clear dropdown list immediately
     setShowDropdown(false);
@@ -220,6 +246,61 @@ export default function AdminDashboard() {
     }
   };
 
+  const loadAlternatives = async (name: string) => {
+    setAlternativesLoading(true);
+    try {
+      const response = await fetch(`/api/medicines/alternatives?name=${encodeURIComponent(name)}`, { cache: "no-store" });
+      const data = await response.json();
+      setAlternatives(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Alternate lookup failed:", error);
+      setAlternatives([]);
+    } finally {
+      setAlternativesLoading(false);
+    }
+  };
+
+  const toggleAlternate = (name: string) => {
+    setSelectedAlternateNames((current) =>
+      current.includes(name) ? current.filter((item) => item !== name) : [...current, name],
+    );
+  };
+
+  const saveCuratedAlternate = async () => {
+    if (!medName || !curationForm.alternateName.trim() || !curationForm.reason.trim()) {
+      setCurationMessage("Selected medicine, alternate name, and clinical reason are required.");
+      return;
+    }
+    setCurationSaving(true);
+    setCurationMessage("");
+    try {
+      const response = await fetch("/api/medicines/alternatives", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          medicineName: medName,
+          medicineComposition: salts,
+          alternateName: curationForm.alternateName.trim(),
+          alternateComposition: curationForm.alternateComposition.trim(),
+          manufacturer: curationForm.manufacturer.trim(),
+          price: Number(curationForm.price) || 0,
+          reason: curationForm.reason.trim(),
+          createdBy: doctorName,
+        }),
+      });
+      const data = await response.json();
+      setCurationMessage(data.message || (response.ok ? "Curated alternate saved." : "Unable to save alternate."));
+      if (response.ok) {
+        setCurationForm({ alternateName: "", alternateComposition: "", manufacturer: "", price: "", reason: "" });
+        await loadAlternatives(medName);
+      }
+    } catch {
+      setCurationMessage("Unable to connect to the curation service.");
+    } finally {
+      setCurationSaving(false);
+    }
+  };
+
   const handleGenerate = async () => {
     if (!medName) return;
     if (
@@ -242,6 +323,7 @@ export default function AdminDashboard() {
     setGenerationTime(now);
     
     const langName = languages.find(l => l.code === selectedLanguage)?.name || "Hindi";
+    const selectedAlternates = alternatives.filter((item) => selectedAlternateNames.includes(item.medicineName));
     const adviceEn = `PRESCRIPTION & MEDICATION GUIDE
 ---------------------------------
 • Medicine Name: ${medName}
@@ -262,7 +344,8 @@ export default function AdminDashboard() {
           language: langName,
           doctorNotes: docNotes,
           adviceText: adviceEn,
-          adviceTextEn: adviceEn
+          adviceTextEn: adviceEn,
+          alternates: selectedAlternates,
         });
       } else {
         // Translate advice text and doctor notes in parallel
@@ -295,7 +378,8 @@ export default function AdminDashboard() {
           language: langName,
           doctorNotes: notesData.translated || docNotes,
           adviceText: adviceData.translated || adviceEn,
-          adviceTextEn: adviceEn
+          adviceTextEn: adviceEn,
+          alternates: selectedAlternates,
         });
       }
     } catch (err) {
@@ -309,7 +393,8 @@ export default function AdminDashboard() {
         language: langName,
         doctorNotes: docNotes,
         adviceText: adviceEn,
-        adviceTextEn: adviceEn
+        adviceTextEn: adviceEn,
+        alternates: selectedAlternates,
       });
     } finally {
       setLoading(false);
@@ -321,6 +406,9 @@ export default function AdminDashboard() {
 
   const getShareText = () => {
     if (!generatedGuide) return "";
+    const alternateText = generatedGuide.alternates.length > 0
+      ? `\n*Alternate candidates for professional review:*\n${generatedGuide.alternates.map((item) => `• ${item.medicineName} — ${item.activeSalts} (${item.statusLabel})`).join("\n")}\n\n*Warning:* Alternate medicines are shown for doctor/pharmacist review only. Do not substitute medicines without professional approval.\n`
+      : "";
     return `⚕️ *Sanjeevani AI - Medication Handout* ⚕️\n\n` +
       `*Medicine:* ${generatedGuide.medicineName}\n` +
       `*Composition:* ${generatedGuide.activeSalts}\n` +
@@ -329,6 +417,7 @@ export default function AdminDashboard() {
       `*Timing:* ${generatedGuide.timing}\n\n` +
       `*Instructions (${generatedGuide.language}):*\n${generatedGuide.adviceText}\n\n` +
       `*Instructions (English):*\n${generatedGuide.adviceTextEn}\n\n` +
+      alternateText +
       (generatedGuide.doctorNotes ? `*Practitioner Notes:*\n${generatedGuide.doctorNotes}\n\n` : "") +
       `_Generated via Sanjeevani AI Patient Assistant_`;
   };
@@ -579,7 +668,9 @@ export default function AdminDashboard() {
                         className="w-full px-4 py-3 text-left hover:bg-muted/60 transition-colors flex flex-col gap-0.5"
                       >
                         <span className="font-semibold text-sm text-foreground">{med.medicineName}</span>
-                        <span className="text-xs text-muted-foreground line-clamp-1">{med.activeSalts} • {med.manufacturer}</span>
+                        <span className="text-xs text-muted-foreground line-clamp-1">
+                          {med.activeSalts} • {med.manufacturer}{med.price != null ? ` • ₹${Number(med.price).toFixed(2)}` : ""}
+                        </span>
                       </button>
                     ))}
                   </motion.div>
@@ -672,6 +763,96 @@ export default function AdminDashboard() {
                 />
               </div>
 
+              {medName && (
+                <div className="border-t border-border pt-4 space-y-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-display font-bold text-base flex items-center gap-2">
+                        <ShieldAlert size={17} className="text-amber-500" />
+                        Alternate Medicines
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Optional handout candidates. Composition, strength, form, route, and release are checked automatically.
+                      </p>
+                    </div>
+                    {alternativesLoading && <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />}
+                  </div>
+
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200 leading-relaxed">
+                    Review required before substitution. Branded variants like Advance/Rapid/Fast may absorb differently even when the salt and strength match.
+                  </div>
+
+                  {!alternativesLoading && alternatives.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No alternate candidates found for this medicine.</p>
+                  ) : (
+                    <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
+                      {alternatives.map((alternate) => {
+                        const selected = selectedAlternateNames.includes(alternate.medicineName);
+                        return (
+                          <label
+                            key={alternate.medicineName}
+                            className={`block rounded-xl border bg-muted/30 p-3 cursor-pointer hover:border-primary/40 ${
+                              alternate.formulationMatch === false ? "border-amber-500/40" : "border-border"
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <input
+                                type="checkbox"
+                                checked={selected}
+                                onChange={() => toggleAlternate(alternate.medicineName)}
+                                className="mt-1 accent-emerald-500"
+                                aria-label={`Include ${alternate.medicineName} in handout`}
+                              />
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="text-sm font-semibold">{alternate.medicineName}</span>
+                                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                    alternate.substitutionSafety === "doctor_curated"
+                                      ? "bg-emerald-500/15 text-emerald-400"
+                                      : "bg-amber-500/15 text-amber-400"
+                                  }`}>
+                                    {alternate.substitutionSafety === "doctor_curated" ? "Doctor/pharmacist curated" : "Review required"}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">{alternate.activeSalts}</p>
+                                <p className="text-[11px] text-muted-foreground mt-1">
+                                  {alternate.manufacturer || "Manufacturer unavailable"} • {alternate.unit || "Pack unavailable"}
+                                  {alternate.price != null ? ` • ₹${Number(alternate.price).toFixed(2)}` : ""}
+                                </p>
+                                <p className="text-[11px] text-amber-300 mt-2">{alternate.statusLabel}</p>
+                                <p className="text-[11px] text-emerald-400/80 mt-1">{alternate.matchReasons.join(" • ")}</p>
+                                {alternate.formulationMatch === false && (
+                                  <p className="text-[11px] text-amber-200/90 mt-2">
+                                    Verify formulation equivalence before substitution.
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <details className="border-t border-border pt-4">
+                    <summary className="cursor-pointer text-sm font-semibold flex items-center gap-2">
+                      <BadgeCheck size={16} className="text-primary" /> Save clinician-curated alternate
+                    </summary>
+                    <div className="grid grid-cols-2 gap-3 mt-4">
+                      <input value={curationForm.alternateName} onChange={(e) => setCurationForm({...curationForm, alternateName: e.target.value})} placeholder="Exact alternate name *" className="col-span-2 bg-muted border border-border rounded-lg px-3 py-2 text-xs" />
+                      <input value={curationForm.alternateComposition} onChange={(e) => setCurationForm({...curationForm, alternateComposition: e.target.value})} placeholder="Composition" className="col-span-2 bg-muted border border-border rounded-lg px-3 py-2 text-xs" />
+                      <input value={curationForm.manufacturer} onChange={(e) => setCurationForm({...curationForm, manufacturer: e.target.value})} placeholder="Manufacturer" className="bg-muted border border-border rounded-lg px-3 py-2 text-xs" />
+                      <input value={curationForm.price} onChange={(e) => setCurationForm({...curationForm, price: e.target.value})} placeholder="Price" inputMode="decimal" className="bg-muted border border-border rounded-lg px-3 py-2 text-xs" />
+                      <textarea value={curationForm.reason} onChange={(e) => setCurationForm({...curationForm, reason: e.target.value})} placeholder="Clinical review reason *" rows={3} className="col-span-2 bg-muted border border-border rounded-lg px-3 py-2 text-xs resize-none" />
+                      <button onClick={saveCuratedAlternate} disabled={curationSaving} className="col-span-2 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-semibold flex items-center justify-center gap-2 disabled:opacity-50">
+                        <Save size={14} /> {curationSaving ? "Validating..." : "Validate and save as doctor-curated"}
+                      </button>
+                      {curationMessage && <p className="col-span-2 text-xs text-muted-foreground">{curationMessage}</p>}
+                    </div>
+                  </details>
+                </div>
+              )}
+
               <button 
                 onClick={handleGenerate}
                 disabled={loading || !medName || aiGenerating}
@@ -680,6 +861,7 @@ export default function AdminDashboard() {
                 {aiGenerating ? "AI Baseline Generating..." : loading ? "Generating Guide..." : "Create Guide & Handout"}
               </button>
             </div>
+
           </div>
 
           {/* Right Panel: Handout Preview (Printed on paper) */}
@@ -823,6 +1005,24 @@ export default function AdminDashboard() {
                           {generatedGuide.doctorNotes}
                         </p>
                       </div>
+                    </section>
+                  )}
+
+                  {generatedGuide.alternates.length > 0 && (
+                    <section className="py-4 border-b-2 border-zinc-200 print:border-zinc-300 print:break-inside-avoid">
+                      <p className="text-[10px] text-zinc-400 uppercase tracking-widest font-medium mb-2">Alternate candidates for professional review</p>
+                      <div className="space-y-2">
+                        {generatedGuide.alternates.map((alternate) => (
+                          <div key={alternate.medicineName} className="border border-zinc-200 rounded px-3 py-2">
+                            <p className="text-[12px] font-semibold text-zinc-800">{alternate.medicineName}</p>
+                            <p className="text-[10px] text-zinc-500">{alternate.activeSalts} • {alternate.manufacturer}</p>
+                            <p className="text-[10px] font-medium text-amber-700 mt-1">{alternate.statusLabel}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="mt-3 text-[10px] font-semibold text-amber-700 leading-relaxed">
+                        Alternate medicines are shown for doctor/pharmacist review only. Do not substitute medicines without professional approval.
+                      </p>
                     </section>
                   )}
 
