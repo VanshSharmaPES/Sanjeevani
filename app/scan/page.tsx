@@ -11,7 +11,8 @@ import { Suspense } from "react";
 function ScanUploadContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const type = searchParams.get("type") || "medicine";
+  const typeParam = searchParams.get("type");
+  const type = typeParam === "medicine" ? "prescription" : (typeParam || "prescription");
   const [mode, setMode] = useState<"camera" | "upload">("upload");
   const [analyzing, setAnalyzing] = useState(false);
   const [dragOver, setDragOver] = useState(false);
