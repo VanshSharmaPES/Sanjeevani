@@ -1,0 +1,31 @@
+1
+00:00:00,000 --> 00:00:01,250
+Medicine: Burnol Povidone Ointment
+
+2
+00:00:01,250 --> 00:00:02,500
+Active ingredients: Povidone Iodine (5% w/w)
+
+3
+00:00:02,500 --> 00:00:03,750
+Dose: Apply a thin layer
+
+4
+00:00:03,750 --> 00:00:05,000
+Timing: Apply to affected area
+
+5
+00:00:05,000 --> 00:00:06,250
+Frequency: As directed by doctor
+
+6
+00:00:06,250 --> 00:00:07,500
+Duration: As prescribed
+
+7
+00:00:07,500 --> 00:00:08,750
+Doctor note: Consult prescription details for specific instructions.
+
+8
+00:00:08,750 --> 00:00:10,000
+Follow your doctor's prescription.

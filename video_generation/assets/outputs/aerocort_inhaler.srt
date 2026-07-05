@@ -1,0 +1,31 @@
+1
+00:00:00,000 --> 00:00:01,250
+Medicine: Aerocort Inhaler
+
+2
+00:00:01,250 --> 00:00:02,500
+Active ingredients: Levosalbutamol (50mcg) + Beclometasone (50mcg)
+
+3
+00:00:02,500 --> 00:00:03,750
+Dose: 2 puffs (100mcg Levosalbutamol + 100mcg Beclometasone) per dose
+
+4
+00:00:03,750 --> 00:00:05,000
+Timing: Before meals (AC) or as directed by the physician
+
+5
+00:00:05,000 --> 00:00:06,250
+Frequency: Twice a day (1-0-1) for maintenance, as needed for relief
+
+6
+00:00:06,250 --> 00:00:07,500
+Duration: As prescribed
+
+7
+00:00:07,500 --> 00:00:08,750
+Doctor note: సూచించిన విధంగా ఉపయోగించండి, సిఫార్సు చేయబడిన మోతాదును మించకుండా చూసుకోండి. ఆస్తమా నియంత్రణ లక్షణాలను పర్యవేక్షించండి మరియు లక్షణాలలో పెరుగుదలను నివేదించండి.
+
+8
+00:00:08,750 --> 00:00:10,000
+Follow your doctor's prescription.

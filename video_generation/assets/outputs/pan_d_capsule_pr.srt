@@ -1,0 +1,27 @@
+1
+00:00:00,000 --> 00:00:01,429
+Medicine: Pan-D Capsule PR
+
+2
+00:00:01,429 --> 00:00:02,857
+Active ingredients: Domperidone (30mg) + Pantoprazole (40mg)
+
+3
+00:00:02,857 --> 00:00:04,286
+Dose: 1 capsule
+
+4
+00:00:04,286 --> 00:00:05,714
+Timing: Before meals (AC)
+
+5
+00:00:05,714 --> 00:00:07,143
+Frequency: As prescribed
+
+6
+00:00:07,143 --> 00:00:08,571
+Duration: As prescribed
+
+7
+00:00:08,571 --> 00:00:10,000
+Follow your doctor's prescription.

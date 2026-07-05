@@ -1,0 +1,31 @@
+1
+00:00:00,000 --> 00:00:01,250
+Medicine: Carboxymethylcellulose Eye Drops
+
+2
+00:00:01,250 --> 00:00:02,500
+Active ingredients: Carboxymethylcellulose (0.5% w/v)
+
+3
+00:00:02,500 --> 00:00:03,750
+Dose: 1 Drop
+
+4
+00:00:03,750 --> 00:00:05,000
+Timing: As directed
+
+5
+00:00:05,000 --> 00:00:06,250
+Frequency: Three times a day
+
+6
+00:00:06,250 --> 00:00:07,500
+Duration: As prescribed
+
+7
+00:00:07,500 --> 00:00:08,750
+Doctor note: Follow your doctor's prescription.
+
+8
+00:00:08,750 --> 00:00:10,000
+Follow your doctor's prescription.
