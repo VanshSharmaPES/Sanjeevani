@@ -4,7 +4,7 @@ Medicine: Azenac MR Tablet
 
 2
 00:00:01,250 --> 00:00:02,500
-Active ingredients: Aceclofenac (100Mg) + Paracetamol (325Mg)
+Active ingredients: Aceclofenac (100mg) + Paracetamol (325mg)
 
 3
 00:00:02,500 --> 00:00:03,750

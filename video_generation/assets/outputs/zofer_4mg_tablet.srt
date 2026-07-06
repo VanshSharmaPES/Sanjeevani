@@ -4,7 +4,7 @@ Medicine: Zofer 4mg Tablet
 
 2
 00:00:01,250 --> 00:00:02,500
-Active ingredients: Ondansetron (4Mg)
+Active ingredients: Ondansetron (4mg)
 
 3
 00:00:02,500 --> 00:00:03,750

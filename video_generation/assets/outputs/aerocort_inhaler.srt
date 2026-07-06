@@ -24,7 +24,7 @@ Duration: As prescribed
 
 7
 00:00:07,500 --> 00:00:08,750
-Doctor note: సూచించిన విధంగా ఉపయోగించండి, సిఫార్సు చేయబడిన మోతాదును మించకుండా చూసుకోండి. ఆస్తమా నియంత్రణ లక్షణాలను పర్యవేక్షించండి మరియు లక్షణాలలో పెరుగుదలను నివేదించండి.
+Doctor note: Use as directed and do not exceed the recommended dose. Monitor asthma control symptoms and report any worsening symptoms.
 
 8
 00:00:08,750 --> 00:00:10,000

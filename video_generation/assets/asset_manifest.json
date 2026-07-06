@@ -3,7 +3,7 @@
   "assets": {
     "medicine_image:aerocort_inhaler:package": {
       "asset_type": "package_image",
-      "local_path": "D:\\Sanjeevani-main\\video_generation\\assets\\cache\\medicines\\aerocort_inhaler\\package.jpg",
+      "local_path": "video_generation/assets/cache/medicines/aerocort_inhaler/package.jpg",
       "source_url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR1dSni5M35c73AC2qCl5FmQOo3lLpMrUleimULxeWSGA&s=10",
       "provider": "serpapi_google_images",
       "source_domain": "1mg.com",
@@ -16,7 +16,7 @@
     },
     "medicine_image:aerocort_inhaler:tablet": {
       "asset_type": "tablet_image",
-      "local_path": "D:\\Sanjeevani-main\\video_generation\\assets\\cache\\medicines\\aerocort_inhaler\\tablet.jpg",
+      "local_path": "video_generation/assets/cache/medicines/aerocort_inhaler/tablet.jpg",
       "source_url": "https://onemg.gumlet.io/l_watermark_346,w_480,h_480/a_ignore,w_480,h_480,c_fit,q_auto,f_auto/cropped/zz57ek6tsj8boa5kwj1q.jpg",
       "provider": "serpapi_google_images",
       "source_domain": "1mg.com",
@@ -29,7 +29,7 @@
     },
     "medicine_image:dolo_650_tablet:package": {
       "asset_type": "package_image",
-      "local_path": "D:\\Sanjeevani-main\\video_generation\\assets\\cache\\medicines\\dolo_650_tablet\\package.jpg",
+      "local_path": "video_generation/assets/cache/medicines/dolo_650_tablet/package.jpg",
       "source_url": "https://onemg.gumlet.io/l_watermark_346,w_480,h_480/a_ignore,w_480,h_480,c_fit,q_auto,f_auto/a3cd57739d864b9e9680d826f42f015f.jpg?dpr=3&format=auto",
       "provider": "serpapi_google_images",
       "source_domain": "1mg.com",
@@ -42,7 +42,7 @@
     },
     "medicine_image:azenac_mr_tablet:package": {
       "asset_type": "package_image",
-      "local_path": "D:\\Sanjeevani-main\\video_generation\\assets\\cache\\medicines\\azenac_mr_tablet\\package.jpg",
+      "local_path": "video_generation/assets/cache/medicines/azenac_mr_tablet/package.jpg",
       "source_url": "https://5.imimg.com/data5/SELLER/Default/2025/1/480819761/ZP/DX/HZ/17997332/azenac-mr-tab.jpg",
       "provider": "serpapi_google_images",
       "source_domain": "indiamart.com",
@@ -55,7 +55,7 @@
     },
     "medicine_image:azenac_mr_tablet:tablet": {
       "asset_type": "tablet_image",
-      "local_path": "D:\\Sanjeevani-main\\video_generation\\assets\\cache\\medicines\\azenac_mr_tablet\\tablet.jpg",
+      "local_path": "video_generation/assets/cache/medicines/azenac_mr_tablet/tablet.jpg",
       "source_url": "https://5.imimg.com/data5/SELLER/Default/2023/9/345254249/GX/LO/CX/6493200/azenac-sp-tablet.jpg",
       "provider": "serpapi_google_images",
       "source_domain": "indiamart.com",
@@ -93,7 +93,7 @@
         "cacheKey": "5abd779f166654312874a69dc7ab5a859af4329351de7a47c024c9c3fbb8966a",
         "cacheHit": true,
         "medicineName": "Azenac MR Tablet",
-        "activeSalts": "Aceclofenac (100Mg) + Paracetamol (325Mg)",
+        "activeSalts": "Aceclofenac (100mg) + Paracetamol (325mg)",
         "context": {
           "title": "Azenac sp tablet, Composition: Aceclofenac 100mg + Paracetamol 325mg +  Serratiopeptidase 15mg at ₹ 79/stripe in Villupuram",
           "source_domain": "indiamart.com",
@@ -107,7 +107,7 @@
     },
     "medicine_image:andial_2mg_tablet:package": {
       "asset_type": "package_image",
-      "local_path": "D:\\Sanjeevani-main\\video_generation\\assets\\cache\\medicines\\andial_2mg_tablet\\package.jpg",
+      "local_path": "video_generation/assets/cache/medicines/andial_2mg_tablet/package.jpg",
       "source_url": "https://onemg.gumlet.io/l_watermark_346,w_480,h_480/a_ignore,w_480,h_480,c_fit,q_auto,f_auto/zaipyqyrb0mziqzcyz4y.jpg?dpr=3&format=auto",
       "provider": "serpapi_google_images",
       "source_domain": "1mg.com",
@@ -120,7 +120,7 @@
     },
     "medicine_image:andial_2mg_tablet:tablet": {
       "asset_type": "tablet_image",
-      "local_path": "D:\\Sanjeevani-main\\video_generation\\assets\\cache\\medicines\\andial_2mg_tablet\\tablet.jpg",
+      "local_path": "video_generation/assets/cache/medicines/andial_2mg_tablet/tablet.jpg",
       "source_url": "https://onemg.gumlet.io/l_watermark_346,w_480,h_480/a_ignore,w_480,h_480,c_fit,q_auto,f_auto/zaipyqyrb0mziqzcyz4y.jpg?dpr=3&format=auto#dosage-crop",
       "provider": "derived_from_package_image",
       "source_domain": "1mg.com",
@@ -139,7 +139,7 @@
     },
     "medicine_image:zofer_4mg_tablet:package": {
       "asset_type": "package_image",
-      "local_path": "D:\\Sanjeevani-main\\video_generation\\assets\\cache\\medicines\\zofer_4mg_tablet\\package.jpg",
+      "local_path": "video_generation/assets/cache/medicines/zofer_4mg_tablet/package.jpg",
       "source_url": "https://onemg.gumlet.io/l_watermark_346,w_480,h_480/a_ignore,w_480,h_480,c_fit,q_auto,f_auto/sfabgcvuee61e9m4r74q.jpg",
       "provider": "serpapi_google_images",
       "source_domain": "1mg.com",
@@ -152,7 +152,7 @@
     },
     "medicine_image:zofer_4mg_tablet:tablet": {
       "asset_type": "tablet_image",
-      "local_path": "D:\\Sanjeevani-main\\video_generation\\assets\\cache\\medicines\\zofer_4mg_tablet\\tablet.jpg",
+      "local_path": "video_generation/assets/cache/medicines/zofer_4mg_tablet/tablet.jpg",
       "source_url": "https://cdn01.pharmeasy.in/dam/productsnowatermark/189765/zofer-4mg-strip-of-10-tablets-back-7-1756885348-non-watermarked.jpg",
       "provider": "serpapi_google_images",
       "source_domain": "pharmeasy.in",
@@ -165,7 +165,7 @@
     },
     "medicine_image:oflazest_oz_200mg_500mg_tablet:package": {
       "asset_type": "package_missing_image_card",
-      "local_path": "D:\\Sanjeevani-main\\video_generation\\assets\\cache\\medicines\\oflazest_oz_200mg_500mg_tablet\\package.jpg",
+      "local_path": "video_generation/assets/cache/medicines/oflazest_oz_200mg_500mg_tablet/package.jpg",
       "source_url": "local://valid-image-not-found/package",
       "provider": "template_missing_verified_image_card",
       "source_domain": "local",
@@ -184,7 +184,7 @@
     },
     "medicine_image:oflazest_oz_200mg_500mg_tablet:tablet": {
       "asset_type": "tablet_missing_image_card",
-      "local_path": "D:\\Sanjeevani-main\\video_generation\\assets\\cache\\medicines\\oflazest_oz_200mg_500mg_tablet\\tablet.jpg",
+      "local_path": "video_generation/assets/cache/medicines/oflazest_oz_200mg_500mg_tablet/tablet.jpg",
       "source_url": "local://valid-image-not-found/tablet",
       "provider": "template_missing_verified_image_card",
       "source_domain": "local",

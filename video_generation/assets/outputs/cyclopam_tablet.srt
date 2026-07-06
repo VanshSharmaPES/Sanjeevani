@@ -24,7 +24,7 @@ Duration: As prescribed
 
 7
 00:00:07,500 --> 00:00:08,750
-Doctor note: కోర్సును పూర్తి చేయండి. మద్యాన్ని నివారించండి మరియు సిఫార్సు చేయబడిన మోతాదును మించకండి.
+Doctor note: Complete the course. Avoid alcohol and do not exceed the recommended dose.
 
 8
 00:00:08,750 --> 00:00:10,000
