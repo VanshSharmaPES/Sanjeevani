@@ -961,8 +961,12 @@ def send_email_otp(to_email: str, subject: str, body: str) -> bool:
             msg["Subject"] = subject
             msg.attach(MIMEText(body, "plain"))
 
-            server = smtplib.SMTP(smtp_server, int(smtp_port), timeout=8)
-            server.starttls()
+            port_val = int(smtp_port)
+            if port_val == 465:
+                server = smtplib.SMTP_SSL(smtp_server, port_val, timeout=8)
+            else:
+                server = smtplib.SMTP(smtp_server, port_val, timeout=8)
+                server.starttls()
             server.login(smtp_username, smtp_password)
             server.sendmail(msg["From"], to_email, msg.as_string())
             server.close()
