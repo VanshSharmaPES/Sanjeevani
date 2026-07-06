@@ -4,7 +4,8 @@ import sqlite3
 import hashlib
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+import secrets
 from medicine_matcher import build_medicine_profile, compare_medicine_profiles
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "sanjeevani.db")
@@ -960,8 +961,12 @@ def send_email_otp(to_email: str, subject: str, body: str) -> bool:
             msg["Subject"] = subject
             msg.attach(MIMEText(body, "plain"))
 
-            server = smtplib.SMTP(smtp_server, int(smtp_port))
-            server.starttls()
+            port_val = int(smtp_port)
+            if port_val == 465:
+                server = smtplib.SMTP_SSL(smtp_server, port_val, timeout=8)
+            else:
+                server = smtplib.SMTP(smtp_server, port_val, timeout=8)
+                server.starttls()
             server.login(smtp_username, smtp_password)
             server.sendmail(msg["From"], to_email, msg.as_string())
             server.close()
