@@ -4,7 +4,8 @@ import sqlite3
 import hashlib
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+import secrets
 from medicine_matcher import build_medicine_profile, compare_medicine_profiles
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "sanjeevani.db")
