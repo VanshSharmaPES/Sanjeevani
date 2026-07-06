@@ -961,7 +961,7 @@ def send_email_otp(to_email: str, subject: str, body: str) -> bool:
             msg["Subject"] = subject
             msg.attach(MIMEText(body, "plain"))
 
-            server = smtplib.SMTP(smtp_server, int(smtp_port))
+            server = smtplib.SMTP(smtp_server, int(smtp_port), timeout=8)
             server.starttls()
             server.login(smtp_username, smtp_password)
             server.sendmail(msg["From"], to_email, msg.as_string())
