@@ -42,3 +42,8 @@ A_Z_medicines_dataset_of_India.csv
 further_implement.md
 report.md
 architecture-map.html
+
+# Generated video assets
+video_generation/assets/asset_manifest.json
+video_generation/assets/outputs/
+video_generation/assets/cache/medicines/
