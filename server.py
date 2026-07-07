@@ -511,18 +511,27 @@ def api_video_guides_file(filename):
     except Exception:
         return jsonify({"error": "Video output directory not configured"}), 503
 
-    # Prevent path traversal
+    # Prevent path traversal + restrict to expected generated filenames/types.
     safe_name = Path(filename).name
-    if not safe_name or ".." in filename:
+    requested = Path(safe_name)
+    if not safe_name or ".." in Path(filename).parts:
         return jsonify({"error": "Invalid filename"}), 400
 
-    video_path = output_dir / safe_name
+    if requested.suffix.lower() not in {".mp4", ".srt"}:
+        return jsonify({"error": "Unsupported file type"}), 400
+
+    if requested.stem != _video_sanitize_filename(requested.stem):
+        return jsonify({"error": "Invalid filename"}), 400
+
+    output_root = output_dir.resolve()
+    video_path = (output_dir / safe_name).resolve()
+    if output_root not in video_path.parents:
+        return jsonify({"error": "Invalid filename"}), 400
+
     if not video_path.exists():
         return jsonify({"error": "Video not found"}), 404
 
-    suffix = video_path.suffix.lower()
-    mime_map = {".mp4": "video/mp4", ".srt": "text/plain", ".png": "image/png"}
-    mimetype = mime_map.get(suffix, "application/octet-stream")
+    mimetype = "video/mp4" if requested.suffix.lower() == ".mp4" else "text/plain; charset=utf-8"
     return send_file(str(video_path), mimetype=mimetype)
 
 
