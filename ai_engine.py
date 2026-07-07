@@ -677,14 +677,6 @@ def normalize_medicine_name(raw_name: str, medicine_df=None, dosage_form: str = 
         except Exception as sqle:
             _safe_print(f"[WARN] SQLite medicine lookup failed: {sqle}")
             
-        # SQLite checked but no match or failed
-        return {
-            "name": raw_name.strip(),
-            "active_salts": [],
-            "score": 0,
-            "low_confidence": True
-        }
-
     if medicine_df is None:
         medicine_df = load_medicine_df()
         
@@ -696,8 +688,6 @@ def normalize_medicine_name(raw_name: str, medicine_df=None, dosage_form: str = 
             "low_confidence": True
         }
         
-    raw_name_clean = raw_name.strip()
-    
     # We want to match against the name column of the medicine_df
     names_list = medicine_df["name_clean"].tolist()
     matches = process.extract(raw_name_clean, names_list, scorer=fuzz.WRatio, limit=50)
