@@ -506,6 +506,107 @@
       "dosage_and_duration": "apply at night"
     }
   ],
+  "47a7ea980dcb75b58515c8fcdc20f883": [
+    {
+      "medicine": "Tab. Tolpa D",
+      "route": "oral",
+      "dosage_and_duration": "SOS Medicine for 5 days"
+    }
+  ],
+  "ef7b919ac436f4fb8d16a642104a1a53": [
+    {
+      "medicine": "Tab. Zerodol- P",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day (morning and evening) for 5 days"
+    }
+  ],
+  "2fe0e0528652a15c1ef8ec615ae10812": [
+    {
+      "medicine": "Tab. Gabapin - NT 100/10mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in evening for 15 days"
+    },
+    {
+      "medicine": "Tab. Neurobion Forte",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in afternoon (after food) for 15 days"
+    },
+    {
+      "medicine": "Cap. Uprise D3 60K",
+      "route": "oral",
+      "dosage_and_duration": "Once a week for 8 weeks"
+    },
+    {
+      "medicine": "Tab. Shelcal",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in afternoon (after food) for 30 days"
+    }
+  ],
+  "708276d3ccfceaa0e4a1d197355a821a": [
+    {
+      "medicine": "Tab. Zerodol - SP",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day (morning and evening) "
+    }
+  ],
+  "cb649d54a7da9f6d59024dc17faaf6e3": [
+    {
+      "medicine": "Syp Cyclopam",
+      "route": "PO",
+      "dosage_and_duration": "5 ml SOS"
+    },
+    {
+      "medicine": "Syp BANDY PLUS",
+      "route": "PO",
+      "dosage_and_duration": "10 ml stat"
+    }
+  ],
+  "5833f027acb893b54546e1bf900d5ec4": [
+    {
+      "medicine": "PAN",
+      "route": "Injection",
+      "dosage_and_duration": "40mg"
+    },
+    {
+      "medicine": "EMESET",
+      "route": "Injection",
+      "dosage_and_duration": "4mg"
+    },
+    {
+      "medicine": "STEMETIL",
+      "route": "Injection",
+      "dosage_and_duration": "12.5mg"
+    }
+  ],
+  "271df558629285ac6e2c265c23d0ec19": [
+    {
+      "medicine": "PAN",
+      "route": "Injection",
+      "dosage_and_duration": "40mg"
+    },
+    {
+      "medicine": "DICLO",
+      "route": "Injection",
+      "dosage_and_duration": "75mg"
+    },
+    {
+      "medicine": "BUSCOPAN",
+      "route": "Injection",
+      "dosage_and_duration": "10mg"
+    },
+    {
+      "medicine": "EMESET",
+      "route": "Injection",
+      "dosage_and_duration": "4mg"
+    }
+  ],
+  "65d5983170535f828aca90462c51f0b9": [
+    {
+      "medicine": "Tab. Folic Acid 5mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in morning"
+    }
+  ],
   "77e2e3e766302b0e451e1dd8b560bb34": [
     {
       "medicine": "Cetirizine Tablet",
@@ -516,6 +617,126 @@
       "medicine": "Wikoryl Tablet",
       "route": "oral",
       "dosage_and_duration": "once daily at night for 5 days"
+    }
+  ],
+  "9cc42781b0c43b855abca774bb0916e8": [
+    {
+      "medicine": "Tab Zerodol - SP",
+      "route": "Oral",
+      "dosage_and_duration": "Twice a day morning and evening"
+    }
+  ],
+  "beb0d4ba7b11f20c3e5b48d6f852a657": [
+    {
+      "medicine": "Syp NOCULI B6",
+      "route": "oral",
+      "dosage_and_duration": "10ml syrup 2 times in 1 glass of water for 6 weeks"
+    },
+    {
+      "medicine": "Tab ZERODOL - MR",
+      "route": "oral",
+      "dosage_and_duration": "SOS for 10 days"
+    }
+  ],
+  "cdd0faa9602cb366364488db10317969": [
+    {
+      "medicine": "MUPI Ointment",
+      "route": "topical",
+      "dosage_and_duration": "twice a day (morning and evening) for 15 days"
+    }
+  ],
+  "ace8b4a32caba8ed793a2493e58dfcdb": [
+    {
+      "medicine": "Insulin Syringe",
+      "route": "subcutaneous",
+      "dosage_and_duration": "As directed by physician"
+    },
+    {
+      "medicine": "ENCORE Surgical Glove No. 7",
+      "route": "topical",
+      "dosage_and_duration": "As directed by physician"
+    }
+  ],
+  "c1afc9541384fc5a407b4cc2cc786122": [
+    {
+      "medicine": "Tab Neurobione Forte",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in evening for 1 month"
+    }
+  ],
+  "46708fb948602c2227aca44a49f6808e": [
+    {
+      "medicine": "Tab Bandy Plus",
+      "route": "Oral",
+      "dosage_and_duration": "1 HS (at bedtime), stat"
+    },
+    {
+      "medicine": "Tab Segacim V2",
+      "route": "Oral",
+      "dosage_and_duration": "Twice a day morning and evening (before food)"
+    },
+    {
+      "medicine": "Uprise D3",
+      "route": "Oral",
+      "dosage_and_duration": "Once weekly for 8 weeks"
+    },
+    {
+      "medicine": "Orofer XT",
+      "route": "Oral",
+      "dosage_and_duration": "Once (in afternoon) on alternate days \u00d7 2 months"
+    }
+  ],
+  "62db7601e5bb7627bb955f9a6ccb16cc": [
+    {
+      "medicine": "Tab Glycoment GP3 Forte",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day in morning and evening for 1 month"
+    },
+    {
+      "medicine": "Tab Pregaba-NT",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in evening for 1 month"
+    },
+    {
+      "medicine": "Tab Cilicar-T (10/40)",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in morning for 1 month"
+    }
+  ],
+  "e92333fa10718998802139a4e9ebbef6": [
+    {
+      "medicine": "Tab Tamdura",
+      "route": "oral",
+      "dosage_and_duration": "Once in evening for 3 weeks"
+    }
+  ],
+  "843d72445e78f1005c8a7de6e91ad768": [
+    {
+      "medicine": "Tab Sompraz D 40",
+      "route": "oral",
+      "dosage_and_duration": "Once in morning (before food) for 10 days"
+    },
+    {
+      "medicine": "Syrup Mucaine Gel",
+      "route": "oral",
+      "dosage_and_duration": "10ml twice daily for 10 days"
+    },
+    {
+      "medicine": "Tab Montek LC",
+      "route": "oral",
+      "dosage_and_duration": "Once in evening for 10 days"
+    }
+  ],
+  "79cc3b0e83742d73b97b48a4e3896640": [
+    {
+      "medicine": "Tab Ultracet",
+      "route": "oral",
+      "dosage_and_duration": "SOS for 10 days"
+    },
+    {
+      "medicine": "Tab Gabaneuron NT 100mg",
+      "route": "oral",
+      "dosage_and_duration": "Once in evening for 15 days"
     }
   ],
   "d6151e7d6bb82318e6a34d3756956832": [
@@ -535,6 +756,121 @@
       "dosage_and_duration": "once daily"
     }
   ],
+  "3eb908613d1e7b2699e0fc2b06e8ddc5": [
+    {
+      "medicine": "Tab Teczine 10mg",
+      "route": "oral",
+      "dosage_and_duration": "Once in evening for 10 days"
+    }
+  ],
+  "20bed155d2c67a20ac3367576edd9aec": [
+    {
+      "medicine": "Zydip-C Lotion",
+      "route": "topical",
+      "dosage_and_duration": "Twice a day (morning and evening) for 3 weeks"
+    },
+    {
+      "medicine": "Salisia-KT Shampoo",
+      "route": "topical",
+      "dosage_and_duration": "Alternate day use. Wash after 10 mins for 3 weeks"
+    }
+  ],
+  "4ff81149c0c3a05466a09fa1ad961efe": [
+    {
+      "medicine": "Tab Ultracet",
+      "route": "oral",
+      "dosage_and_duration": "Once a day for 10 days"
+    }
+  ],
+  "980a9e364fa54308ff2b867446d17a0b": [
+    {
+      "medicine": "Tab Etoricoxib 40mg",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day (morning and evening) for 10 days"
+    }
+  ],
+  "40952ea35b88e5d5d144af15e1ae2341": [
+    {
+      "medicine": "Tab Neurobion Forte",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day (morning and evening) for 60 days"
+    },
+    {
+      "medicine": "Adaferin 0.1% Gel",
+      "route": "topical",
+      "dosage_and_duration": "Once a day for 1 month"
+    }
+  ],
+  "fdecce883bd8b269f0aef86f9fa488ab": [
+    {
+      "medicine": "Syrup Paraetmol 250mg/5ml",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day (morning and evening)"
+    },
+    {
+      "medicine": "Syrup Relent Plus",
+      "route": "oral",
+      "dosage_and_duration": "2.5ml Twice a day (morning and evening)"
+    },
+    {
+      "medicine": "Syrup Onden 2mg/5ml",
+      "route": "oral",
+      "dosage_and_duration": "2.5ml Twice a day morning and evening 30 minutes before food"
+    }
+  ],
+  "947681783d2a11942d9ce63694eba2e4": [
+    {
+      "medicine": "Tab Pantocid DSR 40/10",
+      "route": "oral",
+      "dosage_and_duration": "Once a day for 14 days"
+    },
+    {
+      "medicine": "Tab Sporolac DS",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day (morning and evening) for 1 week"
+    }
+  ],
+  "a6f9e5ae65f3baa8df65a26c0c58bd75": [
+    {
+      "medicine": "Tab Pantop 40",
+      "route": "oral",
+      "dosage_and_duration": "Twce a day (morning and evening) for 5 days"
+    },
+    {
+      "medicine": "Tab Ceftum 500",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day (morning and evening) for 5 days"
+    },
+    {
+      "medicine": "Tab Tora D",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day (morning and evening) after food for 5 days"
+    }
+  ],
+  "b9b837a3b94b3090de32f0df8e59fdec": [
+    {
+      "medicine": "Capsule Sompraz D",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in evening (before food) for 10 days"
+    },
+    {
+      "medicine": "Tab Montelair",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in evening for 5 days"
+    }
+  ],
+  "4f12d9f35410e645b2da036cd6938021": [
+    {
+      "medicine": "Tab Montek LC",
+      "route": "oral",
+      "dosage_and_duration": "Once a day for 7 days"
+    },
+    {
+      "medicine": "Flutiflo FT Nasal Spray",
+      "route": "nasal",
+      "dosage_and_duration": "Two puffs in each nosteril twice a day for 15 days"
+    }
+  ],
   "fe68d612794a5a8f54e5ce294594dace": [
     {
       "medicine": "Doxy 100 Tablet",
@@ -552,11 +888,299 @@
       "dosage_and_duration": "in the morning and at night for 7 days"
     }
   ],
+  "717ff1090fe45724ede457da5e1a72a7": [
+    {
+      "medicine": "Biovac 0.5ml",
+      "route": "Injection",
+      "dosage_and_duration": ""
+    }
+  ],
+  "f1455d2bed1239f9b38a94bafe7b0b12": [
+    {
+      "medicine": "Tab Veltam 0.4mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in evening for 10 days"
+    }
+  ],
+  "2cd7fc61461672c19991e85f018b2129": [
+    {
+      "medicine": "Thermoseal RA tube",
+      "route": "topical",
+      "dosage_and_duration": "Twice a day (morning and evening) for 3 months"
+    },
+    {
+      "medicine": "Tab Zerodol - SP",
+      "route": "oral",
+      "dosage_and_duration": "SOS Twice a day (morning and evening) for 5 days"
+    },
+    {
+      "medicine": "Rexidine M Forte Gel",
+      "route": "topical",
+      "dosage_and_duration": "Twice a day (morning and evening) for 10 days"
+    }
+  ],
+  "390a2b8a011778e253f81559957f5ac8": [
+    {
+      "medicine": "Tab Allegra 180mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in evening for 15 days"
+    },
+    {
+      "medicine": "Tab Pan 40",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in morning for 15 days"
+    },
+    {
+      "medicine": "Flomist Nasal Spray",
+      "route": "nasal",
+      "dosage_and_duration": "2 sprays in each nostril twice a day for 15 days"
+    },
+    {
+      "medicine": "TusQ Lozenges",
+      "route": "oral",
+      "dosage_and_duration": "Thrice a day for 5 days"
+    }
+  ],
+  "42de9a0b8086c8abb71622503e443661": [
+    {
+      "medicine": "Cap Sotret NF 8mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in evening for 20 days"
+    },
+    {
+      "medicine": "Acne Moist BK Cream",
+      "route": "topical",
+      "dosage_and_duration": "Twice a day (morning and evening)"
+    },
+    {
+      "medicine": "Photostable Acne Sunscreen",
+      "route": "topical",
+      "dosage_and_duration": "As required"
+    },
+    {
+      "medicine": "Ahaglow S Facewash",
+      "route": "topical",
+      "dosage_and_duration": "As required"
+    }
+  ],
+  "5c7d880340a629f029a2998aab6e2374": [
+    {
+      "medicine": "Sotret NF 8 mg",
+      "route": "Oral",
+      "dosage_and_duration": "Once daily after dinner for 15 days"
+    },
+    {
+      "medicine": "Epiduo Gel",
+      "route": "Topical",
+      "dosage_and_duration": "Apply once daily at night (30 minutes before bedtime)"
+    },
+    {
+      "medicine": "Acnemoist BK Gel",
+      "route": "Topical",
+      "dosage_and_duration": "Apply daily"
+    },
+    {
+      "medicine": "Photostable Acne Gel",
+      "route": "Topical",
+      "dosage_and_duration": "Apply daily during daytime (around 7 AM, 11 AM, and 2 PM)"
+    },
+    {
+      "medicine": "NMFE Lip Balm",
+      "route": "Topical",
+      "dosage_and_duration": "Apply daily or as needed"
+    }
+  ],
+  "53a0d58b4264dde9c7ef8d2950a11a07": [
+    {
+      "medicine": "Tab Neurobion Forte",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in afternoon for 20 days"
+    },
+    {
+      "medicine": "Tab Uprise D3 60K IU",
+      "route": "oral",
+      "dosage_and_duration": "Once a week for 12 weeks"
+    }
+  ],
+  "45b1033e7eebcc74788b7866400cc74d": [
+    {
+      "medicine": "Tab Gabaneuron NT 100mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in evening for 6 days"
+    }
+  ],
+  "cb919d9d492e658d7c9f7a611272f708": [
+    {
+      "medicine": "Susten 200",
+      "route": "vaginal",
+      "dosage_and_duration": "Twice a day (morning and evening) for 2 weeks"
+    },
+    {
+      "medicine": "Folic Acid",
+      "route": "Oral",
+      "dosage_and_duration": "Once a day in morning"
+    }
+  ],
   "f66876724fed1f80bf32d27e793ca129": [
     {
       "medicine": "Ultracet Tablet",
       "route": "oral",
       "dosage_and_duration": "in the morning and at night"
+    }
+  ],
+  "0cfc653f8695a5a13144d8116a8c2be0": [
+    {
+      "medicine": "Niftas 100 mg",
+      "route": "Oral",
+      "dosage_and_duration": "1-0-1 for 5 days"
+    },
+    {
+      "medicine": "Urispas",
+      "route": "Oral",
+      "dosage_and_duration": "1-0-1 for 5 days"
+    },
+    {
+      "medicine": "Syrup Cital (uncertain)",
+      "route": "Oral",
+      "dosage_and_duration": "2 tsp, 1-0-1 for 1 week"
+    },
+    {
+      "medicine": "Montec LC",
+      "route": "Oral",
+      "dosage_and_duration": "0-0-1 for 3 days"
+    },
+    {
+      "medicine": "Ascoril Syrup",
+      "route": "Oral",
+      "dosage_and_duration": "2 tsp three times daily for 5 days"
+    },
+    {
+      "medicine": "Folvite",
+      "route": "Oral",
+      "dosage_and_duration": "0-0-1 for 30 days"
+    }
+  ],
+  "7928f43e2c467d9d6326a4fb6d8add93": [
+    {
+      "medicine": "Tab Neurobion Forte",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in afternoon for 10 days"
+    },
+    {
+      "medicine": "Tab Gabapin NT 100mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day at bedtime for 15 days"
+    }
+  ],
+  "2c65633993acd3afe6fff645d35b825f": [
+    {
+      "medicine": "Tab Chymoral Forte",
+      "route": "oral",
+      "dosage_and_duration": "Thrice a day after food for 5 days"
+    },
+    {
+      "medicine": "Tab Zerodol-P",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day morning and evening (after food) for 5 days"
+    },
+    {
+      "medicine": "Tab Pan 40",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in morning (before food) for 5 days"
+    }
+  ],
+  "6bea3a36669a51139bb8b7f1e935f063": [
+    {
+      "medicine": "Oflox Eye Drops",
+      "route": "ophthalmic",
+      "dosage_and_duration": "4 to 6 drops a day"
+    }
+  ],
+  "ced1c18b8b6679c309586706da1901b3": [
+    {
+      "medicine": "Tab Chymoral Forte",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day (morning and evening) for 3 days"
+    }
+  ],
+  "cad9d1853591fd2cda7971de443dd734": [
+    {
+      "medicine": "Tab CEftum 500",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day (morning and evening) for 5 days"
+    },
+    {
+      "medicine": "Tab Tolpa D",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day (morning and evening) for 5 days"
+    },
+    {
+      "medicine": "Tab Pregaba",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in evening for 5 days"
+    }
+  ],
+  "39e50e49ed6573f5e50238498bc71ab5": [
+    {
+      "medicine": "Mofloren KT Drops",
+      "route": "ophthalmic",
+      "dosage_and_duration": "4 to 6 drops a day for 1 week"
+    },
+    {
+      "medicine": "Augmentin 625mg",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day (morning and evening) for 5 days"
+    }
+  ],
+  "31687e83d5eb79ea750b3d025df1e0e1": [
+    {
+      "medicine": "Tab Azithromycin 250mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in afternoon (before food) for 5 days"
+    },
+    {
+      "medicine": "Tab Bilastine M",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in morning for 10 days"
+    },
+    {
+      "medicine": "Tab Teczine 10mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in evening for 10 days"
+    },
+    {
+      "medicine": "Calosoft AF Lotion",
+      "route": "topical",
+      "dosage_and_duration": "Apply daily"
+    }
+  ],
+  "9b180d42538ffb8768a96d5cba40e0df": [
+    {
+      "medicine": "Tab Augmentin 625mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 5 days"
+    },
+    {
+      "medicine": "Tab Zerodol- SP",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 5 days"
+    },
+    {
+      "medicine": "Cap Pantocid DSP",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 (before food) for 5 days"
+    }
+  ],
+  "f3fae83c4e358f3378761748ee1c6e7d": [
+    {
+      "medicine": "Tab Bandy Plus",
+      "route": "oral",
+      "dosage_and_duration": "As directed"
+    },
+    {
+      "medicine": "Tab Ebast M",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in evening for 5 days"
     }
   ],
   "375c0272df0fc199b3faa42f07e42716": [
@@ -569,6 +1193,97 @@
       "medicine": "Kerofa Combi Kit",
       "route": "topical",
       "dosage_and_duration": "once"
+    }
+  ],
+  "0ca49a43b7ec9f7652a580a872c337eb": [
+    {
+      "medicine": "Tab Ebast M",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in evening for 5 days"
+    }
+  ],
+  "fc8e2758868e7c6a088152b7232e172c": [
+    {
+      "medicine": "Tab Uprise D3 60K",
+      "route": "oral",
+      "dosage_and_duration": "Once a week for 4 weeks"
+    }
+  ],
+  "1d5dd0587376fa0ae72743fcbf6c6218": [
+    {
+      "medicine": "Tab Zerodol - P",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day morning and evening (after food) for 5 days"
+    },
+    {
+      "medicine": "Tab PAN 40mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in morning (before food) for 5 days"
+    }
+  ],
+  "6b10d4710212444fb6e0ca21bd57961a": [
+    {
+      "medicine": "Tab Meftel 500",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day (morning and evening) for 30 days"
+    },
+    {
+      "medicine": "Tab Sitagliptin 100mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in morning for 30 days"
+    }
+  ],
+  "0031f7ef80f12eb4478378e94551999c": [
+    {
+      "medicine": "PCT Drops 100mg/1ml",
+      "route": "oral",
+      "dosage_and_duration": "0.8ml four times a day"
+    },
+    {
+      "medicine": "Saline Nasal Drops",
+      "route": "nasal",
+      "dosage_and_duration": "Four times a day"
+    },
+    {
+      "medicine": "A to Z drops",
+      "route": "oral",
+      "dosage_and_duration": "1ml twice a day"
+    },
+    {
+      "medicine": "Vitamin D3 Drops 400/1ml",
+      "route": "oral",
+      "dosage_and_duration": "1ml once a day"
+    }
+  ],
+  "721e0762cf190c238a83925000b0eb10": [
+    {
+      "medicine": "Tab Sompraz D",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in morning for 1 week"
+    },
+    {
+      "medicine": "Syrup Sucrafil O Gel",
+      "route": "oral",
+      "dosage_and_duration": "10ml twice a day for 1 week"
+    }
+  ],
+  "784c581c6e9578aa5b26861cc87cafc4": [
+    {
+      "medicine": "",
+      "route": "",
+      "dosage_and_duration": ""
+    },
+    {
+      "medicine": "",
+      "route": "",
+      "dosage_and_duration": ""
+    }
+  ],
+  "d728fe6c332239c4d5f19b65d6ba46b7": [
+    {
+      "medicine": "Tab Thyronorm 150 mcg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in morning (empty stomach)"
     }
   ],
   "f53de752ba60539410b033d4f958c62f": [
@@ -593,6 +1308,161 @@
       "dosage_and_duration": "once"
     }
   ],
+  "6bf9b7e63aab4c5c1ba4d606a9920911": [
+    {
+      "medicine": "Tab Ciplox TZ",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day (morning and evening) for 10 days"
+    },
+    {
+      "medicine": "Tab Pan D",
+      "route": "oral",
+      "dosage_and_duration": "Once a day (morning) for 5 days"
+    },
+    {
+      "medicine": "Tab Dolo 650",
+      "route": "oral",
+      "dosage_and_duration": "Once a day for 10 days"
+    }
+  ],
+  "62810ace53a26e0d4889f2eef1e91dfd": [
+    {
+      "medicine": "Tab Ascazin 50mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day (evening) for 18 days"
+    },
+    {
+      "medicine": "Tab Zerodol - P",
+      "route": "oral",
+      "dosage_and_duration": "SOS once a day for 10 days"
+    }
+  ],
+  "d8bb739deb16080d0826c07b627e8866": [
+    {
+      "medicine": "Influvac",
+      "route": "injection",
+      "dosage_and_duration": ""
+    },
+    {
+      "medicine": "PCT Drops 100mg/1ml",
+      "route": "oral",
+      "dosage_and_duration": "SOS 1ml"
+    }
+  ],
+  "b1c0006843dd166ca37d6f1e46c191d6": [
+    {
+      "medicine": "Injection PCT 1gm I.V. stat",
+      "route": "injection",
+      "dosage_and_duration": ""
+    },
+    {
+      "medicine": "Injection PAN 40mg I.V. stat",
+      "route": "injection",
+      "dosage_and_duration": ""
+    },
+    {
+      "medicine": "Duolin Respules",
+      "route": "Nebulization",
+      "dosage_and_duration": ""
+    },
+    {
+      "medicine": "Budecort Respules",
+      "route": "Nebulization",
+      "dosage_and_duration": ""
+    }
+  ],
+  "3a0574271b140637171ff2718336db0b": [
+    {
+      "medicine": "Tab Shelcal",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in afternoon for 30 days"
+    },
+    {
+      "medicine": "Cap Uprise D3 60K",
+      "route": "oral",
+      "dosage_and_duration": "Once a week for 4 weeks"
+    }
+  ],
+  "8a82cd2a014a8f9a87d47aa0f2aa7e90": [
+    {
+      "medicine": "Tab Mirtaz 7.5mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in evening for 21 days"
+    },
+    {
+      "medicine": "Tab Clonotril 0.25mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in evening for 21 days"
+    }
+  ],
+  "3ddd076cb10c7d190d3590c2befb2a57": [
+    {
+      "medicine": "Tab PAN 40mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day for 10 days"
+    },
+    {
+      "medicine": "Tab Zempred 16mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day for 10 days"
+    },
+    {
+      "medicine": "Clonate Lotion",
+      "route": "topical",
+      "dosage_and_duration": "Twice a day in morning and evening"
+    },
+    {
+      "medicine": "Tab Teczine 5mg",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day (morning and evening) for 210 days"
+    }
+  ],
+  "7641ab4ef2167458a8b4a0f69e56a934": [
+    {
+      "medicine": "Tab Augmentin 625mg",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day (morning and evening) for 5 days"
+    },
+    {
+      "medicine": "Tab Dolo 650mg",
+      "route": "oral",
+      "dosage_and_duration": "Thrice a day for 5 days"
+    },
+    {
+      "medicine": "Tab Pan 40mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in morning for 5 days"
+    },
+    {
+      "medicine": "Candid B Lotion",
+      "route": "topical",
+      "dosage_and_duration": "Apply twice a day in morning and evening for 5 days"
+    }
+  ],
+  "2b888280eb64dae58316f17dc8795ed0": [
+    {
+      "medicine": "Soliwax Ear Drops",
+      "route": "ears",
+      "dosage_and_duration": "Thrice a day in both ears for 5 days"
+    }
+  ],
+  "e2896cde831d8bcc3cb1322f8e90aa8c": [
+    {
+      "medicine": "Tab Zerodol MR",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day (morning and evening) for 5 days"
+    },
+    {
+      "medicine": "Tab Pregabalin NT",
+      "route": "oral",
+      "dosage_and_duration": "Once a day at 6PM for 10 days"
+    },
+    {
+      "medicine": "Tab Pan 40mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in morning for 5 days"
+    }
+  ],
   "6dd50cb0551bfe05beb9351063c89a8b": [
     {
       "medicine": "Capidene AA Lotion",
@@ -603,6 +1473,111 @@
       "medicine": "BTN Ultra Tablet",
       "route": "oral",
       "dosage_and_duration": "1-0-0"
+    }
+  ],
+  "099a11101af803e73369c34bfa45ebfa": [
+    {
+      "medicine": "Tab Glycomet GP",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day in morning and evening"
+    },
+    {
+      "medicine": "Tab Neurobion Forte",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in evening for 1 month"
+    },
+    {
+      "medicine": "Cap Uprise D3 60k",
+      "route": "oral",
+      "dosage_and_duration": "Once a week for 8 weeks"
+    }
+  ],
+  "9080adba773a1448789fba3393da8561": [
+    {
+      "medicine": "Tab Vilag M 50/500mg",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day in morning and evening for 1 month"
+    },
+    {
+      "medicine": "Atorup F 10/145",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in evening for 1 month"
+    }
+  ],
+  "8075babe93c23086a6546cf4530d4ff0": [
+    {
+      "medicine": "Tab Urispas",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day in morning and evening for 5 days"
+    },
+    {
+      "medicine": "Syrup Citralka",
+      "route": "oral",
+      "dosage_and_duration": "Thrice a day"
+    }
+  ],
+  "0db46081b64f9fc59b8b10f828725928": [
+    {
+      "medicine": "Tab Pregabalin NT 75mg",
+      "route": "oral",
+      "dosage_and_duration": "SOS for 10 days"
+    }
+  ],
+  "48cd0dca3b8ee282437750b17461e52e": [
+    {
+      "medicine": "Tab Gabapentin 300mg",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 for 20 days"
+    }
+  ],
+  "428451f653554d960bc02ec0962a2f7d": [
+    {
+      "medicine": "Tab Istamet D-XR",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day in morning and evening for 20 days"
+    }
+  ],
+  "c36845545c2f3f2de1795916a740885c": [
+    {
+      "medicine": "Tab Istamet D-XR",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day in morning and evening for 60 days"
+    },
+    {
+      "medicine": "Tab Glycomet GP 500/1",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day in morning and evening for 60 days"
+    }
+  ],
+  "32099154d1d2cec1330a33d0a2cda51a": [
+    {
+      "medicine": "Cap Uprise D3 60K",
+      "route": "oral",
+      "dosage_and_duration": "Once a week for 8 weeks"
+    },
+    {
+      "medicine": "Tab Atorvas 10mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in evening for 30 days"
+    }
+  ],
+  "07da56943c8cc2606037d005ae439dd8": [
+    {
+      "medicine": "Tab Cilacar 10mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 30 days"
+    }
+  ],
+  "89a7722a77814603bf7c4f69269b95cc": [
+    {
+      "medicine": "Tab Sompraz D",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in morning (before food) for 7 days"
+    },
+    {
+      "medicine": "Syrup Sucrafil O Gel",
+      "route": "oral",
+      "dosage_and_duration": "10ml twice a day in morning and evening for 7 days"
     }
   ],
   "bc4b769e9977b0dac56538cc044b28d8": [
@@ -627,6 +1602,161 @@
       "dosage_and_duration": "once daily for 3 days"
     }
   ],
+  "200569a569362ef0433ba66e41a6693a": [
+    {
+      "medicine": "Tab Zerodol MR",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 5 days"
+    },
+    {
+      "medicine": "Tab Pregabalin NT 75mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day at 6PM for 10 days"
+    },
+    {
+      "medicine": "Tab Pan 40mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in morning (before food) for 5 days"
+    }
+  ],
+  "bb959f8b18faaf10c7c83ae52e789c58": [
+    {
+      "medicine": "Tab Zerodol MR",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 7 days"
+    },
+    {
+      "medicine": "Tab Pan 40mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in morning (before food) for 7 days"
+    },
+    {
+      "medicine": "Volitra APS Spray",
+      "route": "topical",
+      "dosage_and_duration": ""
+    }
+  ],
+  "261607fd4e17dbebd2b66951f944aaa2": [
+    {
+      "medicine": "Tab Trafidol P",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 2 days"
+    },
+    {
+      "medicine": "Tab Omez 40mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 before food for 2 days"
+    }
+  ],
+  "cad288d2b40c5352c60528436ac22d60": [
+    {
+      "medicine": "Tab Teczine 5mg",
+      "route": "oral",
+      "dosage_and_duration": "Once in evening for 15 days"
+    },
+    {
+      "medicine": "C-Win Lotion",
+      "route": "topical",
+      "dosage_and_duration": "Twice a day in morning and evening"
+    }
+  ],
+  "00fc7388aeadc7e923f004338894f894": [
+    {
+      "medicine": "Suncross Neo Sunscreen",
+      "route": "topical",
+      "dosage_and_duration": "Apply daily"
+    },
+    {
+      "medicine": "Tyrodin Cream",
+      "route": "topical",
+      "dosage_and_duration": "Apply once in evening"
+    },
+    {
+      "medicine": "Tab Melano TX",
+      "route": "oral",
+      "dosage_and_duration": "Once in evening for 30 days"
+    }
+  ],
+  "8da7d000be739458ba1378aa79810060": [
+    {
+      "medicine": "Epiduo Gel",
+      "route": "topical",
+      "dosage_and_duration": "apply once in evening and wash after 30 minutes"
+    },
+    {
+      "medicine": "Scalp E+ Shampoo",
+      "route": "topical",
+      "dosage_and_duration": "Use twice a week"
+    },
+    {
+      "medicine": "Cap I-win SB 65mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in evening (after food) for 10 days"
+    },
+    {
+      "medicine": "Fungicros Cream",
+      "route": "topical",
+      "dosage_and_duration": "Apply twice a day in morning and evening"
+    }
+  ],
+  "be1e84d417b129f194c8e728ad5c5014": [
+    {
+      "medicine": "Tab Gabapin Nt 100/10",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 at bedtime for 21 days"
+    },
+    {
+      "medicine": "Tab Neurobion Forte",
+      "route": "oral",
+      "dosage_and_duration": "1-1-1 after food for 7 days"
+    },
+    {
+      "medicine": "Tab Etoricoxib 90mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 after food for 5 days"
+    }
+  ],
+  "4521270e596c31be9ebc8d91a08c266b": [
+    {
+      "medicine": "Tab Jointace DN",
+      "route": "oral",
+      "dosage_and_duration": "Once in afternoon for 15 days"
+    },
+    {
+      "medicine": "Tab Zerodol SP 10",
+      "route": "oral",
+      "dosage_and_duration": "SOS"
+    },
+    {
+      "medicine": "Flexabenz Gel",
+      "route": "topical",
+      "dosage_and_duration": "Twice a day in morning and evening"
+    }
+  ],
+  "d73068943e65b310831b065e0999d1dc": [
+    {
+      "medicine": "Tab Gabaneuron N 100mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day for 10 days"
+    }
+  ],
+  "de866b33a4f73d8b2dcd3baf0c8f0637": [
+    {
+      "medicine": "Tab Ciplox TZ",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day in morning and evening for 10 days"
+    },
+    {
+      "medicine": "Tab Cyclopan",
+      "route": "oral",
+      "dosage_and_duration": "SOS for 10 days"
+    },
+    {
+      "medicine": "Tab Sompraz D",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in morning for 5 days"
+    }
+  ],
   "7d93a88c25c1b3b7b01a73f305f0ed0b": [
     {
       "medicine": "Easy Glade razor",
@@ -634,11 +1764,222 @@
       "dosage_and_duration": "not specified"
     }
   ],
+  "572c21ab477e053127b0389df10eef39": [
+    {
+      "medicine": "Tab Folic Acid 5mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in morning"
+    }
+  ],
+  "724407aec108c98413a4b4db855d4fac": [
+    {
+      "medicine": "Tab Dapa 10mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in morning for 30 days"
+    },
+    {
+      "medicine": "Tab Vertin 8mg",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day in morning and evening for 10 days"
+    }
+  ],
+  "f3fbcfd4ce2f4858d6fa9f810236e81f": [
+    {
+      "medicine": "Tab Bilashine M",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in morning for 15 days"
+    },
+    {
+      "medicine": "Tab Teczine 5mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in evening for 15 days"
+    },
+    {
+      "medicine": "Tab Bandy Plus",
+      "route": "oral",
+      "dosage_and_duration": "Once a day"
+    }
+  ],
+  "97d26ac330f232ddb51422758b594463": [
+    {
+      "medicine": "Vitamin D3 Drops 40K",
+      "route": "oral",
+      "dosage_and_duration": "1 ml once daily for 1 year"
+    }
+  ],
+  "509ca58abc242fa5acabb40e0b207eb1": [
+    {
+      "medicine": "Tab Amoxyclav 625mg",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day in morning and evening for 5 days"
+    },
+    {
+      "medicine": "Tab Dolo 650mg",
+      "route": "oral",
+      "dosage_and_duration": "SOS twice a day in morning and evening for 2 days"
+    },
+    {
+      "medicine": "Tab Levocet 5mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in evening for 5 days"
+    },
+    {
+      "medicine": "2% Betadyine Gargle",
+      "route": "oral",
+      "dosage_and_duration": "Gargle thrice a day for 5 days"
+    }
+  ],
+  "5b319a5ca1499cbd85a6f021ee3a5f6a": [
+    {
+      "medicine": "Cap Doxy 100mg",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 for 11 days"
+    }
+  ],
+  "542f7552db12879d32330d2e83dab7a8": [
+    {
+      "medicine": "Iron Tablet",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day in morning and evening for 4 weeks"
+    },
+    {
+      "medicine": "Calcium Tablet",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day in morning and evening for 4 weeks"
+    }
+  ],
+  "f64595d5f8d4eaa2d18f2acdde221d1a": [
+    {
+      "medicine": "Tab Doxinate",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day in morning and evening for 3 days"
+    },
+    {
+      "medicine": "Iron Tablet",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in afternoon for 30 days"
+    },
+    {
+      "medicine": "Calcium Tablet",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day in morning and evening for 30 days"
+    }
+  ],
   "b6a51da257837cfd763d2c4f9025e03f": [
     {
       "medicine": "Orofer XT Tablet",
       "route": "oral",
       "dosage_and_duration": "once daily"
+    }
+  ],
+  "80ec464ad0d2bb209fe7bd39f7419551": [
+    {
+      "medicine": "Tab Nucoxia D",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day in morning and evening for 2 days"
+    },
+    {
+      "medicine": "Tab Neurofen",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in evening for 3 days"
+    }
+  ],
+  "5395282abca8aab71ed29d67b1d2e688": [
+    {
+      "medicine": "Mo-Floren Eye Drops",
+      "route": "ophthalmic",
+      "dosage_and_duration": "4 to 6 ml a day"
+    }
+  ],
+  "3a10e9b6facb1e4cebc7158a5585030b": [
+    {
+      "medicine": "Tab Ivermectin 12mg",
+      "route": "oral",
+      "dosage_and_duration": "As directed"
+    },
+    {
+      "medicine": "Tab Teczine 10mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in evening for 15 days"
+    },
+    {
+      "medicine": "Permethrene 5% Lotion",
+      "route": "topical",
+      "dosage_and_duration": "Apply daily"
+    }
+  ],
+  "c7df9bde26549cfba42fcccaaaa422f1": [
+    {
+      "medicine": "Azobril Forte Gel",
+      "route": "topical",
+      "dosage_and_duration": "Apply once in evening daily"
+    }
+  ],
+  "f30021109447b99696495bbc97e0093d": [
+    {
+      "medicine": "Tab Zerodol SP",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1"
+    },
+    {
+      "medicine": "Thermoseal RA",
+      "route": "topical",
+      "dosage_and_duration": "1-0-1 for 3 months"
+    }
+  ],
+  "9f010213d8095c3305e959f9e48b239e": [
+    {
+      "medicine": "Tab Cabergoline 0.5mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 once a week for 4 weeks"
+    }
+  ],
+  "1a130a226fed7e919f838d66eeee66df": [
+    {
+      "medicine": "Tab Zerodol MR",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 5 days"
+    },
+    {
+      "medicine": "Tab Pan 40mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 5 days"
+    },
+    {
+      "medicine": "Tab Neuripen - P",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 at 6PM for 10 days"
+    }
+  ],
+  "ba28881374533067a088b1500fc9c758": [
+    {
+      "medicine": "Tab Gaberntec 300mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day at 9PM for 8 days"
+    },
+    {
+      "medicine": "Tab Etoriwyn 90mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day for 10 days"
+    }
+  ],
+  "ea46a3e7382f522011c71a6910cd515c": [
+    {
+      "medicine": "Tab Sitagliptin 50/500",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 1 month"
+    }
+  ],
+  "01a9e37e66cf45759a98be802104346a": [
+    {
+      "medicine": "Tab Buscogast 10mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 after food for 3 days"
+    },
+    {
+      "medicine": "Tab Pan 40mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 after food for 3 days"
     }
   ],
   "2d3ceb44be3acd4f2a9018b0b96bc253": [
@@ -658,6 +1999,134 @@
       "dosage_and_duration": "not specified"
     }
   ],
+  "fbe5ed0e7ca2ac25267c4de623550d60": [
+    {
+      "medicine": "Tab Chymoral Forte",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day in morning and evening for 7 days"
+    },
+    {
+      "medicine": "Tab Cepoden XP",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day in morning and evening for 5 days"
+    },
+    {
+      "medicine": "Tab Zerodol-P",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day in morning and evening for 5 days"
+    }
+  ],
+  "9bca3c5f021e2e799e2cfb20c9ccfaca": [
+    {
+      "medicine": "Tab Zerodol-SP",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 after food for 3 days"
+    }
+  ],
+  "31d6664a08d020db81d44f4ed900ad84": [
+    {
+      "medicine": "Tab Ultracet 50mg",
+      "route": "oral",
+      "dosage_and_duration": "Once daily for 10 days"
+    },
+    {
+      "medicine": "Tab Gabaneuron NT 100mg",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 for 10 days"
+    }
+  ],
+  "2d72b14fc5fb9d1d2e1686c245eb62ef": [
+    {
+      "medicine": "Tab Gabaneuron NT 400mg",
+      "route": "oral",
+      "dosage_and_duration": "Once daily in evening for 8 days"
+    },
+    {
+      "medicine": "Tab Ultracet 50mg",
+      "route": "oral",
+      "dosage_and_duration": "SOS for 6 days"
+    }
+  ],
+  "9351c898fda8a4ddd6dc1bdf76b0e6d2": [
+    {
+      "medicine": "Tab Cefixime 200mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 x 30 days"
+    },
+    {
+      "medicine": "Tab Pantop 40mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 x 30 days"
+    },
+    {
+      "medicine": "Tab Etoricoxib 90mg",
+      "route": "oral",
+      "dosage_and_duration": "Twice daily in morning and evening for 30 days"
+    }
+  ],
+  "e73ab1b036d4ed8aaccb2bbe5bbed9ac": [
+    {
+      "medicine": "Tab Ivermectin 12mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day weekly for 2 weeks"
+    },
+    {
+      "medicine": "Tab Omnacortil 20mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 10 days"
+    },
+    {
+      "medicine": "Tab Teczine 10mg",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 for 15 days"
+    }
+  ],
+  "942790b313debd9eddb3a8c855cfdbd6": [
+    {
+      "medicine": "Permethrin 5% lotion",
+      "route": "topical",
+      "dosage_and_duration": "Apply daily for 20 days"
+    },
+    {
+      "medicine": "Crotorax-HC Cream",
+      "route": "topical",
+      "dosage_and_duration": "Apply daily"
+    }
+  ],
+  "004b95026f028d00975ad3335aed98ba": [
+    {
+      "medicine": "Tab Veltam 0.4mg",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 after food for 5 days"
+    },
+    {
+      "medicine": "Tab Zerodol-P",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 6 days"
+    },
+    {
+      "medicine": "Tab Pantop 40mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 5 days"
+    }
+  ],
+  "a3bfe70873b8bcc1e91b9f340d24638f": [
+    {
+      "medicine": "Cap Alcros SB 130mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in evening (after food) for 30 days"
+    },
+    {
+      "medicine": "C-WIN lotion",
+      "route": "topical",
+      "dosage_and_duration": "1-0-1 for 30 days"
+    },
+    {
+      "medicine": "Tab. Teczine 5mg",
+      "route": "oral",
+      "dosage_and_duration": "Once a day in morning (after food) for 3 weeks"
+    }
+  ],
   "5f9164fc90dca4825c75e4288175aba5": [
     {
       "medicine": "Buscopan Injection",
@@ -673,6 +2142,30 @@
       "medicine": "Cyclopam Tablet",
       "route": "oral",
       "dosage_and_duration": "twice daily for 3 days"
+    }
+  ],
+  "c0e484849dfdf366f8d3035491766461": [
+    {
+      "medicine": "Desowen AF Lotion",
+      "route": "topical",
+      "dosage_and_duration": "1-0-1 for 7 days"
+    },
+    {
+      "medicine": "Tab Teczine 5mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 10 days"
+    }
+  ],
+  "94ebf4bce0fc8aa8957c3cb84ac19e09": [
+    {
+      "medicine": "Cap VSL 3",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day in morning and evening for 14 days"
+    },
+    {
+      "medicine": "Cap Rabeprazole Domperidone",
+      "route": "oral",
+      "dosage_and_duration": "Twice a day in morning and evening for 14 days"
     }
   ],
   "896148d9e310cc7df872160d21d6b18f": [
@@ -6884,6 +8377,74 @@
       "dosage_and_duration": "1 tablet morning and night for 3 months"
     }
   ],
+  "857d12adf7468ec082ff70bfebd1c3ea": [
+    {
+      "medicine": "Wrist Splint",
+      "route": "external",
+      "dosage_and_duration": "Use as advised"
+    },
+    {
+      "medicine": "Enzoflam Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning and evening for 5 days"
+    },
+    {
+      "medicine": "Pan 40 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning for 5 days"
+    }
+  ],
+  "6b75ce5c415e93f6d576bb48878d6543": [
+    {
+      "medicine": "MR Vaccine",
+      "route": "subcutaneous",
+      "dosage_and_duration": "0.5 ml single dose"
+    },
+    {
+      "medicine": "PCV Vaccine",
+      "route": "intramuscular",
+      "dosage_and_duration": "0.5 ml single dose"
+    },
+    {
+      "medicine": "fIPV Vaccine",
+      "route": "intradermal",
+      "dosage_and_duration": "0.1 ml single dose"
+    },
+    {
+      "medicine": "Vitamin A Syrup",
+      "route": "oral",
+      "dosage_and_duration": "1 ml single dose"
+    }
+  ],
+  "45f17ff2eb090e2b4eb6daeac2499d28": [
+    {
+      "medicine": "Gabapentin 300 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "night after food for 10 days"
+    },
+    {
+      "medicine": "Matustrong Tablet",
+      "route": "oral",
+      "dosage_and_duration": "night after food for 30 days"
+    },
+    {
+      "medicine": "Diaboon-C Ointment",
+      "route": "topical",
+      "dosage_and_duration": "apply once daily"
+    }
+  ],
+  "1cc50c57e97baa2e5c6f16ab71b30dc6": [
+    {
+      "medicine": "Gemcal-XT Tablet",
+      "route": "oral",
+      "dosage_and_duration": "night after food for 30 days"
+    },
+    {
+      "medicine": "Pregic-NT Tablet",
+      "route": "oral",
+      "dosage_and_duration": "night after food for 30 days"
+    }
+  ],
   "872d90ab090cde0d008130b8026b5277": [
     {
       "medicine": "Tablet Lyzin",
@@ -6896,6 +8457,186 @@
       "dosage_and_duration": "2 drops morning and night for 2 months"
     }
   ],
+  "ef3a7453b061f7547a3c6e1adc3227ca": [
+    {
+      "medicine": "Tendogil Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning after food for 10 days"
+    },
+    {
+      "medicine": "Gabapentin 300 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "evening after food for 10 days"
+    }
+  ],
+  "7fe9200c8fc28df17e694311e52a74e3": [
+    {
+      "medicine": "HCQS 400 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "not specified"
+    },
+    {
+      "medicine": "Ugantine 25 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "not specified"
+    },
+    {
+      "medicine": "Lefon 10 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning for 30 days"
+    },
+    {
+      "medicine": "Folic Acid Syrup",
+      "route": "oral",
+      "dosage_and_duration": "not specified"
+    },
+    {
+      "medicine": "Hifenac MR Tablet",
+      "route": "oral",
+      "dosage_and_duration": "twice daily for 10 days"
+    }
+  ],
+  "254fe0d62c9c4675f5bbd9122b0e2579": [
+    {
+      "medicine": "Winzo A 3M Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning with food"
+    },
+    {
+      "medicine": "Telma 40 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning"
+    },
+    {
+      "medicine": "Thyronorm Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning"
+    },
+    {
+      "medicine": "Fibator-F Tablet",
+      "route": "oral",
+      "dosage_and_duration": "night"
+    },
+    {
+      "medicine": "Uprise-D3 60000 IU Capsule",
+      "route": "oral",
+      "dosage_and_duration": "once weekly"
+    },
+    {
+      "medicine": "Calree K2 Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning for 30 days"
+    },
+    {
+      "medicine": "Orifer XT Tablet",
+      "route": "oral",
+      "dosage_and_duration": "night for 30 days"
+    }
+  ],
+  "7010ef5dec512209c43f820890d4e7f8": [
+    {
+      "medicine": "Winzo A 3M Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning with food"
+    },
+    {
+      "medicine": "Dalyglim M1 Tablet",
+      "route": "oral",
+      "dosage_and_duration": "evening"
+    },
+    {
+      "medicine": "Atorvas 10 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "evening"
+    },
+    {
+      "medicine": "Thyronorm 50 mcg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning"
+    },
+    {
+      "medicine": "Telma 40 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning"
+    }
+  ],
+  "679438ee0184261e399d4e4bd18ee0fb": [
+    {
+      "medicine": "Ondem Syrup",
+      "route": "oral",
+      "dosage_and_duration": "morning, afternoon and night before food for 2 days"
+    },
+    {
+      "medicine": "ORS Sachets",
+      "route": "oral",
+      "dosage_and_duration": "100 ml after each loose motion"
+    },
+    {
+      "medicine": "Calpol Suspension 250 mg",
+      "route": "oral",
+      "dosage_and_duration": "morning, evening and night for 2 days if fever"
+    }
+  ],
+  "bfd593a9bda1df9d9972043fe25e1288": [
+    {
+      "medicine": "RB 500 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "once daily for 14 days"
+    }
+  ],
+  "604ea12c6eb187ea3df3418916d71d79": [
+    {
+      "medicine": "Moisturex Hydra Face Moisturiser",
+      "route": "topical",
+      "dosage_and_duration": "morning and night application"
+    },
+    {
+      "medicine": "Nilac Gel",
+      "route": "topical",
+      "dosage_and_duration": "night application"
+    }
+  ],
+  "4ed7a700999eb2dd7a4a0caf71acb782": [
+    {
+      "medicine": "Fe Tablet",
+      "route": "oral",
+      "dosage_and_duration": "continue once daily"
+    }
+  ],
+  "9bd25e25051060d780ae9835f7d8d962": [
+    {
+      "medicine": "Ryzodeg Insulin",
+      "route": "subcutaneous",
+      "dosage_and_duration": "18 units morning and 12 units evening"
+    },
+    {
+      "medicine": "Glyciglim-M2 Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning and evening"
+    },
+    {
+      "medicine": "Pregab-NT Tablet",
+      "route": "oral",
+      "dosage_and_duration": "night"
+    }
+  ],
+  "4492f596ff3cfd58eb63e7bfb02b989e": [
+    {
+      "medicine": "TCV Injection",
+      "route": "intramuscular",
+      "dosage_and_duration": "single dose"
+    },
+    {
+      "medicine": "Infanrix Tetra Injection",
+      "route": "intramuscular",
+      "dosage_and_duration": "single dose"
+    },
+    {
+      "medicine": "PCT Drops (100 mg/ml)",
+      "route": "oral",
+      "dosage_and_duration": "0.6 ml as needed"
+    }
+  ],
   "7eaa8e611952f00e297b5af068092a4b": [
     {
       "medicine": "Cineramycin eye drops",
@@ -6906,6 +8647,146 @@
       "medicine": "Eye drops Euphrasia",
       "route": "ophthalmic",
       "dosage_and_duration": "2 drops morning and night for 2 weeks"
+    }
+  ],
+  "29f7ed4d12abbf3423615a804c80021c": [
+    {
+      "medicine": "Montek LC Tablet",
+      "route": "oral",
+      "dosage_and_duration": "night for 5 days"
+    },
+    {
+      "medicine": "Ascoril LS Syrup",
+      "route": "oral",
+      "dosage_and_duration": "morning and night for 4 days"
+    },
+    {
+      "medicine": "Ondem-MD 4 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning, afternoon, evening and night for 6 doses"
+    }
+  ],
+  "6390f187a139a2643958050a257a741f": [
+    {
+      "medicine": "FML-T Eye Drops",
+      "route": "ophthalmic",
+      "dosage_and_duration": "1 drop 4 times daily for 4 days, then 1 drop 3 times daily for 4 days, then 1 drop 2 times daily for 4 days, then stop"
+    }
+  ],
+  "65b473d767d62af9d1057dc82c9e9c6f": [
+    {
+      "medicine": "Dolonex DT Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning and night after food for 10 days"
+    },
+    {
+      "medicine": "Pan 40 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning and evening for 10 days"
+    },
+    {
+      "medicine": "Volitra Gel",
+      "route": "topical",
+      "dosage_and_duration": "apply for 9 days"
+    }
+  ],
+  "a6226440715b2752c456bd3b106fca15": [
+    {
+      "medicine": "Uprise D3 60000 IU Capsule",
+      "route": "oral",
+      "dosage_and_duration": "once weekly for 1 month"
+    },
+    {
+      "medicine": "Gemcal 500 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "night after food for 1 month"
+    },
+    {
+      "medicine": "Alleo-P Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning and night after food for 5 days"
+    },
+    {
+      "medicine": "Omez 20 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning before food for 5 days"
+    }
+  ],
+  "23e8b8b743f8476cbc0f0c263488fc3e": [
+    {
+      "medicine": "Ciss-Q Plus Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning for 20 days"
+    },
+    {
+      "medicine": "Caloe K2 Tablet",
+      "route": "oral",
+      "dosage_and_duration": "afternoon for 20 days"
+    },
+    {
+      "medicine": "Uprise D3 60000 IU Capsule",
+      "route": "oral",
+      "dosage_and_duration": "once weekly for 4 weeks"
+    }
+  ],
+  "86cb7a9ef5fdaa378e21205875a91d6b": [
+    {
+      "medicine": "Nucoxia-MR Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning and night for 10 days"
+    },
+    {
+      "medicine": "Pan-40 Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning and night for 10 days"
+    },
+    {
+      "medicine": "Nervijen-P Tablet",
+      "route": "oral",
+      "dosage_and_duration": "night for 15 days"
+    }
+  ],
+  "41e97c034d663fcab3c8f515a5398b99": [
+    {
+      "medicine": "Sinpraz-D Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning before food for 10 days"
+    },
+    {
+      "medicine": "Mucaine Gel Syrup",
+      "route": "oral",
+      "dosage_and_duration": "10 ml morning, afternoon and night for 10 days"
+    }
+  ],
+  "9cb381927daf9cd64c521df9308bb0b5": [
+    {
+      "medicine": "Livogen Tablet",
+      "route": "oral",
+      "dosage_and_duration": "night for 30 days"
+    },
+    {
+      "medicine": "Dailycal Tablet",
+      "route": "oral",
+      "dosage_and_duration": "afternoon for 30 days"
+    }
+  ],
+  "5e7ba088944d1f8c25f9ba0be95c9d91": [
+    {
+      "medicine": "PPI 40mg",
+      "route": "oral",
+      "dosage_and_duration": "morning before food"
+    },
+    {
+      "medicine": "PANSE 500mg",
+      "route": "oral",
+      "dosage_and_duration": "morning, afternoon and night for 2 days"
+    }
+  ],
+  "3deaeb15b43b3ca7c4b84dba04ee1213": [
+    {
+      "medicine": "Ovral-L Tablet",
+      "route": "oral",
+      "dosage_and_duration": "night for 2 cycles"
     }
   ],
   "f279a574afc3df7810ff7837fb09ebda": [
@@ -6925,6 +8806,171 @@
       "dosage_and_duration": "1 capsule in the morning for 4 weeks"
     }
   ],
+  "01300715df314d7a091ffcf8336b467b": [
+    {
+      "medicine": "Momate-F Cream",
+      "route": "topical",
+      "dosage_and_duration": "apply on rashes morning and night daily for 2 weeks"
+    }
+  ],
+  "cc07ca2dd1c6d6e112cf2f9e74790c1a": [
+    {
+      "medicine": "Betadine Gargle",
+      "route": "gargle",
+      "dosage_and_duration": "morning and night for 1 week"
+    },
+    {
+      "medicine": "Augmentin 457mg/5ml Syrup",
+      "route": "oral",
+      "dosage_and_duration": "5 ml morning and night for 5 days"
+    },
+    {
+      "medicine": "Ibugesic Plus Syrup",
+      "route": "oral",
+      "dosage_and_duration": "4 ml morning and night for 5 days"
+    },
+    {
+      "medicine": "Montek LC Kid Syrup",
+      "route": "oral",
+      "dosage_and_duration": "3 ml night for 5 days"
+    }
+  ],
+  "7af5641cc84a554544f2f3432fed4b8e": [
+    {
+      "medicine": "Cepodem XP 325 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning and night for 5 days"
+    },
+    {
+      "medicine": "Relent Tablet",
+      "route": "oral",
+      "dosage_and_duration": "night for 5 days"
+    },
+    {
+      "medicine": "Zerodol-P Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning and night for 5 days"
+    },
+    {
+      "medicine": "Flomist Nasal Spray",
+      "route": "nasal",
+      "dosage_and_duration": "2 puffs in each nostril morning and night for 5 days"
+    }
+  ],
+  "5c3be6c2e12657a183237deb9e12ce4b": [
+    {
+      "medicine": "A to Z Syrup",
+      "route": "oral",
+      "dosage_and_duration": "5 ml once daily for 1 month"
+    },
+    {
+      "medicine": "Bandy Syrup",
+      "route": "oral",
+      "dosage_and_duration": "10 ml stat (single dose)"
+    }
+  ],
+  "1b151188daf99257c8992239eea7e00f": [
+    {
+      "medicine": "Myogic-TH Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning and night for 5 days"
+    },
+    {
+      "medicine": "Uprise-D3 Tablet",
+      "route": "oral",
+      "dosage_and_duration": "once weekly for 4 doses"
+    }
+  ],
+  "79e4a1ea12fc2a1de457f07a32dcfa45": [
+    {
+      "medicine": "Augmentin 625 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning and night for 5 days"
+    },
+    {
+      "medicine": "Cetirizine 5 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "night for 5 days"
+    },
+    {
+      "medicine": "Dolo 650 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "twice daily for 5 days"
+    },
+    {
+      "medicine": "Otrivin Nasal Drops",
+      "route": "nasal",
+      "dosage_and_duration": "2 drops in each nostril three times daily for 5 days"
+    }
+  ],
+  "2153ee7bc013d9f38a90068fabab2bdd": [
+    {
+      "medicine": "Pent Injection",
+      "route": "intramuscular",
+      "dosage_and_duration": "0.5 ml stat"
+    },
+    {
+      "medicine": "Oral Drops",
+      "route": "oral",
+      "dosage_and_duration": "2 drops"
+    },
+    {
+      "medicine": "PCT Drops (100 mg/ml)",
+      "route": "oral",
+      "dosage_and_duration": "0.7 ml stat"
+    }
+  ],
+  "6057b3bbe6b4d74295605eec9721b89c": [
+    {
+      "medicine": "Penta-1 Vaccine",
+      "route": "intramuscular",
+      "dosage_and_duration": "single dose"
+    },
+    {
+      "medicine": "IPV-1 Vaccine",
+      "route": "injectable",
+      "dosage_and_duration": "single dose"
+    },
+    {
+      "medicine": "PCV-1 Vaccine",
+      "route": "injectable",
+      "dosage_and_duration": "single dose"
+    },
+    {
+      "medicine": "Rota-1 Vaccine",
+      "route": "oral",
+      "dosage_and_duration": "single dose"
+    },
+    {
+      "medicine": "OPV-1 Vaccine",
+      "route": "oral",
+      "dosage_and_duration": "single dose"
+    },
+    {
+      "medicine": "PCT Drops (100 mg/ml)",
+      "route": "oral",
+      "dosage_and_duration": "0.4 ml stat"
+    }
+  ],
+  "59a2d967649bb28f5f50ddff6a72757e": [
+    {
+      "medicine": "BAE",
+      "route": "oral",
+      "dosage_and_duration": "for 5 days"
+    }
+  ],
+  "e1c2aa3eebf343f6f2e2a1fc09889f5e": [
+    {
+      "medicine": "Hifenac-MR Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning and evening"
+    },
+    {
+      "medicine": "Ciss-Q Tablet",
+      "route": "oral",
+      "dosage_and_duration": "morning"
+    }
+  ],
   "6eba6cfb97bbb195cd3bfe0ea50c61eb": [
     {
       "medicine": "Syrup Acefyl Cough",
@@ -6940,6 +8986,42 @@
       "medicine": "Lotion Calamax-V",
       "route": "topical",
       "dosage_and_duration": "apply to affected areas as needed for 5 days"
+    }
+  ],
+  "330a88260716b36d34701b689d3c85d4": [
+    {
+      "medicine": "Vitamin D3 60K Capsule",
+      "route": "oral",
+      "dosage_and_duration": "once weekly for 8 weeks"
+    },
+    {
+      "medicine": "Vitcofol-G Injection",
+      "route": "injection",
+      "dosage_and_duration": "single dose"
+    },
+    {
+      "medicine": "Inj. (illegible) 5 ml",
+      "route": "injection",
+      "dosage_and_duration": "single dose"
+    }
+  ],
+  "71bcdefbb3c7e54da3a2881b4f09ec5e": [
+    {
+      "medicine": "Gemcal Plus Tablet",
+      "route": "oral",
+      "dosage_and_duration": "afternoon for 15 days"
+    }
+  ],
+  "97a92f852419ee7569ff500506b6ae1a": [
+    {
+      "medicine": "Lotepred Eye Drops",
+      "route": "eye",
+      "dosage_and_duration": "before evening for 3-5 days"
+    },
+    {
+      "medicine": "Faluse-DS Eye Drops",
+      "route": "eye",
+      "dosage_and_duration": "before evening for 10 days"
     }
   ],
   "8ca3240eca082d5a5c87553e63c7df3b": [
@@ -7175,6 +9257,141 @@
       "dosage_and_duration": "1 capsule in the morning for 30 days"
     }
   ],
+  "d71e736cb0dc0882fd01aa63e00b4b4c": [
+    {
+      "medicine": "Myoril Maxx Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 10 days"
+    },
+    {
+      "medicine": "PAN 40 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 10 days"
+    },
+    {
+      "medicine": "Gemcal Plus Capsule",
+      "route": "oral",
+      "dosage_and_duration": "0-1-0 for 1 month"
+    }
+  ],
+  "50c65fc0cc34bea5cdc7ada7247f8531": [
+    {
+      "medicine": "Ezemist Eye Drops",
+      "route": "ophthalmic",
+      "dosage_and_duration": "1-1-1-1 for 7 days"
+    }
+  ],
+  "92b4f1d1f048d87b40dbab20533e3f73": [
+    {
+      "medicine": "Uprise D3 60K Tablet",
+      "route": "oral",
+      "dosage_and_duration": "once a week for 8 weeks"
+    },
+    {
+      "medicine": "Zerodol-SP Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 10 days"
+    },
+    {
+      "medicine": "PAN 40 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 10 days"
+    }
+  ],
+  "c96a96993dd218173b6ce098d07b6f21": [
+    {
+      "medicine": "Meftal Spas Capsule",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 3 days"
+    },
+    {
+      "medicine": "PAN 40 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 5 days"
+    },
+    {
+      "medicine": "Oflox 200 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 5 days"
+    }
+  ],
+  "efecdf1b97258bf82dafda49bc658376": [
+    {
+      "medicine": "Ciplox TZ Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 3 days"
+    },
+    {
+      "medicine": "PAN 40 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 3 days"
+    },
+    {
+      "medicine": "ORS Sachet",
+      "route": "oral",
+      "dosage_and_duration": "1 sachet after each loose stool episode"
+    }
+  ],
+  "c975d2c103e27deef0e289050607bd9c": [
+    {
+      "medicine": "Montek LC Tablet",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1"
+    }
+  ],
+  "9a0ad9c9e9a7e8eca096f6857f4b4f84": [
+    {
+      "medicine": "Montek LC Tablet",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1"
+    }
+  ],
+  "b12261e95efa26468e3a56dc32338d49": [
+    {
+      "medicine": "Puron Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1 mg"
+    },
+    {
+      "medicine": "Rablet 5 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 for 10 days"
+    }
+  ],
+  "08064017561bb7374644a759c19d79e1": [
+    {
+      "medicine": "PAN 40 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 7 days"
+    },
+    {
+      "medicine": "PCT 500 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "SOS"
+    }
+  ],
+  "72cc62ea6d2bc273713fb8bee2a3dab0": [
+    {
+      "medicine": "Dolo 650 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "stat"
+    },
+    {
+      "medicine": "Folvite 5 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 30 days"
+    },
+    {
+      "medicine": "Maintain 500 mg Injection",
+      "route": "intramuscular",
+      "dosage_and_duration": "single dose today"
+    },
+    {
+      "medicine": "Susten 200 mg Capsule",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 2 weeks"
+    }
+  ],
   "13f02b2d88ea84db550a51740771bec5": [
     {
       "medicine": "Tablet Cebuten 400 mg",
@@ -7185,6 +9402,176 @@
       "medicine": "Tablet DDR 30 mg",
       "route": "oral",
       "dosage_and_duration": "1 tablet morning and night, 30 minutes before meals, duration as advised"
+    }
+  ],
+  "a36d9b04b9c02406aeb19d49ca2556cc": [
+    {
+      "medicine": "Hemoferon XT Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 30 days"
+    },
+    {
+      "medicine": "Supracal XT Tablet",
+      "route": "oral",
+      "dosage_and_duration": "0-1-0 for 30 days"
+    },
+    {
+      "medicine": "Pro-XL Powder",
+      "route": "oral",
+      "dosage_and_duration": "2 tablespoons 1-0-0 for 1 month"
+    },
+    {
+      "medicine": "Cefixime 200 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 5 days"
+    },
+    {
+      "medicine": "PAN 40 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 5 days"
+    }
+  ],
+  "fc6c04dd4a372124a34212f9b181d862": [
+    {
+      "medicine": "Orofer XT Tablet",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1"
+    },
+    {
+      "medicine": "Shelcal Tablet",
+      "route": "oral",
+      "dosage_and_duration": "0-1-0"
+    },
+    {
+      "medicine": "Protein Powder",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1"
+    },
+    {
+      "medicine": "Tetanus Toxoid Injection",
+      "route": "intramuscular",
+      "dosage_and_duration": "0.5 mL stat"
+    }
+  ],
+  "ab7af6116612f609b6d7dfe6f2333cf2": [
+    {
+      "medicine": "Folic Acid Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 30 days"
+    },
+    {
+      "medicine": "Doxinate 10 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 10 days"
+    }
+  ],
+  "5ea610d02080439ca8101ae0d1e18c20": [
+    {
+      "medicine": "Mixtard 30/70 Injection",
+      "route": "subcutaneous",
+      "dosage_and_duration": "10-0-7"
+    },
+    {
+      "medicine": "Basalog Injection",
+      "route": "subcutaneous",
+      "dosage_and_duration": "0-0-7"
+    },
+    {
+      "medicine": "Becosules Z Capsule",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 15 days"
+    }
+  ],
+  "8edab37a619f8124028cdbabf0b92eab": [
+    {
+      "medicine": "Hexilak Scar Gel",
+      "route": "topical",
+      "dosage_and_duration": "0-0-1"
+    },
+    {
+      "medicine": "Suncros Neo Sunscreen",
+      "route": "topical",
+      "dosage_and_duration": "apply every morning"
+    },
+    {
+      "medicine": "Melotis Night Serum",
+      "route": "topical",
+      "dosage_and_duration": "apply once nightly for 3 months"
+    },
+    {
+      "medicine": "Ahaglow S Face Wash",
+      "route": "topical",
+      "dosage_and_duration": "use twice daily"
+    }
+  ],
+  "f793285e41171d969e0d20313a7264ae": [
+    {
+      "medicine": "Venusia Max Lotion",
+      "route": "topical",
+      "dosage_and_duration": "apply twice daily for 1 month"
+    }
+  ],
+  "86b79770f382a0b6ff8e0ef3d5315626": [
+    {
+      "medicine": "PAN 40 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0"
+    },
+    {
+      "medicine": "Vitamin D3 5 mL Oral Solution",
+      "route": "oral",
+      "dosage_and_duration": "2 mL once daily"
+    }
+  ],
+  "c5fca02a228f08c6bee1b8b84ab10d12": [
+    {
+      "medicine": "Augmentin 625 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 5 days"
+    },
+    {
+      "medicine": "Zerodol-P Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 5 days"
+    },
+    {
+      "medicine": "Chymoral Forte Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 5 days"
+    },
+    {
+      "medicine": "Pantocid DSR Capsule",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 before food for 5 days"
+    }
+  ],
+  "60120b0e7db1ca06e537c448b0ea7174": [
+    {
+      "medicine": "Toplap Gel",
+      "route": "topical",
+      "dosage_and_duration": "apply locally"
+    },
+    {
+      "medicine": "Mupi Ointment",
+      "route": "topical",
+      "dosage_and_duration": "apply locally"
+    }
+  ],
+  "9cc8f1fcc680f66ae315940c96192424": [
+    {
+      "medicine": "Zerodol-P Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 3 days"
+    },
+    {
+      "medicine": "Tamceed 0.4 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 for 5 days"
+    },
+    {
+      "medicine": "Neeri-B Syrup",
+      "route": "oral",
+      "dosage_and_duration": "1-1-1 for 1 bottle"
     }
   ],
   "1b1d85653cca7a1ee82185689efddcd2": [
@@ -7209,6 +9596,116 @@
       "dosage_and_duration": "1 tablet once daily"
     }
   ],
+  "3a86d52281b7b0e03f6739620812af99": [
+    {
+      "medicine": "Azithral Eye Ointment",
+      "route": "ophthalmic",
+      "dosage_and_duration": "1-0-1"
+    },
+    {
+      "medicine": "Brivic Eye Drops",
+      "route": "ophthalmic",
+      "dosage_and_duration": "1 drop three times daily"
+    }
+  ],
+  "5d845289b3544135d00bab66ae9e8e5f": [
+    {
+      "medicine": "Nitrofurantoin 100 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 7 days"
+    }
+  ],
+  "40c1b2762b14f061945c3f2edb35fa5c": [
+    {
+      "medicine": "Doxy-LB 100 mg Capsule",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 14 days"
+    },
+    {
+      "medicine": "Epiduo Gel",
+      "route": "topical",
+      "dosage_and_duration": "apply once daily at night for 2 weeks"
+    }
+  ],
+  "924900477d05bf1713bca12f397056ab": [
+    {
+      "medicine": "Lulifin Max Cream",
+      "route": "topical",
+      "dosage_and_duration": "apply at night for 2 months"
+    },
+    {
+      "medicine": "AF 200 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "single dose (stat)"
+    }
+  ],
+  "7ea2889cf5fe4e2df571cf88bf33fb6d": [
+    {
+      "medicine": "Calcium + Vitamin D3 Tablet",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 for 20 days"
+    },
+    {
+      "medicine": "Methylcobalamin 1500 mcg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0"
+    }
+  ],
+  "5b7fbde09a0db1fcbec17a390705046f": [
+    {
+      "medicine": "Tegaderm 8526",
+      "route": "topical",
+      "dosage_and_duration": ""
+    }
+  ],
+  "a200f4403998c59f36f703b9bde6e3cf": [
+    {
+      "medicine": "Istamet 50/1000 Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 1 week"
+    },
+    {
+      "medicine": "LMP MDF 1 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 1 week"
+    }
+  ],
+  "35b8bf157821e31c809174df5c630f25": [
+    {
+      "medicine": "Zerodol-SP Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 10 days"
+    },
+    {
+      "medicine": "Pan 40 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 5 days (before food)"
+    }
+  ],
+  "7df17a760b68c16f446e53a4dc128636": [
+    {
+      "medicine": "Pregaba NT Tablet",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 for 10 days (if pain not reduced, review after 1 month)"
+    },
+    {
+      "medicine": "Duloxetine 10 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 10 days"
+    }
+  ],
+  "d4e915a8fc4bde04f033b4cd7f66af3f": [
+    {
+      "medicine": "Zerodol-SP Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 10 days"
+    },
+    {
+      "medicine": "Pan 40 Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 10 days (before food)"
+    }
+  ],
   "d10a29adc934b6842297a7a04eea1b63": [
     {
       "medicine": "Co-amoxiclav syrup",
@@ -7219,6 +9716,131 @@
       "medicine": "Domperidone syrup",
       "route": "oral",
       "dosage_and_duration": "5 ml three times daily"
+    }
+  ],
+  "bcf27ece1dad241d65f78354201f1eff": [
+    {
+      "medicine": "Pan 40 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 5 days"
+    },
+    {
+      "medicine": "Serrat 50 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0"
+    }
+  ],
+  "ea418cc8d03d3a2ef2708e88b035fa11": [
+    {
+      "medicine": "Serta 25 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 after food for 15 days"
+    },
+    {
+      "medicine": "Pan 40 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 before food for 15 days"
+    }
+  ],
+  "8ac00593a4b7424066054843c05116c3": [
+    {
+      "medicine": "Clonam-IR 0.25 mg Tablet",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 after food for 15 days"
+    }
+  ],
+  "0ee54ddffd3e8930ede5b912588dd754": [
+    {
+      "medicine": "Paracetamol Syrup (250 mg/5 mL)",
+      "route": "oral",
+      "dosage_and_duration": "4 mL PO SOS for fever"
+    }
+  ],
+  "e3ce38c6c0fcfc5b60e6261392f1c037": [
+    {
+      "medicine": "Lubrex DS Eye Drops",
+      "route": "ophthalmic",
+      "dosage_and_duration": "1-1-1"
+    }
+  ],
+  "322802dc06f970514f548e8520a95dfb": [
+    {
+      "medicine": "Xerina Cream",
+      "route": "topical",
+      "dosage_and_duration": "Apply as directed"
+    }
+  ],
+  "9edcd4b1a22ec4c715b8a7e74a514ca2": [
+    {
+      "medicine": "Doxycycline 100 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 7 days"
+    },
+    {
+      "medicine": "Metrogyl 400 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-1-1 for 7 days"
+    },
+    {
+      "medicine": "Pan 40 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0"
+    }
+  ],
+  "9217647d57c2dc272723246b5125dc69": [
+    {
+      "medicine": "Prothiaden 50 mg",
+      "route": "oral",
+      "dosage_and_duration": "3-3-3 for 1 week"
+    },
+    {
+      "medicine": "Rantac 40 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 1 week"
+    },
+    {
+      "medicine": "Pan 40 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 1 week"
+    }
+  ],
+  "0e4d7fcdac015ba284d23696effaf73d": [
+    {
+      "medicine": "Doxycycline 100 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 7 days"
+    },
+    {
+      "medicine": "Motil",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 2 months"
+    },
+    {
+      "medicine": "Fertisure-M",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 1 month"
+    }
+  ],
+  "39622005315b935b7c53e524936747da": [
+    {
+      "medicine": "Augmentin 625 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-1-1 after food for 5 days"
+    },
+    {
+      "medicine": "Pan 40 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 before food for 5 days"
+    },
+    {
+      "medicine": "Levocet Syrup",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 after food for 5 days"
+    },
+    {
+      "medicine": "Paracetamol 500 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-1-1 after food for 3 days, then SOS"
     }
   ],
   "16a4cefb8b0fc0618a261fc928c28a53": [
@@ -7238,6 +9860,156 @@
       "dosage_and_duration": "5 ml every 6 hours for 3 days"
     }
   ],
+  "88c7fe404ceb8fd0f4e3adab36c9578e": [
+    {
+      "medicine": "Serta 50 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 15 days"
+    },
+    {
+      "medicine": "Clonam IR 0.5 mg",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 for 15 days"
+    }
+  ],
+  "00896abfbcf502bbc07d27b612c15c02": [
+    {
+      "medicine": "Zerodol TH4",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 7 days"
+    },
+    {
+      "medicine": "Pan 40 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 7 days"
+    },
+    {
+      "medicine": "Lyrica 75 mg",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 for 30 days"
+    }
+  ],
+  "c7c57388f510e436e137546d53dd2864": [
+    {
+      "medicine": "Gemcal 500 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 30 days"
+    }
+  ],
+  "3513514cc19512a152c4cc6579358647": [
+    {
+      "medicine": "Istamet XR 1000/100/10",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 30 days"
+    },
+    {
+      "medicine": "Rozuvel F 20/160",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 for 30 days"
+    }
+  ],
+  "e4506a5194521eaa4e0b1c9a0477fbcc": [
+    {
+      "medicine": "Istamet XR 1000/100/10",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 30 days"
+    },
+    {
+      "medicine": "Rozuvel F 20/160",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 for 30 days"
+    }
+  ],
+  "99a0a94c294b31f896d7bb0861981fcb": [
+    {
+      "medicine": "Pan D 10/40 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 before food for 2 days"
+    },
+    {
+      "medicine": "Levinda Drops",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 before food for 2 days"
+    },
+    {
+      "medicine": "Sucrafil Syrup",
+      "route": "oral",
+      "dosage_and_duration": "15 mL SOS"
+    }
+  ],
+  "716e2b1bb6aee678917b02472dbb5884": [
+    {
+      "medicine": "Betadine Gargle",
+      "route": "topical",
+      "dosage_and_duration": "gargle for 10 days"
+    },
+    {
+      "medicine": "Zocef CV 500 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 5 days"
+    },
+    {
+      "medicine": "Zerodol-P",
+      "route": "oral",
+      "dosage_and_duration": "SOS for 5 days"
+    },
+    {
+      "medicine": "Chymoral Forte",
+      "route": "oral",
+      "dosage_and_duration": "1-1-1 for 5 days"
+    }
+  ],
+  "72e35d5c7c3ad4db16df7d749ad10d53": [
+    {
+      "medicine": "Suncros Neo Sunscreen",
+      "route": "topical",
+      "dosage_and_duration": "apply once daily"
+    },
+    {
+      "medicine": "Clonate Cream",
+      "route": "topical",
+      "dosage_and_duration": "apply once daily for 2 weeks"
+    },
+    {
+      "medicine": "Sebamed Hyaluronic Acid Gel",
+      "route": "topical",
+      "dosage_and_duration": "apply twice daily"
+    }
+  ],
+  "c03a636c7af8203b2bc9dc23e307d7b0": [
+    {
+      "medicine": "Kenacort 40 mg",
+      "route": "injection",
+      "dosage_and_duration": "1 vial"
+    },
+    {
+      "medicine": "Sterile Syringe 2 cc",
+      "route": "NA",
+      "dosage_and_duration": "2 units"
+    },
+    {
+      "medicine": "Sterile Gloves 7.5",
+      "route": "NA",
+      "dosage_and_duration": "1 pair"
+    }
+  ],
+  "2f6bfe47bf8f54c74ee16a60b4d7090e": [
+    {
+      "medicine": "I-Win SB 65 mg Capsule",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 after food for 20 days"
+    },
+    {
+      "medicine": "Teczine 10 mg",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 after food for 20 days"
+    },
+    {
+      "medicine": "C-Win Cream",
+      "route": "topical",
+      "dosage_and_duration": "apply twice daily"
+    }
+  ],
   "7a46468ec262f928cf79ebd203a4bb80": [
     {
       "medicine": "Tablet Amoxicillin 500 mg",
@@ -7250,6 +10022,161 @@
       "dosage_and_duration": "1 capsule or tablet once daily, duration as advised"
     }
   ],
+  "b3aa7d2e9f5d7c148284dff5bce9b754": [
+    {
+      "medicine": "Zerodol-TH",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 10 days"
+    },
+    {
+      "medicine": "Pan 40 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 before food for 10 days"
+    },
+    {
+      "medicine": "Tendocare Forte",
+      "route": "oral",
+      "dosage_and_duration": "0-1-0 for 10 days"
+    }
+  ],
+  "28a347c8542c6b8edbd146defc9ca465": [
+    {
+      "medicine": "Telmisartan 40 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 30 days"
+    },
+    {
+      "medicine": "Haemup",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 after food for 60 days"
+    },
+    {
+      "medicine": "Nitrofurantoin 100 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 after food for 7 days"
+    }
+  ],
+  "c8684604608f83cfbc40b5cb70c6267e": [
+    {
+      "medicine": "Zerodol-P",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 after food for 7 days"
+    },
+    {
+      "medicine": "Pan 40 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 before food for 7 days"
+    },
+    {
+      "medicine": "Gemcal 500 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 after food for 30 days"
+    },
+    {
+      "medicine": "Tendocare Forte",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 after food for 30 days"
+    }
+  ],
+  "7e134771a3113c68fd47e1a077ec4ceb": [
+    {
+      "medicine": "Diclofenac 75 mg Injection",
+      "route": "intramuscular",
+      "dosage_and_duration": "stat dose"
+    },
+    {
+      "medicine": "Zerodol-SP",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1"
+    },
+    {
+      "medicine": "Actifed",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0"
+    }
+  ],
+  "38ad8125f631c01e51e26f9db8784d7e": [
+    {
+      "medicine": "Pan 40 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 10 days"
+    }
+  ],
+  "6a765ba7b603129b3636d44e88074085": [
+    {
+      "medicine": "Etoriloxib 90 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 14 days"
+    },
+    {
+      "medicine": "Gabaneuron NT 100 mg",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 at 9 PM for 5 days"
+    }
+  ],
+  "2dbef0fafda81560bca43ba1f761ce3b": [
+    {
+      "medicine": "Zerodol TH4",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 after food for 7 days"
+    },
+    {
+      "medicine": "Pan 40 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 before food for 7 days"
+    },
+    {
+      "medicine": "Neugaba-M 75 mg",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 at 6 PM for 14 days"
+    },
+    {
+      "medicine": "Gemcal 500 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 after food for 30 days"
+    }
+  ],
+  "84775afb068829bb5403525f53e9e379": [
+    {
+      "medicine": "Faropenem ER 300 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 7 days"
+    },
+    {
+      "medicine": "Pan 40 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 before food for 7 days"
+    },
+    {
+      "medicine": "Apitivate Syrup",
+      "route": "oral",
+      "dosage_and_duration": "10 mL twice daily before food"
+    }
+  ],
+  "c2270f371152ecc715f557c4c6b3c443": [
+    {
+      "medicine": "Veltam 0.4 mg",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 for 14 days"
+    }
+  ],
+  "bc1ee674e9dade02e441989aec3486e2": [
+    {
+      "medicine": "Diclofenac Injection",
+      "route": "intramuscular",
+      "dosage_and_duration": "stat dose"
+    },
+    {
+      "medicine": "Zerodol",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 5 days"
+    },
+    {
+      "medicine": "Actifed",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 5 days"
+    }
+  ],
   "9bde82b6bc489cb88ff5b72b4c38b716": [
     {
       "medicine": "Amoxicillin Eye Ointment",
@@ -7260,6 +10187,151 @@
       "medicine": "Ambral Eye Drops",
       "route": "eye",
       "dosage_and_duration": "1.0 ml two times daily for 5 days"
+    }
+  ],
+  "af8a626a1b3b80e7cc7dd9c8e0a02bf4": [
+    {
+      "medicine": "Glycomet GP2",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 before food for 1 week"
+    },
+    {
+      "medicine": "Vildamet 50/500",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 after food"
+    },
+    {
+      "medicine": "Uprise D3 60K",
+      "route": "oral",
+      "dosage_and_duration": "once weekly for 8 weeks"
+    }
+  ],
+  "81eb85ed70758adb21b58d5f54ebb912": [
+    {
+      "medicine": "Galvus Met 50/500",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 2 weeks"
+    }
+  ],
+  "c7fdc86ad7db9c9f2467a4076ccc301b": [
+    {
+      "medicine": "Ferol",
+      "route": "oral",
+      "dosage_and_duration": "for 6 months"
+    },
+    {
+      "medicine": "Calcor",
+      "route": "oral",
+      "dosage_and_duration": "for 6 months"
+    }
+  ],
+  "f8c3d7a78ff70539f773eb786847e29d": [
+    {
+      "medicine": "Sompraz-D",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 before breakfast for 1 week"
+    },
+    {
+      "medicine": "Sucrafil-O Gel",
+      "route": "oral",
+      "dosage_and_duration": "10 mL before meals for 1 week"
+    },
+    {
+      "medicine": "Becosules",
+      "route": "oral",
+      "dosage_and_duration": "0-1-0 after food for 12 days"
+    },
+    {
+      "medicine": "Laxanox Plus",
+      "route": "oral",
+      "dosage_and_duration": "1-1-1 for 1 week"
+    }
+  ],
+  "10d69c14c9260dda8d2a9b2c728c39da": [
+    {
+      "medicine": "Iron Tablet",
+      "route": "oral",
+      "dosage_and_duration": "0-1-0 for 30 days"
+    },
+    {
+      "medicine": "Calcium Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 30 days"
+    },
+    {
+      "medicine": "Orofer XT",
+      "route": "oral",
+      "dosage_and_duration": "0-1-0"
+    },
+    {
+      "medicine": "Shelcal 500",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1"
+    }
+  ],
+  "ae459a31600be5eb691757bb7a7a3c0a": [
+    {
+      "medicine": "Etoricoxib 60 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 1 week"
+    },
+    {
+      "medicine": "Pan 40 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0 for 1 week"
+    }
+  ],
+  "4d2609ba3f73b5abe0d88e3c73a31e01": [
+    {
+      "medicine": "Etoshine-MR",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 5 days"
+    },
+    {
+      "medicine": "Lyrica 75 mg",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 at 7 PM for 2 weeks"
+    }
+  ],
+  "3e000304830c1f8f3549b04db6c354d2": [
+    {
+      "medicine": "Tryptomer 10 mg",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 for 10 days"
+    },
+    {
+      "medicine": "Naxdom 500 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1 for 3 days"
+    }
+  ],
+  "b3029678d123257a1154f42afe4cefa8": [
+    {
+      "medicine": "Clear-Nico Gel",
+      "route": "topical",
+      "dosage_and_duration": "Apply at night (0-0-1), 1 tube"
+    },
+    {
+      "medicine": "Photostable Gold Sunscreen",
+      "route": "topical",
+      "dosage_and_duration": "Apply during daytime (9:00 AM\u201312:00 PM), 1 tube"
+    },
+    {
+      "medicine": "Limcee Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0, 30 tablets"
+    }
+  ],
+  "69d69410440bb982f38e99b6433f9f7d": [
+    {
+      "medicine": "Aquasoft Lotion",
+      "route": "topical",
+      "dosage_and_duration": "1-0-1, 1 bottle"
+    },
+    {
+      "medicine": "BTN-Ultra Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0, 20 tablets"
     }
   ],
   "79618416d08b01962fbc566edd29342f": [
@@ -7277,6 +10349,151 @@
       "medicine": "Fexofast Syrup",
       "route": "oral",
       "dosage_and_duration": "5 ml twice daily for 2 days"
+    }
+  ],
+  "fc8d3bc5c4778e0ffc237b8bdcab261b": [
+    {
+      "medicine": "Cap Pan-D 40 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0, before food, for 5 days"
+    },
+    {
+      "medicine": "Antazyme Syrup",
+      "route": "oral",
+      "dosage_and_duration": "10 mL, 1-1-1"
+    }
+  ],
+  "848bfc32ad6ffae037eb52ea91d996e7": [
+    {
+      "medicine": "Nervijen-P Tablet",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1 at 8 PM, 15 days"
+    }
+  ],
+  "5993d4b9c23fee1a73eed26cda7cd85a": [
+    {
+      "medicine": "Zerodol-TH Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1, 10 tablets"
+    },
+    {
+      "medicine": "Pan-40 Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1, before food, 20 tablets"
+    }
+  ],
+  "a08d8e8219c2d7c925d1381a2ff69223": [
+    {
+      "medicine": "Tryptomer 75 mg",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1, 80 days"
+    },
+    {
+      "medicine": "Mirtaz 7.5 mg",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1, 80 days"
+    },
+    {
+      "medicine": "Nicotex Gums 4 mg",
+      "route": "oral",
+      "dosage_and_duration": "1 gum SOS"
+    }
+  ],
+  "c77ce1a16ae5a030b665551fea2125a7": [
+    {
+      "medicine": "Glycomet-GP2 Forte",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1, 500/2 mg"
+    },
+    {
+      "medicine": "Dapa 10 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0, 2 weeks"
+    },
+    {
+      "medicine": "Pioglitazone 15 mg",
+      "route": "oral",
+      "dosage_and_duration": "0-1-0, 2 weeks"
+    }
+  ],
+  "6d3409860b1b2362b9ccd090c116f113": [
+    {
+      "medicine": "Glycomet-GP2 Forte",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1, 500/2 mg"
+    },
+    {
+      "medicine": "Dapa 10 mg",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0, 2 weeks"
+    },
+    {
+      "medicine": "Pioglitazone 15 mg",
+      "route": "oral",
+      "dosage_and_duration": "0-1-0, 2 weeks"
+    }
+  ],
+  "259308f7200c9ed226d74e4f7e5eb93f": [
+    {
+      "medicine": "Axim Forte Suspension",
+      "route": "oral",
+      "dosage_and_duration": "3 mL, 1-0-1, 5 days"
+    },
+    {
+      "medicine": "Bandy Suspension",
+      "route": "oral",
+      "dosage_and_duration": "10 mL, single dose"
+    },
+    {
+      "medicine": "Electral Sachet (small)",
+      "route": "oral",
+      "dosage_and_duration": "Mix 1 small sachet in 200 mL water, as needed"
+    },
+    {
+      "medicine": "Lanzol Junior",
+      "route": "oral",
+      "dosage_and_duration": "30 mg, 1-0-0, 5 days"
+    }
+  ],
+  "41a0b90e8166ed8e70380bcbe4cf0891": [
+    {
+      "medicine": "Sompraz IT",
+      "route": "oral",
+      "dosage_and_duration": "40/150 mg, 1-0-0, 10 tablets"
+    },
+    {
+      "medicine": "Sucrafil Syrup",
+      "route": "oral",
+      "dosage_and_duration": "10 mL, three times daily before food"
+    },
+    {
+      "medicine": "Montair LC",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1, 6 tablets"
+    },
+    {
+      "medicine": "Zerodol P",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1, 6 tablets"
+    }
+  ],
+  "b4286429dfa8376f97f8c34d81d659ba": [
+    {
+      "medicine": "Glycomet GP 3 Forte",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1, 30 tablets"
+    }
+  ],
+  "52b3f8d162fe88c35e483b47d36e1987": [
+    {
+      "medicine": "Ultracet",
+      "route": "oral",
+      "dosage_and_duration": "1/2-0-1/2, 5 tablets"
+    },
+    {
+      "medicine": "Pan 40",
+      "route": "oral",
+      "dosage_and_duration": "40 mg, 1-0-0, before food, 5 days"
     }
   ],
   "72ee23e512d09354a6ed35d7a13e65e3": [
@@ -7301,6 +10518,141 @@
       "dosage_and_duration": "half tablet morning and night, duration as advised"
     }
   ],
+  "56ab7a2f25eabfe29dbe73d03c8478a5": [
+    {
+      "medicine": "Lox 2% Jelly",
+      "route": "topical",
+      "dosage_and_duration": "1-0-1, before passing stools"
+    },
+    {
+      "medicine": "Cremagel-L",
+      "route": "topical",
+      "dosage_and_duration": "1-0-1, after passing stools"
+    },
+    {
+      "medicine": "Cremaffin Plus Syrup",
+      "route": "oral",
+      "dosage_and_duration": "20 mL at bedtime, for 1 week"
+    }
+  ],
+  "2a1b0f70333f593f19bf7f447788c8f5": [
+    {
+      "medicine": "Pause 500",
+      "route": "oral",
+      "dosage_and_duration": "500 mg, 1-0-1 for the first 3 days of each menstrual cycle, for 3 months (in case of HMB)"
+    }
+  ],
+  "e795a715f74619d6a05141342b8edf55": [
+    {
+      "medicine": "Ibugesic Syrup",
+      "route": "oral",
+      "dosage_and_duration": "5 mL, BD, for 5 days"
+    }
+  ],
+  "82bdbefd2717f95ada2a2292d03c823e": [
+    {
+      "medicine": "Zerodol-P",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1, for 10 days"
+    },
+    {
+      "medicine": "Pan 40",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0, for 10 days"
+    },
+    {
+      "medicine": "Diclo Gel",
+      "route": "topical",
+      "dosage_and_duration": "apply locally, once daily"
+    }
+  ],
+  "13127ca5d31f94517cb5c4375902890a": [
+    {
+      "medicine": "Iron Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0, 30 days"
+    },
+    {
+      "medicine": "Calcium Tablet",
+      "route": "oral",
+      "dosage_and_duration": "0-1-0, 30 days"
+    },
+    {
+      "medicine": "Td Injection",
+      "route": "intramuscular",
+      "dosage_and_duration": "1 dose"
+    },
+    {
+      "medicine": "Doxinate",
+      "route": "oral",
+      "dosage_and_duration": "1-1-1, 7 days"
+    }
+  ],
+  "bbbcc7f6e0228bb2b3189202727e2f95": [
+    {
+      "medicine": "FA Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0, 15 days"
+    }
+  ],
+  "2eb7f6a3ecd896d4a011f99f9d45a15f": [
+    {
+      "medicine": "Glimones GP1",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1, 1 week"
+    },
+    {
+      "medicine": "D3 Tablet",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0, 1 week"
+    }
+  ],
+  "f0e466de07f8c54b441b1a8ae65fc0db": [
+    {
+      "medicine": "Rantac 300",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1, 18 tablets"
+    },
+    {
+      "medicine": "Teczine 5",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1, 18 tablets"
+    },
+    {
+      "medicine": "Calosoft-AF Lotion",
+      "route": "topical",
+      "dosage_and_duration": "apply locally as directed"
+    }
+  ],
+  "edb2c092ecfc4127e342ecacc2258be0": [
+    {
+      "medicine": "Rantac 300",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1, 18 tablets"
+    },
+    {
+      "medicine": "Teczine 5",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1, 18 tablets"
+    },
+    {
+      "medicine": "Calosoft-AF Lotion",
+      "route": "topical",
+      "dosage_and_duration": "apply locally as directed"
+    }
+  ],
+  "feec0fbb46a3425a8599b4b8855c5ed9": [
+    {
+      "medicine": "Glycomet GP 1",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0, for 1 month"
+    },
+    {
+      "medicine": "Sitagliptin + Met 50/500",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1, for 1 month"
+    }
+  ],
   "5c21756872e2b115cb2a8751b6540866": [
     {
       "medicine": "Tablet Cefaclor 250 mg",
@@ -7321,6 +10673,151 @@
       "medicine": "Tablet Levix 250 mg",
       "route": "oral",
       "dosage_and_duration": "1 tablet morning and night for 10 days"
+    }
+  ],
+  "bf7dc7eaca1924b1dbba55b4091ebfe6": [
+    {
+      "medicine": "Zerodol-TH4",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1, 10 days"
+    },
+    {
+      "medicine": "Pan 40",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0, 15 days"
+    },
+    {
+      "medicine": "Nervijen-P",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1, 15 days"
+    },
+    {
+      "medicine": "Gemcal Plus",
+      "route": "oral",
+      "dosage_and_duration": "0-1-0, 30 days"
+    },
+    {
+      "medicine": "Diclo Gel",
+      "route": "topical",
+      "dosage_and_duration": "apply locally once daily"
+    }
+  ],
+  "67d1b42f68438708a25e9c3f56dbae28": [
+    {
+      "medicine": "Zerodol SP",
+      "route": "oral",
+      "dosage_and_duration": "1-0-1, for 5 days"
+    },
+    {
+      "medicine": "Pan 40",
+      "route": "oral",
+      "dosage_and_duration": "40 mg, 1-0-1, before food, for 5 days"
+    },
+    {
+      "medicine": "Crepe Bandage",
+      "route": "topical",
+      "dosage_and_duration": "Compression bandage (6 inch), as advised"
+    }
+  ],
+  "e8bff2e068de553134759baf795633ef": [
+    {
+      "medicine": "Syntran 130 SR Capsule",
+      "route": "oral",
+      "dosage_and_duration": "30 capsules"
+    },
+    {
+      "medicine": "Teczine 10 mg",
+      "route": "oral",
+      "dosage_and_duration": "30 tablets"
+    },
+    {
+      "medicine": "C-Win Lotion",
+      "route": "topical",
+      "dosage_and_duration": "apply as directed"
+    },
+    {
+      "medicine": "KZ Plus Soap",
+      "route": "topical",
+      "dosage_and_duration": "use as directed"
+    }
+  ],
+  "dbbef64ea127e2a8400eb3aeb8785712": [
+    {
+      "medicine": "Krimson 35",
+      "route": "oral",
+      "dosage_and_duration": "as directed"
+    },
+    {
+      "medicine": "Spacify",
+      "route": "oral",
+      "dosage_and_duration": "as directed"
+    }
+  ],
+  "b566f3bcc19cd5f784d3fa3b4f6a530d": [
+    {
+      "medicine": "Naproxen",
+      "route": "oral",
+      "dosage_and_duration": "250 mg, 1-0-1, after food, for 3 days"
+    },
+    {
+      "medicine": "Pantop 40",
+      "route": "oral",
+      "dosage_and_duration": "40 mg, 1-0-0, before food, for 3 days"
+    }
+  ],
+  "393236d0af9ea8346c8e0f296c0b7444": [
+    {
+      "medicine": "Pan 40",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0, before food, 3 tablets"
+    },
+    {
+      "medicine": "Zerodol",
+      "route": "oral",
+      "dosage_and_duration": "SOS, 4 tablets"
+    }
+  ],
+  "bba6c254251840560c964ab65217ffad": [
+    {
+      "medicine": "Primosa 1000",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1, 30 days"
+    }
+  ],
+  "fd44e256bdd1add62e210dca2209bbae": [
+    {
+      "medicine": "Nexpro RD 40/10",
+      "route": "oral",
+      "dosage_and_duration": "1-0-0, before food, for 7 days"
+    }
+  ],
+  "7b90a8ad38a29af86fb9e5141efdafcf": [
+    {
+      "medicine": "C-Monovis Kid",
+      "route": "oral",
+      "dosage_and_duration": "0-0-1, for 15 days"
+    },
+    {
+      "medicine": "Nasivion-P Nasal Drops",
+      "route": "nasal",
+      "dosage_and_duration": "1-0-1, for 5 days"
+    },
+    {
+      "medicine": "Metaspray Nasal Spray",
+      "route": "nasal",
+      "dosage_and_duration": "2 sprays once daily, for 15 days"
+    }
+  ],
+  "bce32984bd1b65abf9777c927c33133a": [
+    {
+      "medicine": "Amoxyclav Suspension",
+      "route": "oral",
+      "dosage_and_duration": "5 mL, 1-0-1, for 5 days"
+    },
+    {
+      "medicine": "Maxigesic Plus Syrup",
+      "route": "oral",
+      "dosage_and_duration": "3 mL-0-3 mL, for 2 days"
     }
   ],
   "d6561a7b75a0825ffc57c2e6f4ee6ecc": [

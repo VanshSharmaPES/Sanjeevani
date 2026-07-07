@@ -13,11 +13,33 @@ import base64
 import time
 from datetime import timedelta
 from functools import wraps
+from pathlib import Path
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, set_access_cookies, jwt_required, get_jwt_identity, get_jwt, unset_jwt_cookies
 from ai_engine import analyze_medicine_image, analyze_prescription_image, get_medicine_dosage_info, _translate_text, request_guide_generation, search_medicine_fallback_ai
 from db import register_user, authenticate_user, save_scan, get_user_history, delete_scan, search_medicines, reset_password, get_db_status, save_custom_medicine, get_medicine_alternatives, save_medicine_alternative, create_otp_verification, verify_otp_verification, register_user_with_hash, get_user_email
+
+# ── Video generation module path setup ──────────────────────────────────────
+# The video_generation package may live under certificates/video_generation/ in some deployments.
+# If certificates/ exists, add it to sys.path so Python can resolve the top-level package.
+_CERTIFICATES_DIR = Path(__file__).resolve().parent / "certificates"
+if _CERTIFICATES_DIR.is_dir() and str(_CERTIFICATES_DIR) not in sys.path:
+    sys.path.insert(0, str(_CERTIFICATES_DIR))
+
+try:
+    from video_generation.generator import generate_prescription_videos
+    from video_generation.services.asset_resolver import (
+        AssetResolutionError,
+        ResolvedPrescriptionAssets,
+        StrictAssetResolver,
+    )
+    from video_generation.schemas import PrescriptionVideoInput, VideoGenerationResult
+    from video_generation.utils import sanitize_filename as _video_sanitize_filename
+    _VIDEO_GENERATION_AVAILABLE = True
+except Exception as _vg_import_err:
+    _VIDEO_GENERATION_AVAILABLE = False
+    _vg_import_err_msg = str(_vg_import_err)
 
 # Fix Windows charmap codec crashes when printing Unicode model output
 if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
@@ -431,6 +453,204 @@ def api_generate_guides():
         _safe_log(f"[ERROR] Guide generation failed: {e}")
         return jsonify({"error": f"Guide generation error: {e}"}), 500
 
+# ─── Video Guide Generation ───────────────────────────────────
+
+@app.route("/api/video-guides/generate", methods=["POST"])
+@jwt_required(optional=True)
+@rate_limited
+def api_video_guides_generate():
+    """
+    Generate prescription instruction videos for every medicine in the prescription.
+
+    Request body (JSON): PrescriptionVideoInput-compatible dict, e.g.
+      {
+        "patientName": "Patient",
+        "language": "en",
+        "medicines": [ { "medicineName": "Paracetamol 500mg", "dosage": "1 tablet", ... } ]
+      }
+
+    Response:
+      { "success": true, "videos": [ ...VideoGenerationResult.to_api_dict()... ] }
+    """
+    if not _VIDEO_GENERATION_AVAILABLE:
+        return jsonify({
+            "success": False,
+            "videos": [],
+            "error": f"Video generation module is not available: {_vg_import_err_msg}",
+        }), 503
+
+    data = request.get_json(force=True, silent=True)
+    if not isinstance(data, dict):
+        data = {}
+    if not data.get("medicines"):
+        return jsonify({"success": False, "videos": [], "error": "'medicines' list is required"}), 400
+
+    try:
+        results = generate_prescription_videos(data)
+        return jsonify({
+            "success": True,
+            "videos": [r.to_api_dict() for r in results],
+        })
+    except Exception as exc:
+        _safe_log(f"[ERROR] Video generation failed: {exc}")
+        return jsonify({"success": False, "videos": [], "error": str(exc)}), 500
+
+
+@app.route("/api/video-guides/file/<path:filename>", methods=["GET"])
+def api_video_guides_file(filename):
+    """
+    Serve a generated video (.mp4) or subtitle (.srt) file by name.
+    The filename corresponds to a sanitized medicine name produced by
+    video_generation.utils.sanitize_filename.
+    """
+    if not _VIDEO_GENERATION_AVAILABLE:
+        return jsonify({"error": "Video generation module is not available"}), 503
+
+    # Only allow safe file access within the configured output directory.
+    try:
+        from video_generation.config import get_settings as _vg_get_settings
+        output_dir = _vg_get_settings().output_dir
+    except Exception:
+        return jsonify({"error": "Video output directory not configured"}), 503
+
+    # Prevent path traversal + restrict to expected generated filenames/types.
+    safe_name = Path(filename).name
+    requested = Path(safe_name)
+    if not safe_name or ".." in Path(filename).parts:
+        return jsonify({"error": "Invalid filename"}), 400
+
+    if requested.suffix.lower() not in {".mp4", ".srt"}:
+        return jsonify({"error": "Unsupported file type"}), 400
+
+    if requested.stem != _video_sanitize_filename(requested.stem):
+        return jsonify({"error": "Invalid filename"}), 400
+
+    output_root = output_dir.resolve()
+    video_path = (output_dir / safe_name).resolve()
+    if output_root not in video_path.parents:
+        return jsonify({"error": "Invalid filename"}), 400
+
+    if not video_path.exists():
+        return jsonify({"error": "Video not found"}), 404
+
+    mimetype = "video/mp4" if requested.suffix.lower() == ".mp4" else "text/plain; charset=utf-8"
+    return send_file(str(video_path), mimetype=mimetype)
+
+
+# ─── Video Asset Resolution ───────────────────────────────────
+
+def _resolver_response(resolved: "ResolvedPrescriptionAssets") -> dict:
+    """Serialize a ResolvedPrescriptionAssets to a JSON-safe dict."""
+    medicines_out = {}
+    for slug, assets in resolved.medicines.items():
+        medicines_out[slug] = {
+            "medicineName": assets.medicine_name,
+            "medicineSlug": assets.medicine_slug,
+            "routeTemplate": assets.route_template,
+            "packageImage": str(assets.package_image),
+            "productImage": str(assets.product_image),
+            "humanDemoVideo": str(assets.human_demo_video),
+            "packageConfidenceLabel": assets.package_confidence_label,
+            "productConfidenceLabel": assets.product_confidence_label,
+            "warnings": list(assets.warnings or []),
+        }
+    return {
+        "success": True,
+        "assets": {"medicines": medicines_out},
+        "failures": list(resolved.failures or []),
+    }
+
+
+@app.route("/api/video-assets/resolve", methods=["POST"])
+@jwt_required(optional=True)
+def api_video_assets_resolve():
+    """
+    Resolve (fetch/cache) all required media assets for a prescription without
+    generating the videos.  Useful to pre-check which assets are available.
+
+    Request body (JSON): same PrescriptionVideoInput-compatible dict as
+    /api/video-guides/generate.
+
+    Response:
+      { "success": true, "assets": { "medicines": { ... } }, "failures": [ ... ] }
+    """
+    if not _VIDEO_GENERATION_AVAILABLE:
+        return jsonify({
+            "success": False,
+            "assets": {"medicines": {}},
+            "failures": [],
+            "error": f"Video generation module is not available: {_vg_import_err_msg}",
+        }), 503
+
+    data = request.get_json(force=True, silent=True)
+    if not isinstance(data, dict):
+        data = {}
+    if not data.get("medicines"):
+        return jsonify({"success": False, "assets": {"medicines": {}}, "failures": [],
+                        "error": "'medicines' list is required"}), 400
+
+    try:
+        resolver = StrictAssetResolver()
+        resolved = resolver.resolve_prescription(data, force_refresh=False)
+        return jsonify(_resolver_response(resolved))
+    except AssetResolutionError as exc:
+        return jsonify({
+            "success": False,
+            "assets": {"medicines": {}},
+            "failures": exc.failures,
+            "error": str(exc),
+        }), 422
+    except Exception as exc:
+        _safe_log(f"[ERROR] Video asset resolution failed: {exc}")
+        return jsonify({
+            "success": False,
+            "assets": {"medicines": {}},
+            "failures": [],
+            "error": str(exc),
+        }), 500
+
+
+@app.route("/api/video-assets/refresh", methods=["POST"])
+@jwt_required(optional=True)
+def api_video_assets_refresh():
+    """
+    Force-refresh (bypass cache) all media assets for a prescription.
+    Accepts the same request body as /api/video-assets/resolve.
+    """
+    if not _VIDEO_GENERATION_AVAILABLE:
+        return jsonify({
+            "success": False,
+            "assets": {"medicines": {}},
+            "failures": [],
+            "error": f"Video generation module is not available: {_vg_import_err_msg}",
+        }), 503
+
+    data = request.get_json(force=True, silent=True)
+    if not isinstance(data, dict):
+        data = {}
+    if not data.get("medicines"):
+        return jsonify({"success": False, "assets": {"medicines": {}}, "failures": [],
+                        "error": "'medicines' list is required"}), 400
+
+    try:
+        resolver = StrictAssetResolver()
+        resolved = resolver.resolve_prescription(data, force_refresh=True)
+        return jsonify(_resolver_response(resolved))
+    except AssetResolutionError as exc:
+        return jsonify({
+            "success": False,
+            "assets": {"medicines": {}},
+            "failures": exc.failures,
+            "error": str(exc),
+        }), 422
+    except Exception as exc:
+        _safe_log(f"[ERROR] Video asset refresh failed: {exc}")
+        return jsonify({
+            "success": False,
+            "assets": {"medicines": {}},
+            "failures": [],
+            "error": str(exc),
+        }), 500
 
 
 
