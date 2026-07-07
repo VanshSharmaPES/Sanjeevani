@@ -4,7 +4,8 @@ import sqlite3
 import hashlib
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+import secrets
 from medicine_matcher import build_medicine_profile, compare_medicine_profiles
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "sanjeevani.db")
@@ -946,7 +947,33 @@ def send_email_otp(to_email: str, subject: str, body: str) -> bool:
             print(f"[ERROR] Resend API failed: {e}")
             # If Resend API fails, fallback to SMTP if configured
 
-    # 2. Try SMTP fallback if configured
+    # 2. Try Brevo REST API if key is present
+    brevo_key = os.getenv("BREVO_API_KEY")
+    if brevo_key:
+        url = "https://api.brevo.com/v3/smtp/email"
+        payload = {
+            "sender": {"email": sender_email, "name": "Sanjeevani"},
+            "to": [{"email": to_email}],
+            "subject": subject,
+            "textContent": body
+        }
+        headers = {
+            "api-key": brevo_key,
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+        try:
+            data = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=8) as response:
+                res_body = response.read().decode("utf-8")
+                res_json = json.loads(res_body)
+                print(f"[BREVO] Email successfully sent to {to_email}: {res_json}")
+                return "messageId" in res_json
+        except Exception as e:
+            print(f"[ERROR] Brevo API failed: {e}")
+
+    # 3. Try SMTP fallback if configured
     smtp_server = os.getenv("SMTP_SERVER")
     smtp_port = os.getenv("SMTP_PORT", "587")
     smtp_username = os.getenv("SMTP_USERNAME")
@@ -960,8 +987,12 @@ def send_email_otp(to_email: str, subject: str, body: str) -> bool:
             msg["Subject"] = subject
             msg.attach(MIMEText(body, "plain"))
 
-            server = smtplib.SMTP(smtp_server, int(smtp_port))
-            server.starttls()
+            port_val = int(smtp_port)
+            if port_val == 465:
+                server = smtplib.SMTP_SSL(smtp_server, port_val, timeout=8)
+            else:
+                server = smtplib.SMTP(smtp_server, port_val, timeout=8)
+                server.starttls()
             server.login(smtp_username, smtp_password)
             server.sendmail(msg["From"], to_email, msg.as_string())
             server.close()
@@ -970,8 +1001,8 @@ def send_email_otp(to_email: str, subject: str, body: str) -> bool:
         except Exception as e:
             print(f"[ERROR] SMTP failed to send email: {e}")
 
-    # 3. Fallback to console print if neither is configured
-    if not resend_key and not (smtp_server and smtp_username and smtp_password):
+    # 4. Fallback to console print if neither is configured
+    if not resend_key and not brevo_key and not (smtp_server and smtp_username and smtp_password):
         print(f"\n[MOCK OTP EMAIL] To: {to_email}\nSubject: {subject}\nBody: {body}\n")
         return True
 
