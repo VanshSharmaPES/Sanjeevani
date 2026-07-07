@@ -614,6 +614,8 @@ def normalize_medicine_name(raw_name: str, medicine_df=None, dosage_form: str = 
         }
         
     raw_name_clean = raw_name.strip()
+    prefix_pattern = r'^\s*(?:tab|tablet|cap|capsule|syr|syrup|inj|injection|susp|suspension|t|c|s|i)\b\.?\s*'
+    raw_name_clean = re.sub(prefix_pattern, '', raw_name_clean, flags=re.IGNORECASE).strip()
     
     # ── SQLite Optimization ──
     # Fast database lookup instead of loading and searching the full 32MB CSV dataset in memory
@@ -625,7 +627,7 @@ def normalize_medicine_name(raw_name: str, medicine_df=None, dosage_form: str = 
             words = [w for w in re.split(r'[^a-zA-Z0-9]', raw_name_clean) if w]
             first_word = words[0] if words else raw_name_clean
             
-            if first_word:
+            if first_word and len(first_word) >= 3:
                 conn = sqlite3.connect(db_path)
                 conn.row_factory = sqlite3.Row
                 try:
@@ -669,10 +671,19 @@ def normalize_medicine_name(raw_name: str, medicine_df=None, dosage_form: str = 
                                     "score": score,
                                     "low_confidence": False
                                 }
+                        
                 finally:
                     conn.close()
         except Exception as sqle:
-            _safe_print(f"[WARN] SQLite medicine lookup failed, falling back to CSV: {sqle}")
+            _safe_print(f"[WARN] SQLite medicine lookup failed: {sqle}")
+            
+        # SQLite checked but no match or failed
+        return {
+            "name": raw_name.strip(),
+            "active_salts": [],
+            "score": 0,
+            "low_confidence": True
+        }
 
     if medicine_df is None:
         medicine_df = load_medicine_df()
@@ -2582,7 +2593,7 @@ def _hydrate_cached_prescription_audio(cached: dict, target_language: str) -> tu
     return data, _generate_audio(audio_text, lang_code) if audio_text else None
 
 
-def analyze_prescription_image(image_bytes: bytes, target_language: str = "English") -> tuple[dict, str | None]:
+def analyze_prescription_image(image_bytes: bytes, target_language: str = "English", bypass_cache: bool = False) -> tuple[dict, str | None]:
     """
     Two-stage pipeline for prescription images with ground-truth dataset bypass.
     """
@@ -2591,13 +2602,13 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
         img_hash = hashlib.md5(image_bytes).hexdigest()
         dataset_map = load_dataset_map()
         
-        is_dataset = img_hash in dataset_map
+        is_dataset = img_hash in dataset_map if not bypass_cache else False
         
         if is_dataset:
             ocr_hash = hashlib.md5(f"dataset_v2_{img_hash}".encode("utf-8")).hexdigest()
             try:
                 from db import find_cached_prescription
-                cached = find_cached_prescription(ocr_hash)
+                cached = find_cached_prescription(ocr_hash) if not bypass_cache else None
                 if cached:
                     _safe_print(f"[INFO] Dataset cache HIT (hash={ocr_hash[:8]}…). Returning cached result with regenerated audio.")
                     return _hydrate_cached_prescription_audio(cached, target_language)
@@ -2785,7 +2796,7 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
             ocr_hash = hashlib.md5(extracted_text.strip().lower().encode("utf-8")).hexdigest()
             try:
                 from db import find_cached_prescription
-                cached = find_cached_prescription(ocr_hash)
+                cached = find_cached_prescription(ocr_hash) if not bypass_cache else None
                 if cached:
                     _safe_print(f"[INFO] Prescription cache HIT (hash={ocr_hash[:8]}…). Returning cached result with regenerated audio.")
                     return _hydrate_cached_prescription_audio(cached, target_language)

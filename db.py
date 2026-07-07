@@ -144,7 +144,7 @@ def init_db():
     for column, definition in medicine_migrations.items():
         if column not in medicine_columns:
             cursor.execute(f"ALTER TABLE medicines ADD COLUMN {column} {definition}")
-    _backfill_formulation_variants(cursor)
+    # _backfill_formulation_variants(cursor)
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_medicines_name ON medicines(name)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_medicines_composition ON medicines(composition)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_medicines_composition_key ON medicines(composition_key)")
