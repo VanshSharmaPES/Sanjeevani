@@ -457,6 +457,7 @@ def api_generate_guides():
 
 @app.route("/api/video-guides/generate", methods=["POST"])
 @jwt_required(optional=True)
+@rate_limited
 def api_video_guides_generate():
     """
     Generate prescription instruction videos for every medicine in the prescription.
