@@ -479,7 +479,9 @@ def api_video_guides_generate():
             "error": f"Video generation module is not available: {_vg_import_err_msg}",
         }), 503
 
-    data = request.get_json(force=True, silent=True) or {}
+    data = request.get_json(force=True, silent=True)
+    if not isinstance(data, dict):
+        data = {}
     if not data.get("medicines"):
         return jsonify({"success": False, "videos": [], "error": "'medicines' list is required"}), 400
 
