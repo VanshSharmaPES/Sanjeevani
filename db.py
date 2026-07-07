@@ -141,10 +141,14 @@ def init_db():
         "release_type": "TEXT", "formulation_variant": "TEXT",
         "created_at": "TEXT",
     }
+    formulation_variant_added = False
     for column, definition in medicine_migrations.items():
         if column not in medicine_columns:
             cursor.execute(f"ALTER TABLE medicines ADD COLUMN {column} {definition}")
-    # _backfill_formulation_variants(cursor)
+            if column == "formulation_variant":
+                formulation_variant_added = True
+    if formulation_variant_added:
+        _backfill_formulation_variants(cursor)
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_medicines_name ON medicines(name)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_medicines_composition ON medicines(composition)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_medicines_composition_key ON medicines(composition_key)")
