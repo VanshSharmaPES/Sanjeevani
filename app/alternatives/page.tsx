@@ -378,9 +378,7 @@ export default function AlternativesPage() {
               {loadState === "searching" ? "Searching" : loadState === "loadingAlternatives" ? "Matching" : "Search"}
             </button>
           </div>
-          <p className="mt-3 text-sm text-muted-foreground">
-            The page now auto-picks the best real medicine record, not just the first search result.
-          </p>
+
 
           <AnimatePresence>
             {showDropdown && searchResults.length > 0 && (
