@@ -679,47 +679,41 @@ def normalize_medicine_name(raw_name: str, medicine_df=None, dosage_form: str = 
             
     if medicine_df is None:
         medicine_df = load_medicine_df()
+
+    matches = []
+    if not medicine_df.empty:
+        # We want to match against the name column of the medicine_df
+        names_list = medicine_df["name_clean"].tolist()
+        matches = process.extract(raw_name_clean, names_list, scorer=fuzz.WRatio, limit=50)
         
-    if medicine_df.empty:
-        return {
-            "name": raw_name.strip(),
-            "active_salts": [],
-            "score": 0,
-            "low_confidence": True
-        }
-        
-    # We want to match against the name column of the medicine_df
-    names_list = medicine_df["name_clean"].tolist()
-    matches = process.extract(raw_name_clean, names_list, scorer=fuzz.WRatio, limit=50)
-    
-    first_word_query = raw_name_clean.split()[0].lower() if raw_name_clean.split() else ""
-    best_match = None
-    for name, score, idx in matches:
-        if first_word_query in name.lower():
-            best_match = (name, score, idx)
-            break
-            
-    # Fallback to top match if score is extremely high (just in case of spelling typos in first word)
-    if not best_match and matches:
-        top_name, top_score, top_idx = matches[0]
-        if top_score >= 85:
-            best_match = (top_name, top_score, top_idx)
-            
-    if best_match:
-        matched_name, score, idx = best_match
-        if score >= 75:
-            row = medicine_df.iloc[idx]
-            salts = []
-            for col in ["short_composition1", "short_composition2"]:
-                val = row[col]
-                if pd.notna(val) and str(val).strip():
-                    salts.append(str(val).strip())
-            return {
-                "name": matched_name,
-                "active_salts": salts,
-                "score": score,
-                "low_confidence": False
-            }
+        first_word_query = raw_name_clean.split()[0].lower() if raw_name_clean.split() else ""
+        best_match = None
+        for name, score, idx in matches:
+            if first_word_query in name.lower():
+                best_match = (name, score, idx)
+                break
+                
+        # Fallback to top match if score is extremely high (just in case of spelling typos in first word)
+        if not best_match and matches:
+            top_name, top_score, top_idx = matches[0]
+            if top_score >= 85:
+                best_match = (top_name, top_score, top_idx)
+                
+        if best_match:
+            matched_name, score, idx = best_match
+            if score >= 75:
+                row = medicine_df.iloc[idx]
+                salts = []
+                for col in ["short_composition1", "short_composition2"]:
+                    val = row[col]
+                    if pd.notna(val) and str(val).strip():
+                        salts.append(str(val).strip())
+                return {
+                    "name": matched_name,
+                    "active_salts": salts,
+                    "score": score,
+                    "low_confidence": False
+                }
             
     # --- Local Match Failed (score < 75) ---
     # Fallback 1: Query public OpenFDA API
