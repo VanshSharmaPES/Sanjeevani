@@ -21,12 +21,11 @@ from ai_engine import analyze_medicine_image, analyze_prescription_image, get_me
 from db import register_user, authenticate_user, save_scan, get_user_history, delete_scan, search_medicines, reset_password, get_db_status, save_custom_medicine, get_medicine_alternatives, save_medicine_alternative, create_otp_verification, verify_otp_verification, register_user_with_hash, get_user_email
 
 # ── Video generation module path setup ──────────────────────────────────────
-# The video_generation package lives at certificates/video_generation/.
-# We add the certificates/ directory to sys.path so Python can resolve the
-# top-level "video_generation" package with its absolute internal imports.
-_CERTIFICATES_DIR = str(Path(__file__).resolve().parent / "certificates")
-if _CERTIFICATES_DIR not in sys.path:
-    sys.path.insert(0, _CERTIFICATES_DIR)
+# The video_generation package may live under certificates/video_generation/ in some deployments.
+# If certificates/ exists, add it to sys.path so Python can resolve the top-level package.
+_CERTIFICATES_DIR = Path(__file__).resolve().parent / "certificates"
+if _CERTIFICATES_DIR.is_dir() and str(_CERTIFICATES_DIR) not in sys.path:
+    sys.path.insert(0, str(_CERTIFICATES_DIR))
 
 try:
     from video_generation.generator import generate_prescription_videos
