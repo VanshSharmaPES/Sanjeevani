@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, ChevronDown, ChevronUp,
   Sun, Sunset, Moon, Loader2, AlertTriangle, Info, Clock, Pill,
-  Play, Pause, Volume2
+  Play, Pause, Volume2, Video, RotateCcw
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import MandalaBackground from "@/components/MandalaBackground";
@@ -42,6 +42,146 @@ interface PrescriptionData {
   follow_up?: string;
   ocr_hash?: string;
 }
+
+interface VideoGuideResult {
+  success: boolean;
+  medicineName: string;
+  videoUrl: string;
+  durationSeconds: number;
+  warnings?: string[];
+  error?: string;
+}
+
+interface VideoAssetFailure {
+  medicineName?: string;
+  routeTemplate?: string;
+  assetType?: string;
+  stage?: string;
+  reason?: string;
+}
+
+const VIDEO_COPY_EN = {
+  pageSubtitle: "Split-screen patient instruction video",
+  approvedDemo: "Approved human demonstration template video",
+  packageImage: "Medicine package image",
+  productImage: "Dosage form / strip image",
+  caption: "Caption",
+  medicine: "Medicine",
+  activeIngredients: "Active ingredients",
+  dose: "Dose",
+  timing: "Timing",
+  frequency: "Frequency",
+  duration: "Duration",
+  doctorNote: "Doctor note",
+  followPrescription: "Follow your doctor's prescription.",
+  noDoseChange: "Do not change dosage without medical advice.",
+  professionalAdministration: "Administer only by a qualified healthcare professional.",
+  asPrescribed: "As prescribed",
+  templateProfessionalOnly: "Healthcare professional administration",
+  templateEyeDrops: "Human demonstration: applying eye drops",
+  templateEarDrops: "Human demonstration: applying ear drops",
+  templateNasalSpray: "Human demonstration: using nasal medicine",
+  templateInhaler: "Human demonstration: using an inhaler",
+  templateOintmentTopical: "Human demonstration: applying topical medicine",
+  templateSyrupOral: "Human demonstration: drinking measured syrup",
+  templateCapsuleOral: "Human demonstration: taking capsule with water",
+  templateTabletOral: "Human demonstration: taking tablet with water",
+  exactPackageMatch: "Exact package match",
+  likelyDosageFormImage: "Likely dosage form image",
+  genericDosageForm: "Generic dosage form",
+  imageReviewRequired: "Image review required",
+};
+
+const translateVideoItems = async (items: Record<string, string>, languageCode: string): Promise<Record<string, string>> => {
+  if (!languageCode || languageCode === "en") return items;
+  try {
+    const response = await fetch("/api/translate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items, language_code: languageCode }),
+    });
+    if (!response.ok) return items;
+    const data = await response.json();
+    return { ...items, ...(data.translations || {}) };
+  } catch (error) {
+    console.error("Video copy translation failed:", error);
+    return items;
+  }
+};
+
+const missingProviderKeys = (failures: VideoAssetFailure[]): string[] => {
+  const keys = new Set<string>();
+  failures.forEach((failure) => {
+    const reason = failure.reason || "";
+    if (reason.includes("PEXELS_API_KEY")) keys.add("PEXELS_API_KEY");
+    if (reason.includes("SERPAPI_API_KEY")) keys.add("SERPAPI_API_KEY");
+    if (reason.includes("BRAVE_SEARCH_API_KEY")) keys.add("BRAVE_SEARCH_API_KEY");
+    if (reason.includes("GOOGLE_CSE_API_KEY")) keys.add("GOOGLE_CSE_API_KEY");
+    if (reason.includes("GOOGLE_CSE_ID")) keys.add("GOOGLE_CSE_ID");
+  });
+  return Array.from(keys);
+};
+
+const formatAssetFailure = (failure: VideoAssetFailure): string => {
+  const target = failure.medicineName || failure.routeTemplate || "Video asset";
+  const asset = failure.assetType || "asset";
+  const stage = failure.stage === "provider_config" ? "setup required" : failure.stage || "resolution";
+  return `${target} • ${asset} • ${stage}: ${failure.reason || "No high-confidence result found"}`;
+};
+
+const activeSaltsText = (salts?: string[] | string): string => {
+  if (Array.isArray(salts)) return salts.filter(Boolean).join(" + ");
+  return String(salts || "");
+};
+
+const medicationDescriptor = (medicine: Medicine): string =>
+  [
+    medicine.name,
+    activeSaltsText(medicine.active_salts),
+    medicine.form,
+    medicine.dosage,
+    medicine.purpose,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+const routeDefaultsForMedicine = (medicine: Medicine) => {
+  const text = medicationDescriptor(medicine);
+  if (/(injection|injectable|vial|ampoule|infusion|iv\b|intravenous)/i.test(text)) {
+    return { dosage: "As prescribed", frequency: "As prescribed", timing: "As directed", route: "professional", form: "injection", replaceGenericOral: true };
+  }
+  if (/(ointment|cream|gel|lotion|topical|external)/i.test(text)) {
+    return { dosage: "Apply a thin layer", frequency: "As directed by doctor", timing: "Apply to affected area", route: "topical", form: text.includes("cream") ? "cream" : text.includes("gel") ? "gel" : "ointment", replaceGenericOral: true };
+  }
+  if (/(eye|ophthalmic)/i.test(text)) {
+    return { dosage: "1 Drop", frequency: "As directed", timing: "As directed", route: "ophthalmic", form: "eye drops", replaceGenericOral: true };
+  }
+  if (/(ear|otic)/i.test(text)) {
+    return { dosage: "2 Drops", frequency: "As directed", timing: "As directed", route: "otic", form: "ear drops", replaceGenericOral: true };
+  }
+  if (/(nasal|nose)/i.test(text)) {
+    return { dosage: "2 Drops", frequency: "As directed", timing: "As directed", route: "nasal", form: "nasal drops", replaceGenericOral: true };
+  }
+  if (/(inhaler|respule|inhalation)/i.test(text)) {
+    return { dosage: "1 Puff", frequency: "As prescribed", timing: "As directed", route: "inhalation", form: "inhaler", replaceGenericOral: true };
+  }
+  if (/(syrup|suspension|oral solution|solution)/i.test(text)) {
+    return { dosage: "5 ml", frequency: "As prescribed", timing: "After meals (PC)", route: "oral", form: "syrup", replaceGenericOral: true };
+  }
+  if (/capsule/i.test(text)) {
+    return { dosage: "1 Capsule", frequency: "As prescribed", timing: "As directed", route: "oral", form: "capsule", replaceGenericOral: true };
+  }
+  return { dosage: "1 Tablet", frequency: "As prescribed", timing: "As directed", route: "oral", form: "tablet", replaceGenericOral: false };
+};
+
+const applyRouteDefaultIfNeeded = (value: string | undefined, fallback: string, replaceGenericOral: boolean): string => {
+  const trimmed = (value || "").trim();
+  if (!trimmed) return fallback;
+  if (!replaceGenericOral) return trimmed;
+  const genericOralValues = new Set(["1 tablet", "one tablet", "1 tab", "twice a day (1-0-1)", "after meals (pc)"]);
+  return genericOralValues.has(trimmed.toLowerCase()) ? fallback : trimmed;
+};
 
 const timingToSlots = (timing: string): string[] => {
   const t = timing?.toLowerCase() || "";
@@ -89,7 +229,13 @@ const PrescriptionResult = () => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  const [guideLanguage, setGuideLanguage] = useState("en");
+  const [videoGenerating, setVideoGenerating] = useState(false);
+  const [videoResults, setVideoResults] = useState<VideoGuideResult[]>([]);
+  const [videoError, setVideoError] = useState("");
+  const [assetFailures, setAssetFailures] = useState<VideoAssetFailure[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
   const rafRef = useRef<number | null>(null);
 
   // Per-medicine audio state
@@ -115,11 +261,63 @@ const PrescriptionResult = () => {
 
 
   useEffect(() => {
+    let cancelled = false;
+
+    const attachSummaryAudio = (src: string | null) => {
+      if (!src || cancelled) return;
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      setAudioUrl(src);
+      const audio = new Audio(src);
+      audioRef.current = audio;
+      audio.onloadedmetadata = () => {
+        if (!cancelled) setDuration(audio.duration);
+      };
+      audio.onended = () => {
+        if (cancelled) return;
+        setPlaying(false);
+        setCurrentTime(0);
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      };
+    };
+
+    const rebuildHistoryAudio = async (data: PrescriptionData, lang: string) => {
+      try {
+        const token = localStorage.getItem("sanjeevani_token");
+        const response = await fetch("/api/prescription/audio-summary", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ prescription: data, language: lang }),
+        });
+        const rebuilt = await response.json();
+        if (cancelled || !response.ok || !rebuilt.success) return;
+
+        const rebuiltData = rebuilt.data || data;
+        setPrescription(rebuiltData);
+        sessionStorage.setItem("scanResult", JSON.stringify({
+          success: true,
+          data: rebuiltData,
+          audio_b64: rebuilt.audio_b64,
+        }));
+        if (rebuilt.audio_b64) {
+          attachSummaryAudio(base64ToBlobUrl(rebuilt.audio_b64));
+        }
+      } catch (error) {
+        console.error("Failed to rebuild prescription audio summary:", error);
+      }
+    };
+
     try {
       const raw = sessionStorage.getItem("scanResult");
       if (!raw) { router.push("/dashboard"); return; }
       const parsed = JSON.parse(raw);
       const d = parsed.data || parsed;
+      const lang = sessionStorage.getItem("scanLanguage") || localStorage.getItem("sanjeevani_language") || "en";
+      setGuideLanguage(lang);
       setPrescription(d);
 
       let src: string | null = null;
@@ -130,17 +328,15 @@ const PrescriptionResult = () => {
       }
 
       if (src) {
-        setAudioUrl(src);
-        const audio = new Audio(src);
-        audioRef.current = audio;
-        audio.onloadedmetadata = () => setDuration(audio.duration);
-        audio.onended = () => {
-          setPlaying(false);
-          setCurrentTime(0);
-          if (rafRef.current) cancelAnimationFrame(rafRef.current);
-        };
+        attachSummaryAudio(src);
+      } else if (d?.medicines?.length) {
+        rebuildHistoryAudio(d, lang);
       }
     } catch { router.push("/dashboard"); }
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   useEffect(() => {
@@ -243,6 +439,90 @@ const PrescriptionResult = () => {
     setCurrentTime(t);
   };
 
+  const buildVideoPayload = async () => {
+    const videoCopy = await translateVideoItems(VIDEO_COPY_EN, guideLanguage);
+    const patientName = prescription?.patient_info?.name || "Patient";
+    return {
+      patientName,
+      language: guideLanguage,
+      medicines: medicines.map((med) => {
+        const routeDefaults = routeDefaultsForMedicine(med);
+        const dosage = applyRouteDefaultIfNeeded(med.dosage, routeDefaults.dosage, routeDefaults.replaceGenericOral);
+        const frequency = applyRouteDefaultIfNeeded(med.frequency, routeDefaults.frequency, routeDefaults.replaceGenericOral);
+        const timing = applyRouteDefaultIfNeeded(med.meal_relation || med.timing, routeDefaults.timing, routeDefaults.replaceGenericOral);
+        return {
+          medicineName: med.name,
+          activeSalts: activeSaltsText(med.active_salts),
+          dosage,
+          frequency,
+          timing,
+          duration: med.duration || videoCopy.asPrescribed || "As prescribed",
+          route: routeDefaults.route,
+          form: med.form || routeDefaults.form,
+          doctorNotes: med.special_instructions || med.warnings || med.food_interaction || "",
+          warnings: [
+            videoCopy.followPrescription || VIDEO_COPY_EN.followPrescription,
+            videoCopy.noDoseChange || VIDEO_COPY_EN.noDoseChange,
+          ],
+          videoCopy,
+        };
+      }),
+    };
+  };
+
+  const handleGenerateVideoGuide = async (forceRefresh = false) => {
+    if (!prescription || medicines.length === 0) return;
+    setVideoGenerating(true);
+    setVideoError("");
+    setAssetFailures([]);
+    setVideoResults([]);
+    try {
+      const payload = await buildVideoPayload();
+      if (forceRefresh) {
+        const refreshResponse = await fetch("/api/video-assets/refresh", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const refreshData = await refreshResponse.json().catch(() => ({}));
+        if (!refreshResponse.ok || !refreshData.success) {
+          setAssetFailures(Array.isArray(refreshData.failures) ? refreshData.failures : []);
+          setVideoError(refreshData.error || "Unable to refresh verified video assets.");
+          return;
+        }
+      }
+      const response = await fetch("/api/video-guides/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      const videos = Array.isArray(data.videos) ? data.videos : [];
+      const failures = Array.isArray(data.failures) ? data.failures : [];
+      setVideoResults(videos);
+      setAssetFailures(failures);
+      if (!response.ok || !data.success) {
+        setVideoError(failures.length > 0 ? "" : data.error || videos[0]?.error || "Video guide generation failed.");
+      }
+    } catch (error) {
+      console.error("Prescription video generation failed:", error);
+      setVideoError("Unable to connect to the video generation service.");
+    } finally {
+      setVideoGenerating(false);
+    }
+  };
+
+  const handleReplayVideo = async (videoUrl: string) => {
+    const video = videoRefs.current[videoUrl];
+    if (!video) return;
+    video.currentTime = 0;
+    try {
+      await video.play();
+    } catch (error) {
+      console.error("Video replay failed:", error);
+    }
+  };
+
   const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
   const fadeUp = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.35 } } };
   if (!prescription) {
@@ -311,6 +591,94 @@ const PrescriptionResult = () => {
             </div>
           </motion.div>
         )}
+
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08 }}
+          className="mb-6 bg-card border border-border rounded-2xl p-4 space-y-3"
+        >
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Video size={17} className="text-primary" />
+              <div>
+                <h2 className="font-display font-bold text-foreground text-sm">Video Guide</h2>
+                <p className="text-xs text-muted-foreground">Generated from the same prescription fields as the audio guide.</p>
+              </div>
+            </div>
+            <button
+              onClick={() => handleGenerateVideoGuide(false)}
+              disabled={videoGenerating || medicines.length === 0}
+              className="px-4 py-2 rounded-xl bg-secondary text-secondary-foreground text-xs font-display font-bold hover:bg-secondary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              {videoGenerating ? "Generating..." : "Generate Video Guide"}
+            </button>
+          </div>
+
+          {videoError && <p className="text-xs text-destructive">{videoError}</p>}
+
+          {assetFailures.length > 0 && (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs space-y-2">
+              <div>
+                <p className="font-semibold text-amber-200">
+                  {missingProviderKeys(assetFailures).length > 0 ? "Asset provider setup required" : "Verified medicine image not found"}
+                </p>
+                <p className="text-muted-foreground mt-1">
+                  {missingProviderKeys(assetFailures).length > 0
+                    ? "Add the missing provider keys and restart the backend before generating prescription videos."
+                    : "The image resolver rejected unrelated or low-confidence internet results so the patient video is not built with wrong medicine images."}
+                </p>
+              </div>
+              {missingProviderKeys(assetFailures).length > 0 && (
+                <p className="text-muted-foreground">
+                  Missing: {missingProviderKeys(assetFailures).map((key) => <code key={key} className="mx-1 text-amber-100">{key}</code>)}
+                </p>
+              )}
+              <div className="space-y-1">
+                {assetFailures.map((failure, index) => (
+                  <p key={`${failure.assetType || "asset"}-${index}`} className="text-muted-foreground">
+                    {formatAssetFailure(failure)}
+                  </p>
+                ))}
+              </div>
+              <button
+                onClick={() => handleGenerateVideoGuide(true)}
+                disabled={videoGenerating}
+                className="px-3 py-2 rounded-lg bg-secondary text-secondary-foreground text-xs font-semibold disabled:opacity-50"
+              >
+                {videoGenerating ? "Retrying..." : "Retry asset fetch"}
+              </button>
+            </div>
+          )}
+
+          {videoResults.filter((item) => item.success && item.videoUrl).map((item) => (
+            <div key={item.videoUrl} className="space-y-2">
+              <video
+                ref={(node) => {
+                  videoRefs.current[item.videoUrl] = node;
+                }}
+                src={item.videoUrl}
+                controls
+                loop={false}
+                className="w-full rounded-xl border border-border bg-black"
+              />
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                <p>{item.medicineName} • {item.durationSeconds}s</p>
+                <button
+                  type="button"
+                  onClick={() => handleReplayVideo(item.videoUrl)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1 text-xs font-semibold text-foreground hover:bg-muted transition-colors"
+                >
+                  <RotateCcw size={13} />
+                  Replay Video
+                </button>
+              </div>
+              {item.warnings?.map((warning) => (
+                <p key={warning} className="text-xs text-muted-foreground">Warning: {warning}</p>
+              ))}
+            </div>
+          ))}
+        </motion.div>
 
         <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-4">
 

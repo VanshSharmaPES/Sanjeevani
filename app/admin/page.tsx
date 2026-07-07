@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Printer, Share2, Search, PlusCircle, FileText, CheckCircle, 
-  ArrowLeft, Globe, Send, User, ChevronRight, UserCheck, ShieldAlert, BadgeCheck, Save
+  ArrowLeft, Globe, Send, User, ChevronRight, UserCheck, ShieldAlert, BadgeCheck, Save, Video, RotateCcw
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import MandalaBackground from "@/components/MandalaBackground";
@@ -36,6 +36,25 @@ interface AlternateCandidate {
   safetyWarnings: string[];
 }
 
+interface VideoGuideResult {
+  success: boolean;
+  medicineName: string;
+  videoUrl: string;
+  videoPath: string;
+  subtitlePath: string;
+  durationSeconds: number;
+  warnings: string[];
+  error?: string;
+}
+
+interface VideoAssetFailure {
+  medicineName?: string;
+  routeTemplate?: string;
+  assetType?: string;
+  stage?: string;
+  reason?: string;
+}
+
 const languages = [
   { code: "en",  name: "English" },
   { code: "hi",  name: "Hindi" },
@@ -60,6 +79,173 @@ const languages = [
   { code: "ks",  name: "Kashmiri" },
   { code: "sat", name: "Santali" },
 ];
+
+const VIDEO_COPY_EN = {
+  pageSubtitle: "Split-screen patient instruction video",
+  approvedDemo: "Approved human demonstration template video",
+  packageImage: "Medicine package image",
+  productImage: "Dosage form / strip image",
+  caption: "Caption",
+  medicine: "Medicine",
+  activeIngredients: "Active ingredients",
+  dose: "Dose",
+  timing: "Timing",
+  frequency: "Frequency",
+  duration: "Duration",
+  doctorNote: "Doctor note",
+  followPrescription: "Follow your doctor's prescription.",
+  noDoseChange: "Do not change dosage without medical advice.",
+  professionalAdministration: "Administer only by a qualified healthcare professional.",
+  asPrescribed: "As prescribed",
+  templateProfessionalOnly: "Healthcare professional administration",
+  templateEyeDrops: "Human demonstration: applying eye drops",
+  templateEarDrops: "Human demonstration: applying ear drops",
+  templateNasalSpray: "Human demonstration: using nasal medicine",
+  templateInhaler: "Human demonstration: using an inhaler",
+  templateOintmentTopical: "Human demonstration: applying topical medicine",
+  templateSyrupOral: "Human demonstration: drinking measured syrup",
+  templateCapsuleOral: "Human demonstration: taking capsule with water",
+  templateTabletOral: "Human demonstration: taking tablet with water",
+  exactPackageMatch: "Exact package match",
+  likelyDosageFormImage: "Likely dosage form image",
+  genericDosageForm: "Generic dosage form",
+  imageReviewRequired: "Image review required",
+};
+
+const VIDEO_COPY_LOCAL_FALLBACKS: Record<string, Partial<Record<keyof typeof VIDEO_COPY_EN, string>>> = {
+  hi: {
+    pageSubtitle: "रोगी निर्देश वीडियो",
+    approvedDemo: "स्वीकृत मानव प्रदर्शन टेम्पलेट वीडियो",
+    packageImage: "दवा पैकेज छवि",
+    productImage: "खुराक रूप / स्ट्रिप छवि",
+    caption: "कैप्शन",
+    medicine: "दवा",
+    activeIngredients: "सक्रिय घटक",
+    dose: "खुराक",
+    timing: "समय",
+    frequency: "आवृत्ति",
+    duration: "अवधि",
+    doctorNote: "डॉक्टर का नोट",
+    followPrescription: "अपने डॉक्टर के प्रिस्क्रिप्शन का पालन करें।",
+    noDoseChange: "चिकित्सकीय सलाह के बिना खुराक न बदलें।",
+    professionalAdministration: "केवल योग्य स्वास्थ्यकर्मी द्वारा दें।",
+    asPrescribed: "जैसा निर्धारित हो",
+    templateProfessionalOnly: "स्वास्थ्यकर्मी द्वारा प्रशासन",
+    templateEyeDrops: "मानव प्रदर्शन: आंखों की बूंदें डालना",
+    templateEarDrops: "मानव प्रदर्शन: कान की बूंदें डालना",
+    templateNasalSpray: "मानव प्रदर्शन: नाक की दवा का उपयोग",
+    templateInhaler: "मानव प्रदर्शन: इनहेलर का उपयोग",
+    templateOintmentTopical: "मानव प्रदर्शन: त्वचा पर दवा लगाना",
+    templateSyrupOral: "मानव प्रदर्शन: मापी हुई सिरप पीना",
+    templateCapsuleOral: "मानव प्रदर्शन: पानी के साथ कैप्सूल लेना",
+    templateTabletOral: "मानव प्रदर्शन: पानी के साथ टैबलेट लेना",
+    exactPackageMatch: "सटीक पैकेज मिलान",
+    likelyDosageFormImage: "संभावित खुराक रूप छवि",
+    genericDosageForm: "सामान्य खुराक रूप",
+    imageReviewRequired: "छवि समीक्षा आवश्यक",
+  },
+  te: {
+    pageSubtitle: "రోగి సూచనల వీడియో",
+    approvedDemo: "ఆమోదించబడిన మానవ ప్రదర్శన టెంప్లేట్ వీడియో",
+    packageImage: "ఔషధ ప్యాకేజ్ చిత్రం",
+    productImage: "మోతాదు రూపం / స్ట్రిప్ చిత్రం",
+    caption: "క్యాప్షన్",
+    medicine: "ఔషధం",
+    activeIngredients: "సక్రియ పదార్థాలు",
+    dose: "మోతాదు",
+    timing: "సమయం",
+    frequency: "తరచుదనం",
+    duration: "వ్యవధి",
+    doctorNote: "డాక్టర్ గమనిక",
+    followPrescription: "మీ డాక్టర్ ప్రిస్క్రిప్షన్‌ను పాటించండి.",
+    noDoseChange: "వైద్య సలహా లేకుండా మోతాదును మార్చవద్దు.",
+    professionalAdministration: "అర్హత కలిగిన ఆరోగ్య సిబ్బంది మాత్రమే ఇవ్వాలి.",
+    asPrescribed: "సూచించినట్లు",
+    templateProfessionalOnly: "ఆరోగ్య సిబ్బంది ద్వారా ఇవ్వడం",
+    templateEyeDrops: "మానవ ప్రదర్శన: కంటి చుక్కలు వేయడం",
+    templateEarDrops: "మానవ ప్రదర్శన: చెవి చుక్కలు వేయడం",
+    templateNasalSpray: "మానవ ప్రదర్శన: ముక్కు ఔషధం ఉపయోగించడం",
+    templateInhaler: "మానవ ప్రదర్శన: ఇన్హేలర్ ఉపయోగించడం",
+    templateOintmentTopical: "మానవ ప్రదర్శన: చర్మంపై ఔషధం రాయడం",
+    templateSyrupOral: "మానవ ప్రదర్శన: కొలిచిన సిరప్ తాగడం",
+    templateCapsuleOral: "మానవ ప్రదర్శన: నీటితో క్యాప్సూల్ తీసుకోవడం",
+    templateTabletOral: "మానవ ప్రదర్శన: నీటితో టాబ్లెట్ తీసుకోవడం",
+    exactPackageMatch: "ఖచ్చితమైన ప్యాకేజ్ సరిపోలిక",
+    likelyDosageFormImage: "సంభావ్య మోతాదు రూప చిత్రం",
+    genericDosageForm: "సాధారణ మోతాదు రూపం",
+    imageReviewRequired: "చిత్ర సమీక్ష అవసరం",
+  },
+};
+
+const COMMON_VIDEO_FIELD_FALLBACKS: Record<string, Record<string, string>> = {
+  hi: {
+    "1 Tablet": "1 टैबलेट",
+    "1 tablet": "1 टैबलेट",
+    "1 Capsule": "1 कैप्सूल",
+    "1 Drop": "1 बूंद",
+    "2 Drops": "2 बूंदें",
+    "1 Puff": "1 पफ",
+    "5 ml": "5 मि.ली.",
+    "Twice a day (1-0-1)": "दिन में दो बार (1-0-1)",
+    "After meals (PC)": "भोजन के बाद",
+    "As prescribed": "जैसा निर्धारित हो",
+    "As directed": "निर्देशानुसार",
+    "As directed by doctor": "डॉक्टर के निर्देशानुसार",
+    "As prescribed by doctor.": "डॉक्टर के निर्देशानुसार।",
+    "Apply a thin layer": "पतली परत लगाएं",
+    "Apply to affected area": "प्रभावित स्थान पर लगाएं",
+    "Consult prescription details for specific instructions.": "विशिष्ट निर्देशों के लिए प्रिस्क्रिप्शन विवरण देखें।",
+    "No special warnings. Take as directed by practitioner.": "कोई विशेष चेतावनी नहीं। चिकित्सक के निर्देशानुसार लें।",
+  },
+  te: {
+    "1 Tablet": "1 టాబ్లెట్",
+    "1 tablet": "1 టాబ్లెట్",
+    "1 Capsule": "1 క్యాప్సూల్",
+    "1 Drop": "1 చుక్క",
+    "2 Drops": "2 చుక్కలు",
+    "1 Puff": "1 పఫ్",
+    "5 ml": "5 మి.లీ.",
+    "Twice a day (1-0-1)": "రోజుకు రెండుసార్లు (1-0-1)",
+    "After meals (PC)": "భోజనం తర్వాత",
+    "As prescribed": "సూచించినట్లు",
+    "As directed": "నిర్దేశించినట్లు",
+    "As directed by doctor": "డాక్టర్ సూచించినట్లు",
+    "As prescribed by doctor.": "డాక్టర్ సూచించినట్లు.",
+    "Apply a thin layer": "పలుచని పొరగా రాయండి",
+    "Apply to affected area": "ప్రభావిత ప్రాంతంపై రాయండి",
+    "Consult prescription details for specific instructions.": "ప్రత్యేక సూచనల కోసం ప్రిస్క్రిప్షన్ వివరాలను చూడండి.",
+    "No special warnings. Take as directed by practitioner.": "ప్రత్యేక హెచ్చరికలు లేవు. వైద్యుని సూచనల ప్రకారం తీసుకోండి.",
+  },
+};
+
+const applyLocalVideoFallback = (items: Record<string, string>, languageCode: string): Record<string, string> => {
+  const copyFallback = VIDEO_COPY_LOCAL_FALLBACKS[languageCode] || {};
+  const fieldFallback = COMMON_VIDEO_FIELD_FALLBACKS[languageCode] || {};
+  return Object.fromEntries(
+    Object.entries(items).map(([key, value]) => [
+      key,
+      copyFallback[key as keyof typeof VIDEO_COPY_EN] || fieldFallback[value] || value,
+    ])
+  );
+};
+
+const translateBulk = async (items: Record<string, string>, languageCode: string): Promise<Record<string, string>> => {
+  if (languageCode === "en") return items;
+  const localFallback = applyLocalVideoFallback(items, languageCode);
+  try {
+    const response = await fetch("/api/translate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items, language_code: languageCode }),
+    });
+    if (!response.ok) return localFallback;
+    const data = await response.json();
+    return { ...localFallback, ...(data.translations || {}) };
+  } catch (error) {
+    console.error("Bulk translation failed:", error);
+    return localFallback;
+  }
+};
 
 interface AutoResizeTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   value: string;
@@ -94,6 +280,91 @@ const containsTemplatePayload = (value: string): boolean => {
   return pattern.test(value) || redosPattern.test(value);
 };
 
+const missingProviderKeys = (failures: VideoAssetFailure[]): string[] => {
+  const keys = new Set<string>();
+  failures.forEach((failure) => {
+    const reason = failure.reason || "";
+    if (reason.includes("PEXELS_API_KEY")) keys.add("PEXELS_API_KEY");
+    if (reason.includes("SERPAPI_API_KEY")) keys.add("SERPAPI_API_KEY");
+    if (reason.includes("BRAVE_SEARCH_API_KEY")) keys.add("BRAVE_SEARCH_API_KEY");
+    if (reason.includes("GOOGLE_CSE_API_KEY")) keys.add("GOOGLE_CSE_API_KEY");
+    if (reason.includes("GOOGLE_CSE_ID")) keys.add("GOOGLE_CSE_ID");
+  });
+  return Array.from(keys);
+};
+
+const formatAssetFailure = (failure: VideoAssetFailure): string => {
+  const target = failure.medicineName || failure.routeTemplate || "Video asset";
+  const asset = failure.assetType || "asset";
+  const stage = failure.stage === "provider_config" ? "setup required" : failure.stage || "resolution";
+  return `${target} • ${asset} • ${stage}: ${failure.reason || "No high-confidence result found"}`;
+};
+
+const medicationDescriptor = (medicine: any): string =>
+  [
+    medicine?.medicineName,
+    medicine?.activeSalts,
+    medicine?.unit,
+    medicine?.form,
+    medicine?.dosageForm,
+    medicine?.route,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+const routeDefaultsForMedicine = (medicine: any) => {
+  const text = medicationDescriptor(medicine);
+  if (/(ointment|cream|gel|lotion|topical|external)/i.test(text)) {
+    return {
+      dosage: "Apply a thin layer",
+      frequency: "As directed by doctor",
+      timing: "Apply to affected area",
+      doctorNotes: "For external use only. Do not ingest. Apply only to the affected area as prescribed.",
+      route: "topical",
+      form: text.includes("cream") ? "cream" : text.includes("gel") ? "gel" : text.includes("lotion") ? "lotion" : "ointment",
+      replaceGenericOral: true,
+    };
+  }
+  if (/(eye|ophthalmic)/i.test(text)) {
+    return { dosage: "1 Drop", frequency: "As directed", timing: "As directed", doctorNotes: "", route: "ophthalmic", form: "eye drops", replaceGenericOral: true };
+  }
+  if (/(ear|otic)/i.test(text)) {
+    return { dosage: "2 Drops", frequency: "As directed", timing: "As directed", doctorNotes: "", route: "otic", form: "ear drops", replaceGenericOral: true };
+  }
+  if (/(nasal|nose)/i.test(text)) {
+    return { dosage: "2 Drops", frequency: "As directed", timing: "As directed", doctorNotes: "", route: "nasal", form: "nasal drops", replaceGenericOral: true };
+  }
+  if (/(inhaler|respule|inhalation)/i.test(text)) {
+    return { dosage: "1 Puff", frequency: "As prescribed", timing: "As directed", doctorNotes: "", route: "inhalation", form: "inhaler", replaceGenericOral: true };
+  }
+  if (/(syrup|suspension|oral solution)/i.test(text)) {
+    return { dosage: "5 ml", frequency: "As prescribed", timing: "After meals (PC)", doctorNotes: "", route: "oral", form: "syrup", replaceGenericOral: true };
+  }
+  if (/capsule/i.test(text)) {
+    return { dosage: "1 Capsule", frequency: "As prescribed", timing: "As directed", doctorNotes: "", route: "oral", form: "capsule", replaceGenericOral: true };
+  }
+  return { dosage: "1 Tablet", frequency: "Twice a day (1-0-1)", timing: "After meals (PC)", doctorNotes: "", route: "oral", form: "tablet", replaceGenericOral: false };
+};
+
+const applyRouteDefaultIfNeeded = (value: string | undefined, fallback: string, replaceGenericOral: boolean): string => {
+  const trimmed = (value || "").trim();
+  if (!trimmed) return fallback;
+  if (!replaceGenericOral) return trimmed;
+  const normalized = trimmed.toLowerCase();
+  const genericOralValues = new Set([
+    "1 tablet",
+    "one tablet",
+    "1 tab",
+    "twice a day (1-0-1)",
+    "after meals (pc)",
+  ]);
+  return genericOralValues.has(normalized) ? fallback : trimmed;
+};
+
+const isSupportedLanguage = (code: string | null): code is string =>
+  Boolean(code && languages.some((language) => language.code === code));
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
@@ -102,7 +373,7 @@ export default function AdminDashboard() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [searching, setSearching] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState("hi");
+  const [selectedLanguage, setSelectedLanguage] = useState("en");
   const [loading, setLoading] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -119,7 +390,6 @@ export default function AdminDashboard() {
   const [generationTime, setGenerationTime] = useState("");
   const [alternatives, setAlternatives] = useState<AlternateCandidate[]>([]);
   const [alternativesLoading, setAlternativesLoading] = useState(false);
-  const [selectedAlternateNames, setSelectedAlternateNames] = useState<string[]>([]);
   const [curationSaving, setCurationSaving] = useState(false);
   const [curationMessage, setCurationMessage] = useState("");
   const [curationForm, setCurationForm] = useState({
@@ -128,11 +398,31 @@ export default function AdminDashboard() {
 
   // Generated Guide state
   const [generatedGuide, setGeneratedGuide] = useState<GuideData | null>(null);
+  const [videoGenerating, setVideoGenerating] = useState(false);
+  const [videoResults, setVideoResults] = useState<VideoGuideResult[]>([]);
+  const [videoError, setVideoError] = useState("");
+  const [assetFailures, setAssetFailures] = useState<VideoAssetFailure[]>([]);
+  const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
+
+  const clearVideoState = () => {
+    setVideoResults([]);
+    setVideoError("");
+    setAssetFailures([]);
+  };
+
+  const clearGeneratedOutput = () => {
+    setGeneratedGuide(null);
+    clearVideoState();
+  };
 
   // Role Guard
   useEffect(() => {
-    const savedRole = localStorage.getItem("sanjeevani_role") || sessionStorage.getItem("sanjeevani_role");
-    const savedUser = localStorage.getItem("sanjeevani_user") || sessionStorage.getItem("sanjeevani_user") || "Doctor";
+    const savedRole = localStorage.getItem("sanjeevani_role");
+    const savedUser = localStorage.getItem("sanjeevani_user") || "Doctor";
+    const savedLanguage = localStorage.getItem("sanjeevani_language");
+    if (isSupportedLanguage(savedLanguage)) {
+      setSelectedLanguage(savedLanguage);
+    }
     if (savedRole !== "doctor") {
       router.push("/dashboard");
     } else {
@@ -199,10 +489,11 @@ export default function AdminDashboard() {
   };
 
   const handleSelectMedicine = async (med: any) => {
+    const routeDefaults = routeDefaultsForMedicine(med);
     setMedName(med.medicineName);
     setSalts(med.activeSalts);
-    setSelectedAlternateNames([]);
     setCurationMessage("");
+    clearGeneratedOutput();
     void loadAlternatives(med.medicineName);
     
     // Clear dropdown list immediately
@@ -222,22 +513,22 @@ export default function AdminDashboard() {
       );
       const data = await res.json();
       
-      setDosage(data.dosage || "1 Tablet");
-      setFrequency(data.frequency || "Twice a day (1-0-1)");
-      setTiming(data.timing || "After meals (PC)");
-      setDocNotes(data.doctorNotes || "");
+      setDosage(applyRouteDefaultIfNeeded(data.dosage, routeDefaults.dosage, routeDefaults.replaceGenericOral));
+      setFrequency(applyRouteDefaultIfNeeded(data.frequency, routeDefaults.frequency, routeDefaults.replaceGenericOral));
+      setTiming(applyRouteDefaultIfNeeded(data.timing, routeDefaults.timing, routeDefaults.replaceGenericOral));
+      setDocNotes(data.doctorNotes || routeDefaults.doctorNotes || "");
     } catch (err) {
       console.error("AI prefill error:", err);
       // Fallback parsing if backend or API fails
-      let defaultDosage = "1 Tablet";
-      if (med.unit && med.unit.toLowerCase() !== "tablet") {
+      let defaultDosage = routeDefaults.dosage;
+      if (!routeDefaults.replaceGenericOral && med.unit && med.unit.toLowerCase() !== "tablet") {
         defaultDosage = med.unit.charAt(0).toUpperCase() + med.unit.slice(1);
       }
       setDosage(defaultDosage);
-      setFrequency("Twice a day (1-0-1)");
-      setTiming("After meals (PC)");
+      setFrequency(routeDefaults.frequency);
+      setTiming(routeDefaults.timing);
       
-      let notes = "";
+      let notes = routeDefaults.doctorNotes;
       if (med.uses) notes += `Uses: ${med.uses}. `;
       if (med.sideEffects) notes += `Side Effects: ${med.sideEffects}. `;
       setDocNotes(notes.trim());
@@ -260,10 +551,13 @@ export default function AdminDashboard() {
     }
   };
 
-  const toggleAlternate = (name: string) => {
-    setSelectedAlternateNames((current) =>
-      current.includes(name) ? current.filter((item) => item !== name) : [...current, name],
-    );
+  const handleUseAlternateMedicine = async (alternate: AlternateCandidate) => {
+    await handleSelectMedicine({
+      medicineName: alternate.medicineName,
+      activeSalts: alternate.activeSalts,
+      unit: alternate.unit,
+      manufacturer: alternate.manufacturer,
+    });
   };
 
   const saveCuratedAlternate = async () => {
@@ -315,6 +609,7 @@ export default function AdminDashboard() {
       return;
     }
     setLoading(true);
+    clearVideoState();
     
     const now = new Date().toLocaleString("en-IN", {
       dateStyle: "medium",
@@ -322,8 +617,7 @@ export default function AdminDashboard() {
     });
     setGenerationTime(now);
     
-    const langName = languages.find(l => l.code === selectedLanguage)?.name || "Hindi";
-    const selectedAlternates = alternatives.filter((item) => selectedAlternateNames.includes(item.medicineName));
+    const langName = languages.find(l => l.code === selectedLanguage)?.name || "English";
     const adviceEn = `PRESCRIPTION & MEDICATION GUIDE
 ---------------------------------
 • Medicine Name: ${medName}
@@ -345,7 +639,7 @@ export default function AdminDashboard() {
           doctorNotes: docNotes,
           adviceText: adviceEn,
           adviceTextEn: adviceEn,
-          alternates: selectedAlternates,
+          alternates: [],
         });
       } else {
         // Translate advice text and doctor notes in parallel
@@ -379,7 +673,7 @@ export default function AdminDashboard() {
           doctorNotes: notesData.translated || docNotes,
           adviceText: adviceData.translated || adviceEn,
           adviceTextEn: adviceEn,
-          alternates: selectedAlternates,
+          alternates: [],
         });
       }
     } catch (err) {
@@ -394,7 +688,7 @@ export default function AdminDashboard() {
         doctorNotes: docNotes,
         adviceText: adviceEn,
         adviceTextEn: adviceEn,
-        alternates: selectedAlternates,
+        alternates: [],
       });
     } finally {
       setLoading(false);
@@ -403,6 +697,126 @@ export default function AdminDashboard() {
 
   const [copied, setCopied] = useState(false);
   const [sharingLoading, setSharingLoading] = useState(false);
+
+  const handleGenerateVideoGuide = async () => {
+    if (!generatedGuide) return;
+    const routeDefaults = routeDefaultsForMedicine({
+      medicineName: generatedGuide.medicineName,
+      activeSalts: generatedGuide.activeSalts,
+    });
+    setVideoGenerating(true);
+    setVideoError("");
+    setAssetFailures([]);
+    setVideoResults([]);
+    const videoText = await translateBulk(
+      {
+        ...VIDEO_COPY_EN,
+        dosageValue: generatedGuide.dosage,
+        frequencyValue: generatedGuide.frequency,
+        timingValue: generatedGuide.timing,
+        durationValue: "As prescribed",
+        doctorNotesValue: generatedGuide.doctorNotes,
+      },
+      selectedLanguage
+    );
+    const payload = {
+      patientName: "Patient",
+      language: selectedLanguage,
+      medicines: [
+        {
+          medicineName: generatedGuide.medicineName,
+          activeSalts: generatedGuide.activeSalts,
+          dosage: videoText.dosageValue || generatedGuide.dosage,
+          frequency: videoText.frequencyValue || generatedGuide.frequency,
+          timing: videoText.timingValue || generatedGuide.timing,
+          duration: videoText.durationValue || "As prescribed",
+          route: routeDefaults.route,
+          form: routeDefaults.form,
+          doctorNotes: videoText.doctorNotesValue || generatedGuide.doctorNotes,
+          warnings: [
+            videoText.followPrescription || VIDEO_COPY_EN.followPrescription,
+            videoText.noDoseChange || VIDEO_COPY_EN.noDoseChange,
+          ],
+          videoCopy: videoText,
+        },
+      ],
+    };
+    try {
+      const response = await fetch("/api/video-guides/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      const videos = Array.isArray(data.videos) ? data.videos : [];
+      const failures = Array.isArray(data.failures) ? data.failures : [];
+      setVideoResults(videos);
+      setAssetFailures(failures);
+      if (!response.ok || !data.success) {
+        setVideoError(failures.length > 0 ? "" : data.error || videos[0]?.error || "Video guide generation failed.");
+      }
+    } catch {
+      setVideoError("Unable to connect to the video generation service.");
+    } finally {
+      setVideoGenerating(false);
+    }
+  };
+
+  const handleRetryAssetFetch = async () => {
+    if (!generatedGuide) return;
+    const routeDefaults = routeDefaultsForMedicine({
+      medicineName: generatedGuide.medicineName,
+      activeSalts: generatedGuide.activeSalts,
+    });
+    setVideoGenerating(true);
+    setVideoError("");
+    setAssetFailures([]);
+    try {
+      const response = await fetch("/api/video-assets/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientName: "Patient",
+          language: selectedLanguage,
+          medicines: [
+            {
+              medicineName: generatedGuide.medicineName,
+              activeSalts: generatedGuide.activeSalts,
+              dosage: generatedGuide.dosage,
+              frequency: generatedGuide.frequency,
+              timing: generatedGuide.timing,
+              duration: "As prescribed",
+              route: routeDefaults.route,
+              form: routeDefaults.form,
+            },
+          ],
+        }),
+      });
+      const data = await response.json();
+      const failures = Array.isArray(data.failures) ? data.failures : [];
+      setAssetFailures(failures);
+      if (!response.ok || !data.success) {
+        setVideoError(failures.length > 0 ? "" : data.error || "Asset fetch failed. Check provider API keys and approved domains.");
+        return;
+      }
+      await handleGenerateVideoGuide();
+    } catch {
+      setVideoError("Unable to connect to the video asset resolver.");
+    } finally {
+      setVideoGenerating(false);
+    }
+  };
+
+  const handleReplayVideo = async (videoUrl: string) => {
+    const video = videoRefs.current[videoUrl];
+    if (!video) return;
+    video.currentTime = 0;
+    try {
+      await video.play();
+    } catch {
+      // Browser autoplay policy may require the patient/doctor to press play manually.
+    }
+  };
 
   const getShareText = () => {
     if (!generatedGuide) return "";
@@ -637,7 +1051,10 @@ export default function AdminDashboard() {
                   type="text"
                   placeholder="e.g. Dolo, Augmentin, Pantocid..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    clearGeneratedOutput();
+                  }}
                   onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
                   className="flex-1 bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary"
                 />
@@ -688,7 +1105,10 @@ export default function AdminDashboard() {
                 <label className="text-xs text-muted-foreground block mb-1">Medicine Name</label>
                 <AutoResizeTextarea 
                   value={medName}
-                  onChange={(e) => setMedName(e.target.value)}
+                  onChange={(e) => {
+                    setMedName(e.target.value);
+                    clearGeneratedOutput();
+                  }}
                   placeholder="e.g. Dolo 650"
                   className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary"
                 />
@@ -698,7 +1118,10 @@ export default function AdminDashboard() {
                 <label className="text-xs text-muted-foreground block mb-1">Active Salts / Ingredients</label>
                 <AutoResizeTextarea 
                   value={salts}
-                  onChange={(e) => setSalts(e.target.value)}
+                  onChange={(e) => {
+                    setSalts(e.target.value);
+                    clearGeneratedOutput();
+                  }}
                   placeholder="e.g. Paracetamol IP 650mg"
                   className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary"
                 />
@@ -709,7 +1132,10 @@ export default function AdminDashboard() {
                   <label className="text-xs text-muted-foreground block mb-1">Dosage</label>
                   <AutoResizeTextarea 
                     value={dosage}
-                    onChange={(e) => setDosage(e.target.value)}
+                    onChange={(e) => {
+                      setDosage(e.target.value);
+                      clearGeneratedOutput();
+                    }}
                     disabled={aiGenerating}
                     placeholder="e.g. 500mg"
                     className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary disabled:opacity-60"
@@ -719,7 +1145,10 @@ export default function AdminDashboard() {
                   <label className="text-xs text-muted-foreground block mb-1">Frequency</label>
                   <AutoResizeTextarea 
                     value={frequency}
-                    onChange={(e) => setFrequency(e.target.value)}
+                    onChange={(e) => {
+                      setFrequency(e.target.value);
+                      clearGeneratedOutput();
+                    }}
                     disabled={aiGenerating}
                     placeholder="e.g. Twice a day (1-0-1)"
                     className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary disabled:opacity-60"
@@ -731,7 +1160,10 @@ export default function AdminDashboard() {
                 <label className="text-xs text-muted-foreground block mb-1">Timing / Meal Relation</label>
                 <AutoResizeTextarea 
                   value={timing}
-                  onChange={(e) => setTiming(e.target.value)}
+                  onChange={(e) => {
+                    setTiming(e.target.value);
+                    clearGeneratedOutput();
+                  }}
                   disabled={aiGenerating}
                   placeholder="e.g. After meals (PC)"
                   className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary disabled:opacity-60"
@@ -742,7 +1174,12 @@ export default function AdminDashboard() {
                 <label className="text-xs text-muted-foreground block mb-1">Target Handout Language</label>
                 <select 
                   value={selectedLanguage}
-                  onChange={(e) => setSelectedLanguage(e.target.value)}
+                  onChange={(e) => {
+                    const nextLanguage = e.target.value;
+                    setSelectedLanguage(nextLanguage);
+                    localStorage.setItem("sanjeevani_language", nextLanguage);
+                    clearGeneratedOutput();
+                  }}
                   disabled={aiGenerating}
                   className="w-full bg-muted border border-border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-primary disabled:opacity-60"
                 >
@@ -756,7 +1193,10 @@ export default function AdminDashboard() {
                 <label className="text-xs text-muted-foreground block mb-1">Doctor Specific Advice (Optional)</label>
                 <AutoResizeTextarea 
                   value={docNotes}
-                  onChange={(e) => setDocNotes(e.target.value)}
+                  onChange={(e) => {
+                    setDocNotes(e.target.value);
+                    clearGeneratedOutput();
+                  }}
                   disabled={aiGenerating}
                   placeholder="Add custom warnings or instructions..."
                   className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-sm outline-none focus:border-primary disabled:opacity-60"
@@ -772,37 +1212,28 @@ export default function AdminDashboard() {
                         Alternate Medicines
                       </h3>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Optional handout candidates. Composition, strength, form, route, and release are checked automatically.
+                        Optional handout candidates with the same active ingredient composition and strength.
                       </p>
                     </div>
                     {alternativesLoading && <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />}
                   </div>
 
-                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200 leading-relaxed">
-                    Review required before substitution. Branded variants like Advance/Rapid/Fast may absorb differently even when the salt and strength match.
-                  </div>
-
                   {!alternativesLoading && alternatives.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No alternate candidates found for this medicine.</p>
+                    <p className="text-sm text-muted-foreground">No same-composition medicines found for this medicine.</p>
                   ) : (
                     <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
                       {alternatives.map((alternate) => {
-                        const selected = selectedAlternateNames.includes(alternate.medicineName);
                         return (
-                          <label
+                          <button
+                            type="button"
                             key={alternate.medicineName}
-                            className={`block rounded-xl border bg-muted/30 p-3 cursor-pointer hover:border-primary/40 ${
-                              alternate.formulationMatch === false ? "border-amber-500/40" : "border-border"
+                            onClick={() => handleUseAlternateMedicine(alternate)}
+                            className={`block w-full select-none rounded-xl border p-3 text-left cursor-pointer hover:border-primary/60 hover:bg-primary/10 transition-colors ${
+                              alternate.formulationMatch === false ? "border-amber-500/40 bg-muted/30" : "border-border bg-muted/30"
                             }`}
                           >
                             <div className="flex items-start gap-3">
-                              <input
-                                type="checkbox"
-                                checked={selected}
-                                onChange={() => toggleAlternate(alternate.medicineName)}
-                                className="mt-1 accent-emerald-500"
-                                aria-label={`Include ${alternate.medicineName} in handout`}
-                              />
+                              <ChevronRight size={16} className="mt-0.5 text-primary flex-shrink-0" />
                               <div className="min-w-0 flex-1">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <span className="text-sm font-semibold">{alternate.medicineName}</span>
@@ -813,6 +1244,9 @@ export default function AdminDashboard() {
                                   }`}>
                                     {alternate.substitutionSafety === "doctor_curated" ? "Doctor/pharmacist curated" : "Review required"}
                                   </span>
+                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/15 text-primary">
+                                    Use this medicine
+                                  </span>
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1">{alternate.activeSalts}</p>
                                 <p className="text-[11px] text-muted-foreground mt-1">
@@ -821,14 +1255,9 @@ export default function AdminDashboard() {
                                 </p>
                                 <p className="text-[11px] text-amber-300 mt-2">{alternate.statusLabel}</p>
                                 <p className="text-[11px] text-emerald-400/80 mt-1">{alternate.matchReasons.join(" • ")}</p>
-                                {alternate.formulationMatch === false && (
-                                  <p className="text-[11px] text-amber-200/90 mt-2">
-                                    Verify formulation equivalence before substitution.
-                                  </p>
-                                )}
                               </div>
                             </div>
-                          </label>
+                          </button>
                         );
                       })}
                     </div>
@@ -885,7 +1314,96 @@ export default function AdminDashboard() {
                     <Share2 size={16} />
                     Share Digitally
                   </button>
+                  <button 
+                    onClick={handleGenerateVideoGuide}
+                    disabled={videoGenerating}
+                    className="px-5 py-2.5 bg-secondary text-secondary-foreground font-semibold rounded-xl flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    <Video size={16} />
+                    {videoGenerating ? "Generating Video..." : "Generate Video Guide"}
+                  </button>
                 </div>
+
+                {(videoResults.length > 0 || videoError) && (
+                  <div className="print:hidden bg-card border border-border rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Video size={18} className="text-primary" />
+                      <h3 className="font-display font-semibold">Prescription Video Guide</h3>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      This video is generated from prescription instructions. Follow your doctor's prescription.
+                    </p>
+                    {videoError && <p className="text-xs text-destructive">{videoError}</p>}
+                    {assetFailures.length > 0 && (
+                      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-100 space-y-3">
+                        <div>
+                          <p className="font-semibold text-amber-200">
+                            {missingProviderKeys(assetFailures).length > 0 ? "Asset provider setup required" : "Verified medicine image not found"}
+                          </p>
+                            <p className="text-muted-foreground mt-1">
+                              {missingProviderKeys(assetFailures).length > 0
+                                ? "Strict mode needs the configured provider keys before it can fetch real medicine assets."
+                                : "SerpAPI is working, but the returned images did not pass medicine identity checks. Generic fallback images are not used; unrelated or low-confidence results are rejected."}
+                            </p>
+                        </div>
+                        {missingProviderKeys(assetFailures).length > 0 && (
+                          <div>
+                            <p className="font-semibold text-amber-200">Missing configuration</p>
+                            <p className="text-muted-foreground">
+                              Add {missingProviderKeys(assetFailures).map((key) => <code key={key} className="mx-1 text-amber-100">{key}</code>)} in your environment, then restart the backend.
+                            </p>
+                          </div>
+                        )}
+                        <div className="space-y-1">
+                          <p className="font-semibold text-amber-200">Resolver details</p>
+                          {assetFailures.map((failure, index) => (
+                            <p key={`${failure.assetType || "asset"}-${index}`} className="text-muted-foreground">
+                              {formatAssetFailure(failure)}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {(videoError || assetFailures.length > 0) && (
+                      <button
+                        onClick={handleRetryAssetFetch}
+                        disabled={videoGenerating}
+                        className="px-4 py-2 rounded-xl bg-secondary text-secondary-foreground text-xs font-semibold disabled:opacity-50"
+                      >
+                        {videoGenerating ? "Fetching assets..." : "Retry asset fetch"}
+                      </button>
+                    )}
+                    {videoResults.filter((item) => item.success && item.videoUrl).map((item) => (
+                      <div key={item.videoUrl} className="space-y-2">
+                        <video
+                          ref={(node) => {
+                            videoRefs.current[item.videoUrl] = node;
+                          }}
+                          src={item.videoUrl}
+                          controls
+                          loop={false}
+                          className="w-full rounded-xl border border-border bg-black"
+                        />
+                        <div className="text-xs text-muted-foreground space-y-1">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p>{item.medicineName} • {item.durationSeconds}s</p>
+                            <button
+                              type="button"
+                              onClick={() => handleReplayVideo(item.videoUrl)}
+                              className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1 text-xs font-semibold text-foreground hover:bg-muted transition-colors"
+                            >
+                              <RotateCcw size={13} />
+                              Replay Video
+                            </button>
+                          </div>
+                          {item.warnings?.map((warning) => (
+                            <p key={warning}>Warning: {warning}</p>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* Printable Handout Content */}
                 <div id="printable-handout" className="w-full bg-white text-zinc-800 p-8 shadow-sm border border-zinc-100 rounded-3xl space-y-5 print:shadow-none print:border-0 print:p-0">

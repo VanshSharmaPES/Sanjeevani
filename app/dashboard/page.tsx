@@ -54,17 +54,21 @@ const Dashboard = () => {
   const [historyLoading, setHistoryLoading] = useState(true);
 
   useEffect(() => {
-    const name = localStorage.getItem("sanjeevani_user") || sessionStorage.getItem("sanjeevani_user") || "User";
+    const name = localStorage.getItem("sanjeevani_user") || "User";
     setUserName(name);
 
-    const savedRole = localStorage.getItem("sanjeevani_role") || sessionStorage.getItem("sanjeevani_role") || "patient";
+    const savedRole = localStorage.getItem("sanjeevani_role") || "patient";
     setRole(savedRole);
 
-    const savedLang = localStorage.getItem("sanjeevani_language") || sessionStorage.getItem("sanjeevani_language") || "en";
+    const savedLang = localStorage.getItem("sanjeevani_language") || "en";
     setLanguage(savedLang);
 
     // Fetch history
-    fetch(`/api/history`, { credentials: "include" })
+    const token = localStorage.getItem("sanjeevani_token");
+    fetch(`/api/history`, {
+      credentials: "include",
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    })
       .then((r) => r.json())
       .then((data) => {
         if (data.success) {
@@ -104,6 +108,7 @@ const Dashboard = () => {
   const handleViewDetails = (item: HistoryItem) => {
     sessionStorage.setItem("scanResult", JSON.stringify(item.result));
     sessionStorage.setItem("scanType", item.scan_type);
+    sessionStorage.setItem("scanLanguage", item.language || language);
     if (item.scan_type === "prescription") {
       router.push("/result/prescription");
     } else {
@@ -115,7 +120,6 @@ const Dashboard = () => {
     setLanguage(code);
     setLangOpen(false);
     localStorage.setItem("sanjeevani_language", code);
-    sessionStorage.setItem("sanjeevani_language", code);
   };
 
   const openDropdown = () => {
@@ -143,11 +147,6 @@ const Dashboard = () => {
     localStorage.removeItem("sanjeevani_role");
     localStorage.removeItem("sanjeevani_language");
     localStorage.removeItem("sanjeevani_token");
-
-    sessionStorage.removeItem("sanjeevani_user");
-    sessionStorage.removeItem("sanjeevani_role");
-    sessionStorage.removeItem("sanjeevani_language");
-    sessionStorage.removeItem("sanjeevani_token");
     
     // Clear cookie in background (best-effort)
     fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {});
@@ -209,7 +208,7 @@ const Dashboard = () => {
           {/* Language selector — custom fixed-position dropdown (escapes sidebar transform stacking context) */}
           <div className="mb-6">
             <label className="text-xs text-muted-foreground font-display uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Globe size={12} /> Language
+              <Globe size={12} /> Guide Language
             </label>
             <button
               ref={triggerRef}
@@ -303,11 +302,11 @@ const Dashboard = () => {
 
           {/* Symmetrical Layout for Dashboard Actions & Recent Scans */}
           <motion.div variants={fadeUp} className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-            {/* Left side: Actions stacked */}
+            {/* Left side: actions stacked */}
             <div className="lg:col-span-5 flex flex-col gap-6">
               <ActionCard
                 title="Alternate Medicines"
-                description="Find cheaper, active substitute drug recommendations from our verified database."
+                description="Find matching substitute medicines with the same active composition and review guidance."
                 icon={<Pill size={32} />}
                 variant="teal"
                 onClick={() => router.push("/alternatives")}

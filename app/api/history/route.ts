@@ -6,8 +6,12 @@ const PYTHON_API = getPythonApiUrl();
 export async function GET(request: NextRequest) {
     try {
         const cookie = request.headers.get("cookie") || "";
+        const authorization = request.headers.get("authorization") || "";
         const response = await fetch(`${PYTHON_API}/api/history`, {
-            headers: { "Cookie": cookie }
+            headers: {
+                "Cookie": cookie,
+                ...(authorization ? { Authorization: authorization } : {}),
+            }
         });
         const data = await response.json();
         return NextResponse.json(data, { status: response.status });
