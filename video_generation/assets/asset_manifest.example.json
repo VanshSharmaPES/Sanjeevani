@@ -1,0 +1,34 @@
+{
+  "medicines": {
+    "crocin_advance_tablet": {
+      "packageImageUrl": "https://your-approved-source.example/crocin-advance-package.jpg",
+      "productImageUrl": "https://your-approved-source.example/crocin-advance-tablet.jpg"
+    }
+  },
+  "templates": {
+    "tablet_oral": {
+      "videoUrl": "https://your-approved-source.example/templates/adult-taking-tablet-with-water.mp4"
+    },
+    "capsule_oral": {
+      "videoUrl": "https://your-approved-source.example/templates/adult-taking-capsule-with-water.mp4"
+    },
+    "syrup_oral": {
+      "videoUrl": "https://your-approved-source.example/templates/adult-measuring-syrup.mp4"
+    },
+    "eye_drops": {
+      "videoUrl": "https://your-approved-source.example/templates/adult-applying-eye-drops.mp4"
+    },
+    "ear_drops": {
+      "videoUrl": "https://your-approved-source.example/templates/adult-applying-ear-drops.mp4"
+    },
+    "nasal_spray": {
+      "videoUrl": "https://your-approved-source.example/templates/adult-using-nasal-spray.mp4"
+    },
+    "inhaler": {
+      "videoUrl": "https://your-approved-source.example/templates/adult-using-inhaler.mp4"
+    },
+    "ointment_topical": {
+      "videoUrl": "https://your-approved-source.example/templates/adult-applying-topical-medicine.mp4"
+    }
+  }
+}

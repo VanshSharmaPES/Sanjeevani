@@ -42,7 +42,7 @@ if sys.stderr.encoding and sys.stderr.encoding.lower() not in ("utf-8", "utf8"):
 PRIMARY_PROVIDER = os.getenv("PRIMARY_PROVIDER", "groq").lower()
 
 # Vision model: used for OCR (reading images)
-VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
+VISION_MODEL = os.getenv("VISION_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct")
 # Analysis model: used for medical reasoning from extracted text
 ANALYSIS_MODEL = "llama-3.3-70b-versatile"
 
@@ -279,27 +279,44 @@ Cetrimide/Savlon = Cetrimide
 
 
 class RotatingGroqClient:
+    PLACEHOLDER_KEY_PARTS = (
+        "your_groq_api_key",
+        "another_groq_api_key",
+        "replace_me",
+        "your_api_key",
+        "paste_key_here",
+    )
+
+    @classmethod
+    def _valid_key(cls, key: str | None) -> str:
+        value = str(key or "").strip()
+        if not value:
+            return ""
+        lower = value.casefold()
+        if any(part in lower for part in cls.PLACEHOLDER_KEY_PARTS):
+            return ""
+        return value
+
     def __init__(self):
         self.keys = []
         
         # Support API_KEY_1 to API_KEY_10 or GROQ_API_KEY_1 to GROQ_API_KEY_10
         for i in range(1, 11):
-            key = os.getenv(f"API_KEY_{i}") or os.getenv(f"GROQ_API_KEY_{i}")
-            if key and key.strip():
-                self.keys.append(key.strip())
+            key = self._valid_key(os.getenv(f"API_KEY_{i}") or os.getenv(f"GROQ_API_KEY_{i}"))
+            if key:
+                self.keys.append(key)
                 
         # Support fallback/main key
-        main_key = os.getenv("API_KEY") or os.getenv("GROQ_API_KEY")
-        if main_key and main_key.strip() and main_key.strip() not in self.keys:
-            self.keys.append(main_key.strip())
+        main_key = self._valid_key(os.getenv("API_KEY") or os.getenv("GROQ_API_KEY"))
+        if main_key and main_key not in self.keys:
+            self.keys.append(main_key)
             
         # Deduplicate
         seen = set()
         self.keys = [x for x in self.keys if not (x in seen or seen.add(x))]
         
         if not self.keys:
-            print("[WARN] RotatingGroqClient: No Groq API keys found in environment variables!")
-            self.keys = [""]
+            print("[WARN] RotatingGroqClient: No valid Groq API keys found. Add GROQ_API_KEY or API_KEY in .env.")
             
         self.clients = [Groq(api_key=k) for k in self.keys]
         self.current_index = 0
@@ -315,6 +332,8 @@ class RotatingGroqClient:
             self.outer = outer
 
         def create(self, *args, **kwargs):
+            if not self.outer.clients:
+                raise RuntimeError("No valid Groq API key configured. Add GROQ_API_KEY=<your real Groq key> to .env and restart the backend.")
             last_error = None
             for _ in range(len(self.outer.clients)):
                 client_instance = self.outer.clients[self.outer.current_index]
@@ -1005,6 +1024,588 @@ def _call_vision_model_freetext(image_bytes: bytes, system_prompt: str, user_pro
         max_tokens=2048,
     )
     return response.choices[0].message.content.strip()
+
+
+ASSET_VALIDATION_ALLOWED_TYPES = {"package", "strip", "dosage_form", "human_demo", "unknown"}
+ASSET_VALIDATION_POLICY_VERSION = "strict_identity_v2"
+ASSET_VALIDATION_REQUIRED_KEYS = (
+    "isMedicineImage",
+    "assetType",
+    "brandMatches",
+    "strengthMatches",
+    "dosageFormMatches",
+    "saltMatches",
+    "medicineNameVisible",
+    "saltVisible",
+    "isPackage",
+    "isStrip",
+    "isDosageForm",
+    "isHumanDemo",
+    "isUnrelated",
+    "isDuplicateLike",
+    "expectedTypeMatches",
+    "qualityOk",
+    "safetyOk",
+    "rejectReason",
+    "confidence",
+    "notes",
+)
+
+ASSET_VALIDATION_SYSTEM_PROMPT = """
+You are a strict pharmaceutical visual asset verifier for a prescription-video product.
+Your job is to inspect the provided image and decide whether it is a suitable medicine asset.
+
+Return ONLY valid JSON. Do not include markdown, explanations outside JSON, or extra keys.
+Be conservative: when the image does not clearly match the medicine, salt, or expected asset type, reject it.
+Never invent brand names, salts, package details, or medical claims that are not visible in the image.
+
+Accepted assetType values:
+- "package": medicine box/carton/bottle/tube/inhaler package with branded or labelled product identity.
+- "strip": blister/strip image showing tablets or capsules, ideally with product text or recognizable medicine context.
+- "dosage_form": visible tablet, capsule, syrup bottle, tube, drops bottle, inhaler, strip, or actual dosage product.
+- "human_demo": real human demonstration image/video frame showing medicine-use action, not a cartoon.
+- "unknown": use only when the asset type is unclear.
+
+Strict rejection rules:
+- Reject logos, payment icons, website UI, profile photos, unrelated people, unrelated objects, or generic placeholders.
+- Reject if expected type is package but the image only shows loose tablets or a plain unlabelled strip.
+- Reject if expected type is dosage_form and the image only shows a box/carton with no actual dosage product.
+- Reject if the visible brand conflicts with the requested medicine.
+- Reject if the requested strength is present in the requested medicine/ingredients but the image does not clearly show or verify that same strength.
+- Reject if the requested dosage form is present in the requested medicine name but the image does not clearly match that form.
+- Reject if visible salt/strength/form conflicts with the requested medicine.
+- Reject if confidence is below 0.65.
+"""
+
+ASSET_VALIDATION_TYPE_PROMPTS = {
+    "package": "Expected asset type: package. Prefer visible branded packaging, box, bottle label, tube label, carton, or retail medicine pack.",
+    "strip": "Expected asset type: strip. Prefer blister/strip imagery showing tablets/capsules, foil, or strip label.",
+    "dosage_form": "Expected asset type: dosage_form. Prefer the actual tablet, capsule, syrup bottle, tube, drops bottle, inhaler, or strip/product form.",
+    "human_demo": "Expected asset type: human_demo. Prefer real human demonstration footage/frame for taking or applying the medicine.",
+    "unknown": "Expected asset type: unknown. Judge whether this is a relevant medicine-related visual asset.",
+}
+
+_asset_validation_cache_lock = threading.Lock()
+
+
+def _normalize_asset_type(expected_asset_type: str | None) -> str:
+    value = str(expected_asset_type or "unknown").strip().casefold()
+    aliases = {
+        "tablet": "dosage_form",
+        "product": "dosage_form",
+        "product_image": "dosage_form",
+        "tablet_image": "dosage_form",
+        "capsule": "dosage_form",
+        "medicine": "dosage_form",
+    }
+    value = aliases.get(value, value)
+    return value if value in ASSET_VALIDATION_ALLOWED_TYPES else "unknown"
+
+
+def _normalise_active_salts(active_salts=None) -> str:
+    if active_salts is None:
+        return ""
+    if isinstance(active_salts, (list, tuple, set)):
+        value = " + ".join(str(item) for item in active_salts if str(item).strip())
+    else:
+        value = str(active_salts)
+    return re.sub(r"\s+", " ", value).strip()
+
+
+def _asset_validation_project_path(*parts: str) -> str:
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), *parts)
+
+
+def _asset_validation_cache_path() -> str:
+    return os.getenv("ASSET_VALIDATION_CACHE_PATH") or _asset_validation_project_path("cache", "asset_validation_cache.json")
+
+
+def _asset_validation_debug_log_path() -> str:
+    return os.getenv("ASSET_VALIDATION_DEBUG_LOG_PATH") or _asset_validation_project_path("logs", "asset_validation_debug.jsonl")
+
+
+def _asset_validation_min_confidence() -> float:
+    try:
+        return max(0.0, min(1.0, float(os.getenv("ASSET_VALIDATION_MIN_CONFIDENCE", "0.65"))))
+    except ValueError:
+        return 0.65
+
+
+def _asset_validation_has_strength(medicine_name: str, active_salts=None) -> bool:
+    text = f"{medicine_name or ''} {_normalise_active_salts(active_salts)}"
+    return bool(re.search(r"\b\d+(?:\.\d+)?\s*(?:mg|mcg|g|ml|iu|%)\b", text, flags=re.IGNORECASE))
+
+
+def _asset_validation_has_dosage_form(medicine_name: str, active_salts=None) -> bool:
+    text = re.sub(r"[^a-z0-9]+", " ", f"{medicine_name or ''} {_normalise_active_salts(active_salts)}".casefold())
+    form_terms = {
+        "tablet",
+        "tablets",
+        "tab",
+        "capsule",
+        "capsules",
+        "syrup",
+        "suspension",
+        "drops",
+        "drop",
+        "inhaler",
+        "ointment",
+        "cream",
+        "gel",
+        "tube",
+        "spray",
+    }
+    return any(term in text.split() for term in form_terms)
+
+
+def _asset_validation_cache_key(image_bytes: bytes, medicine_name: str, active_salts, expected_asset_type: str, context=None) -> str:
+    context = context or {}
+    image_identity = str(context.get("image_url") or context.get("url") or "").strip()
+    image_hash = hashlib.sha256(image_identity.encode("utf-8") if image_identity else image_bytes).hexdigest()
+    payload = "|".join(
+        (
+            ASSET_VALIDATION_POLICY_VERSION,
+            image_hash,
+            _sanitize_llm_text(medicine_name, 180).casefold(),
+            _normalise_active_salts(active_salts).casefold(),
+            _normalize_asset_type(expected_asset_type),
+        )
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _load_asset_validation_cache() -> dict:
+    path = _asset_validation_cache_path()
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            data = json.load(handle)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _save_asset_validation_cache(cache: dict) -> None:
+    path = _asset_validation_cache_path()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(cache, handle, ensure_ascii=True, indent=2)
+
+
+def _append_asset_validation_debug(record: dict) -> None:
+    if str(os.getenv("ASSET_VALIDATION_DEBUG", "")).strip().casefold() not in {"1", "true", "yes", "on"}:
+        return
+    path = _asset_validation_debug_log_path()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record, ensure_ascii=True, default=str) + "\n")
+
+
+def _asset_validation_default_response(reason: str, confidence: float = 0.0, expected_asset_type: str = "unknown") -> dict:
+    expected = _normalize_asset_type(expected_asset_type)
+    response = {
+        "isMedicineImage": False,
+        "assetType": "unknown",
+        "brandMatches": False,
+        "strengthMatches": False,
+        "dosageFormMatches": False,
+        "saltMatches": False,
+        "medicineNameVisible": False,
+        "saltVisible": False,
+        "isPackage": False,
+        "isStrip": False,
+        "isDosageForm": False,
+        "isHumanDemo": False,
+        "isUnrelated": True,
+        "isDuplicateLike": False,
+        "expectedTypeMatches": False,
+        "qualityOk": False,
+        "safetyOk": False,
+        "rejectReason": reason,
+        "confidence": max(0.0, min(1.0, float(confidence or 0.0))),
+        "notes": "",
+        "accepted": False,
+        "finalScore": 0.0,
+        "expectedAssetType": expected,
+        "source": "vision_llm",
+        "policyVersion": ASSET_VALIDATION_POLICY_VERSION,
+    }
+    return response
+
+
+def _coerce_bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        return value.strip().casefold() in {"1", "true", "yes", "y", "on", "match", "matched"}
+    return False
+
+
+def _score_asset_validation(validation: dict) -> float:
+    score = float(validation.get("confidence") or 0.0)
+    for key, weight in (
+        ("isMedicineImage", 0.08),
+        ("expectedTypeMatches", 0.12),
+        ("brandMatches", 0.10),
+        ("strengthMatches", 0.10),
+        ("dosageFormMatches", 0.08),
+        ("saltMatches", 0.06),
+        ("qualityOk", 0.06),
+        ("safetyOk", 0.08),
+    ):
+        score += weight if validation.get(key) else -weight
+    if validation.get("isUnrelated"):
+        score -= 0.35
+    return max(0.0, min(1.0, score))
+
+
+def _normalise_asset_validation(raw: dict, expected_asset_type: str) -> dict:
+    expected = _normalize_asset_type(expected_asset_type)
+    if not isinstance(raw, dict):
+        return _asset_validation_default_response("Vision model returned non-JSON validation", 0.0, expected)
+
+    normalised = {}
+    for key in ASSET_VALIDATION_REQUIRED_KEYS:
+        normalised[key] = raw.get(key)
+
+    for key in (
+        "isMedicineImage",
+        "brandMatches",
+        "strengthMatches",
+        "dosageFormMatches",
+        "saltMatches",
+        "medicineNameVisible",
+        "saltVisible",
+        "isPackage",
+        "isStrip",
+        "isDosageForm",
+        "isHumanDemo",
+        "isUnrelated",
+        "isDuplicateLike",
+        "expectedTypeMatches",
+        "qualityOk",
+        "safetyOk",
+    ):
+        normalised[key] = _coerce_bool(normalised.get(key))
+
+    asset_type = _normalize_asset_type(normalised.get("assetType"))
+    if asset_type == "unknown":
+        if normalised["isPackage"]:
+            asset_type = "package"
+        elif normalised["isStrip"]:
+            asset_type = "strip"
+        elif normalised["isDosageForm"]:
+            asset_type = "dosage_form"
+        elif normalised["isHumanDemo"]:
+            asset_type = "human_demo"
+    normalised["assetType"] = asset_type
+    normalised["isPackage"] = asset_type == "package" or normalised["isPackage"]
+    normalised["isStrip"] = asset_type == "strip" or normalised["isStrip"]
+    normalised["isDosageForm"] = asset_type in {"dosage_form", "strip"} or normalised["isDosageForm"]
+    normalised["isHumanDemo"] = asset_type == "human_demo" or normalised["isHumanDemo"]
+    normalised["expectedAssetType"] = expected
+    normalised.setdefault("requiresStrengthMatch", False)
+    normalised.setdefault("requiresDosageFormMatch", False)
+
+    if expected == "package":
+        normalised["expectedTypeMatches"] = normalised["isPackage"]
+    elif expected == "strip":
+        normalised["expectedTypeMatches"] = normalised["isStrip"]
+    elif expected == "dosage_form":
+        normalised["expectedTypeMatches"] = normalised["isDosageForm"] or normalised["isStrip"]
+    elif expected == "human_demo":
+        normalised["expectedTypeMatches"] = normalised["isHumanDemo"]
+    else:
+        normalised["expectedTypeMatches"] = not normalised["isUnrelated"]
+
+    try:
+        normalised["confidence"] = max(0.0, min(1.0, float(normalised.get("confidence") or 0.0)))
+    except (TypeError, ValueError):
+        normalised["confidence"] = 0.0
+    normalised["rejectReason"] = str(normalised.get("rejectReason") or "").strip()
+    normalised["notes"] = str(normalised.get("notes") or "").strip()
+    normalised["finalScore"] = _score_asset_validation(normalised)
+    return normalised
+
+
+def _apply_asset_validation_rules(validation: dict, expected_asset_type: str) -> dict:
+    expected = _normalize_asset_type(expected_asset_type)
+    min_confidence = _asset_validation_min_confidence()
+    reject_reason = ""
+    if validation.get("confidence", 0.0) < min_confidence:
+        reject_reason = f"Vision confidence below threshold ({validation.get('confidence', 0.0):.2f} < {min_confidence:.2f})"
+    elif validation.get("isUnrelated"):
+        reject_reason = validation.get("rejectReason") or "Vision model marked image as unrelated"
+    elif not validation.get("isMedicineImage") and expected != "human_demo":
+        reject_reason = validation.get("rejectReason") or "Image is not a medicine product image"
+    elif not validation.get("expectedTypeMatches"):
+        reject_reason = validation.get("rejectReason") or f"Image does not match expected asset type: {expected}"
+    elif expected in {"package", "strip", "dosage_form"} and not validation.get("brandMatches"):
+        reject_reason = validation.get("rejectReason") or "Visible medicine identity does not match requested medicine"
+    elif expected in {"package", "strip", "dosage_form"} and validation.get("requiresStrengthMatch") and not validation.get("strengthMatches"):
+        reject_reason = validation.get("rejectReason") or "Visible medicine strength does not match the requested strength"
+    elif expected in {"package", "strip", "dosage_form"} and validation.get("requiresDosageFormMatch") and not validation.get("dosageFormMatches"):
+        reject_reason = validation.get("rejectReason") or "Visible dosage form does not match the requested dosage form"
+    elif expected in {"package", "strip", "dosage_form"} and not (validation.get("medicineNameVisible") or validation.get("saltVisible")):
+        reject_reason = validation.get("rejectReason") or "Medicine identity is not visibly verifiable in the image"
+    elif not validation.get("qualityOk"):
+        reject_reason = validation.get("rejectReason") or "Image quality is not suitable"
+    elif not validation.get("safetyOk"):
+        reject_reason = validation.get("rejectReason") or "Image failed safety validation"
+
+    validation["accepted"] = not bool(reject_reason)
+    validation["rejectReason"] = reject_reason if reject_reason else ""
+    validation["finalScore"] = _score_asset_validation(validation)
+    validation["source"] = "vision_llm"
+    validation["policyVersion"] = ASSET_VALIDATION_POLICY_VERSION
+    return validation
+
+
+def _call_vision_asset_validator_json(image_bytes: bytes, system_prompt: str, user_prompt: str) -> dict:
+    processed_bytes, mime_type = _preprocess_image(image_bytes)
+    image_base64 = base64.b64encode(processed_bytes).decode("utf-8")
+    response = client.chat.completions.create(
+        model=VISION_MODEL,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{image_base64}"}},
+                    {"type": "text", "text": user_prompt},
+                ],
+            },
+        ],
+        temperature=0.0,
+        max_tokens=1200,
+        response_format={"type": "json_object"},
+    )
+    return _extract_json_from_text(response.choices[0].message.content.strip())
+
+
+def build_medicine_asset_verification_prompt(
+    medicine_name: str,
+    active_salts=None,
+    expected_asset_type: str = "unknown",
+    context: dict | None = None,
+) -> str:
+    """Build the prompt used by the vision model for medicine asset validation."""
+    expected = _normalize_asset_type(expected_asset_type)
+    context = context or {}
+    title = _sanitize_llm_text(context.get("title", ""), 220)
+    source = _sanitize_llm_text(context.get("source") or context.get("source_domain") or "", 140)
+    page_url = _sanitize_llm_text(context.get("page_url", ""), 260)
+    salts = _normalise_active_salts(active_salts)
+    return f"""
+Requested medicine: {_sanitize_llm_text(medicine_name, 180)}
+Expected active salts/ingredients: {_sanitize_llm_text(salts or "not provided", 220)}
+Requested strength must be verified: {"yes" if _asset_validation_has_strength(medicine_name, active_salts) else "no"}
+Requested dosage form must be verified: {"yes" if _asset_validation_has_dosage_form(medicine_name, active_salts) else "no"}
+{ASSET_VALIDATION_TYPE_PROMPTS[expected]}
+
+Search/result context:
+- title: {title or "not provided"}
+- source/domain: {source or "not provided"}
+- page_url: {page_url or "not provided"}
+
+Inspect the image only. Use the context only as a weak hint; do not accept if the image itself contradicts it.
+Set strengthMatches=false unless the requested strength is clearly visible or directly inferable from visible product text. If no strength is requested, set strengthMatches=true.
+Set dosageFormMatches=false unless the visible dosage form matches the requested form. If no dosage form is requested, set dosageFormMatches=true.
+
+Return exactly this JSON schema:
+{{
+  "isMedicineImage": true/false,
+  "assetType": "package|strip|dosage_form|human_demo|unknown",
+  "brandMatches": true/false,
+  "strengthMatches": true/false,
+  "dosageFormMatches": true/false,
+  "saltMatches": true/false,
+  "medicineNameVisible": true/false,
+  "saltVisible": true/false,
+  "isPackage": true/false,
+  "isStrip": true/false,
+  "isDosageForm": true/false,
+  "isHumanDemo": true/false,
+  "isUnrelated": true/false,
+  "isDuplicateLike": true/false,
+  "expectedTypeMatches": true/false,
+  "qualityOk": true/false,
+  "safetyOk": true/false,
+  "rejectReason": "",
+  "confidence": 0.0,
+  "notes": ""
+}}
+""".strip()
+
+
+def validate_medicine_asset_image(
+    image_bytes: bytes,
+    medicine_name: str,
+    active_salts=None,
+    expected_asset_type: str = "unknown",
+    context: dict | None = None,
+    debug: bool = False,
+) -> dict:
+    """Validate one fetched medicine asset image using the configured vision LLM."""
+    expected = _normalize_asset_type(expected_asset_type)
+    context = context or {}
+    cache_key = _asset_validation_cache_key(image_bytes, medicine_name, active_salts, expected, context)
+    with _asset_validation_cache_lock:
+        cache = _load_asset_validation_cache()
+        cached = cache.get(cache_key)
+    if isinstance(cached, dict) and cached.get("policyVersion") == ASSET_VALIDATION_POLICY_VERSION:
+        result = dict(cached)
+        result["cacheHit"] = True
+        return result
+
+    prompt = build_medicine_asset_verification_prompt(medicine_name, active_salts, expected, context)
+    try:
+        raw = _call_vision_asset_validator_json(image_bytes, ASSET_VALIDATION_SYSTEM_PROMPT, prompt)
+        validation = _normalise_asset_validation(raw, expected)
+        validation["requiresStrengthMatch"] = _asset_validation_has_strength(medicine_name, active_salts)
+        validation["requiresDosageFormMatch"] = _asset_validation_has_dosage_form(medicine_name, active_salts)
+        validation = _apply_asset_validation_rules(validation, expected)
+    except Exception as exc:
+        validation = _asset_validation_default_response(f"Vision asset validation failed: {exc}", 0.0, expected)
+        validation["requiresStrengthMatch"] = _asset_validation_has_strength(medicine_name, active_salts)
+        validation["requiresDosageFormMatch"] = _asset_validation_has_dosage_form(medicine_name, active_salts)
+
+    validation["cacheKey"] = cache_key
+    validation["cacheHit"] = False
+    validation["medicineName"] = _sanitize_llm_text(medicine_name, 180)
+    validation["activeSalts"] = _normalise_active_salts(active_salts)
+    validation["context"] = {
+        "title": context.get("title", ""),
+        "source_domain": context.get("source_domain", ""),
+        "page_url": context.get("page_url", ""),
+        "image_url": context.get("image_url") or context.get("url", ""),
+    }
+
+    with _asset_validation_cache_lock:
+        cache = _load_asset_validation_cache()
+        cache[cache_key] = validation
+        _save_asset_validation_cache(cache)
+
+    if debug:
+        os.environ["ASSET_VALIDATION_DEBUG"] = "true"
+    _append_asset_validation_debug(validation)
+    return validation
+
+
+def _candidate_text_score(candidate: dict, medicine_name: str, expected_asset_type: str) -> float:
+    text = " ".join(
+        str(candidate.get(key, ""))
+        for key in ("title", "source", "source_domain", "page_url", "url", "image_url")
+    ).casefold()
+    medicine_tokens = [token for token in re.findall(r"[a-z0-9]+", medicine_name.casefold()) if len(token) > 2]
+    score = sum(0.04 for token in medicine_tokens[:5] if token in text)
+    expected = _normalize_asset_type(expected_asset_type)
+    if expected == "package" and any(token in text for token in ("package", "pack", "box", "carton", "label")):
+        score += 0.18
+    if expected in {"strip", "dosage_form"} and any(token in text for token in ("strip", "blister", "tablet", "capsule", "dosage")):
+        score += 0.18
+    return min(0.35, score)
+
+
+def _read_candidate_image_bytes(candidate: dict) -> bytes:
+    if isinstance(candidate.get("image_bytes"), (bytes, bytearray)):
+        return bytes(candidate["image_bytes"])
+    for key in ("local_path", "cached_path", "path"):
+        value = candidate.get(key)
+        if value and os.path.exists(str(value)):
+            with open(str(value), "rb") as handle:
+                return handle.read()
+    image_url = str(candidate.get("image_url") or candidate.get("url") or "")
+    if image_url and _requests is not None:
+        response = _requests.get(image_url, timeout=20, headers={"User-Agent": "SanjeevaniAssetValidator/1.0"}, stream=True)
+        response.raise_for_status()
+        chunks = []
+        total = 0
+        for chunk in response.iter_content(1024 * 128):
+            if not chunk:
+                continue
+            total += len(chunk)
+            if total > 8 * 1024 * 1024:
+                raise ValueError("Candidate image exceeds 8MB limit")
+            chunks.append(chunk)
+        return b"".join(chunks)
+    raise ValueError("Candidate does not include image bytes, local path, or downloadable URL")
+
+
+def rank_medicine_asset_candidates(
+    candidates,
+    medicine_name: str,
+    active_salts=None,
+    expected_asset_type: str = "unknown",
+    max_candidates: int = 10,
+) -> list[dict]:
+    """Validate and rank candidate medicine asset images."""
+    expected = _normalize_asset_type(expected_asset_type)
+    normalized_candidates = [dict(candidate) for candidate in (candidates or []) if isinstance(candidate, dict)]
+    normalized_candidates.sort(key=lambda item: _candidate_text_score(item, medicine_name, expected), reverse=True)
+    ranked: list[dict] = []
+    for candidate in normalized_candidates[: max(1, int(max_candidates or 10))]:
+        try:
+            image_bytes = _read_candidate_image_bytes(candidate)
+            validation = validate_medicine_asset_image(
+                image_bytes,
+                medicine_name,
+                active_salts,
+                expected,
+                context=candidate,
+            )
+            text_score = _candidate_text_score(candidate, medicine_name, expected)
+            final_score = max(0.0, min(1.0, float(validation.get("finalScore", 0.0)) + text_score))
+            candidate_result = {
+                **candidate,
+                "validation": validation,
+                "accepted": bool(validation.get("accepted")),
+                "final_score": final_score,
+                "reject_reason": validation.get("rejectReason", ""),
+            }
+        except Exception as exc:
+            candidate_result = {
+                **candidate,
+                "validation": _asset_validation_default_response(str(exc), 0.0, expected),
+                "accepted": False,
+                "final_score": 0.0,
+                "reject_reason": str(exc),
+            }
+        ranked.append(candidate_result)
+    ranked.sort(key=lambda item: (item.get("accepted", False), item.get("final_score", 0.0)), reverse=True)
+    return ranked
+
+
+def validate_asset_pair_distinctness(package_validation: dict, dosage_validation: dict) -> dict:
+    """Ensure package and dosage/product panels do not both show the same kind of asset."""
+    package_type = _normalize_asset_type((package_validation or {}).get("assetType"))
+    dosage_type = _normalize_asset_type((dosage_validation or {}).get("assetType"))
+    reason = ""
+    if package_validation and package_validation.get("accepted") is False:
+        reason = package_validation.get("rejectReason") or "Package image failed vision validation"
+    elif dosage_validation and dosage_validation.get("accepted") is False:
+        reason = dosage_validation.get("rejectReason") or "Dosage-form image failed vision validation"
+    elif package_type != "package":
+        reason = "First asset is not a valid package image"
+    elif dosage_type == "package":
+        reason = "Dosage-form asset is another package image"
+    elif package_validation.get("isDuplicateLike") or dosage_validation.get("isDuplicateLike"):
+        reason = "Vision model marked one asset as duplicate-like"
+    elif package_type == dosage_type and dosage_type in {"strip", "dosage_form"}:
+        reason = "Package and dosage-form assets appear to be the same asset type"
+    return {
+        "isDistinctEnough": not bool(reason),
+        "rejectReason": reason,
+        "confidence": min(
+            float((package_validation or {}).get("confidence") or 0.0),
+            float((dosage_validation or {}).get("confidence") or 0.0),
+        ),
+        "packageAssetType": package_type,
+        "dosageAssetType": dosage_type,
+    }
 
 
 def _call_analysis_model(extracted_text: str, system_prompt: str, user_prompt: str) -> dict:
@@ -1914,6 +2515,73 @@ def _is_prescription_text(text: str) -> bool:
     return total_score >= 1
 
 
+def _cached_medicine_audio_sentence(med: dict) -> str:
+    sentence = str(med.get("advice_en") or "").strip()
+    if sentence:
+        return sentence
+
+    m_name = med.get("name", "Unknown")
+    m_dosage = med.get("dosage", "")
+    m_freq = med.get("frequency", "")
+    m_meal = med.get("meal_relation", "")
+    m_duration = med.get("duration", "")
+    m_purpose = med.get("purpose", "")
+
+    sentence = m_name
+    if m_dosage:
+        sentence += f", {m_dosage}"
+    if m_freq:
+        sentence += f". Take {m_freq}"
+    if m_meal:
+        sentence += f" {m_meal}"
+    if m_duration:
+        sentence += f" for {m_duration}"
+    sentence += "."
+    if m_purpose and m_purpose != "Not available":
+        first = m_purpose.split(".")[0].strip()
+        if first:
+            sentence += f" {first}."
+    return sentence
+
+
+def _hydrate_cached_prescription_audio(cached: dict, target_language: str) -> tuple[dict, str | None]:
+    """
+    Prescription cache stores structured data but may not include the global
+    audio blob. Regenerate audio when serving cached scans so the result UI
+    behaves like a fresh OCR run.
+    """
+    data = dict(cached)
+    medicines = [dict(med) for med in (cached.get("medicines") or []) if isinstance(med, dict)]
+    data["medicines"] = medicines
+
+    lang_code = LANG_MAP.get(target_language, "en")
+    english_parts = [_cached_medicine_audio_sentence(med) for med in medicines]
+    english_summary = _cap_text(" ".join(english_parts))
+    data["overall_advice_en"] = data.get("overall_advice_en") or english_summary
+
+    if target_language != "English" and english_parts:
+        try:
+            translated_parts = _translate_list(english_parts, target_language)
+            translated_summary = _translate_text(english_summary, target_language)
+        except Exception as translate_err:
+            _safe_print(f"[WARN] Cached prescription audio translation failed: {translate_err}")
+            translated_parts = english_parts
+            translated_summary = english_summary
+        data["overall_advice"] = translated_summary
+    else:
+        translated_parts = english_parts
+        data["overall_advice"] = data.get("overall_advice") or english_summary
+
+    for med, english_sentence, translated_sentence in zip(medicines, english_parts, translated_parts):
+        med["advice_en"] = english_sentence
+        med["advice_translated"] = translated_sentence
+        if not med.get("audio_b64"):
+            med["audio_b64"] = _generate_audio(translated_sentence, lang_code)
+
+    audio_text = _cap_text(data.get("overall_advice") or " ".join(translated_parts))
+    return data, _generate_audio(audio_text, lang_code) if audio_text else None
+
+
 def analyze_prescription_image(image_bytes: bytes, target_language: str = "English") -> tuple[dict, str | None]:
     """
     Two-stage pipeline for prescription images with ground-truth dataset bypass.
@@ -1931,8 +2599,8 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
                 from db import find_cached_prescription
                 cached = find_cached_prescription(ocr_hash)
                 if cached:
-                    _safe_print(f"[INFO] Dataset cache HIT (hash={ocr_hash[:8]}…). Returning cached result instantly.")
-                    return cached, None
+                    _safe_print(f"[INFO] Dataset cache HIT (hash={ocr_hash[:8]}…). Returning cached result with regenerated audio.")
+                    return _hydrate_cached_prescription_audio(cached, target_language)
             except Exception as _cache_err:
                 _safe_print(f"[WARN] Dataset cache lookup failed: {_cache_err}")
 
@@ -2119,8 +2787,8 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
                 from db import find_cached_prescription
                 cached = find_cached_prescription(ocr_hash)
                 if cached:
-                    _safe_print(f"[INFO] Prescription cache HIT (hash={ocr_hash[:8]}…). Returning cached result.")
-                    return cached, None   # No new audio for cached results
+                    _safe_print(f"[INFO] Prescription cache HIT (hash={ocr_hash[:8]}…). Returning cached result with regenerated audio.")
+                    return _hydrate_cached_prescription_audio(cached, target_language)
             except Exception as _cache_err:
                 _safe_print(f"[WARN] Cache lookup failed (non-fatal): {_cache_err}")
 
@@ -2579,4 +3247,3 @@ def search_medicine_fallback_ai(query: str, dosage_form: str = None) -> dict | N
     except Exception as e:
         _safe_print(f"[WARN] AI medicine fallback search error for '{query}': {e}")
         return None
-
