@@ -34,14 +34,7 @@ Moving from proof of concept to a reliable product is what enables national-scal
 ---
 
 ## 🌟 Core Features & Detailed Functionalities
-
-### 1. Medicine Strip & Packaging Analysis
-* **High-Accuracy OCR:** Extracts text from rotated, warped, or reflective packaging labels using `meta-llama/llama-4-scout-17b-16e-instruct` (falls back to NVIDIA vision NIMs).
-* **Fuzzy Brand & Composition Normalization:** Cleans extracted names and queries a local database of Indian medicines (`A_Z_medicines_dataset_of_India.csv` via SQLite). If missing, it queries the public **OpenFDA API** and uses clinical reasoning fallbacks to determine generic composition.
-* **Automatic Tab Selection Safety:** Prevents users from uploading prescription images in the medicine scan tab by cross-referencing against a dataset map.
-* **Dosage & Usage Warnings:** Identifies standard usages, dosage levels, active salts, side effects, and warning groups.
-
-### 2. Handwritten Prescription Decoding
+### 1. Handwritten Prescription Decoding
 * **Handwriting Transcription:** Deciphers scribbled doctor notes using specialized, low-temperature Vision LLMs.
 * **Intelligent Parsing & Segmentation:** Split prescription text into discrete entries (patient info, doctor info, diagnosis, diet advice, follow-up date, and individual medication blocks).
 * **Shorthand & Abbreviations Expansion:** Translates medical shorthand like `OD` (once daily), `BD` (twice daily), `TDS` (thrice daily), `1-0-1` (morning & night), `AC` (before meals), `PC` (after meals), `HS` (bedtime), and `SOS` (as needed).
@@ -49,16 +42,16 @@ Moving from proof of concept to a reliable product is what enables national-scal
 * **Antibiotic Classification & Drug-Drug Interactions:** Flags antibiotic medications and computes severe interaction warnings if multiple conflicting drugs are prescribed together.
 * **Dynamic Few-Shot Learning (RAG):** Integrates doctor-corrected history to feed high-fidelity examples back to the parser, improving handwriting transcription over time.
 
-### 3. Alternate Medicine Recommendation Engine
+### 2. Alternate Medicine Recommendation Engine
 * **Deterministic Matching:** Normalizes and matches active composition keys, dosage form, route of administration, and release type (e.g., extended-release `ER`, dispersible `DT`).
 * **Price-Sorted Substitution:** Finds cheaper, active alternatives from the local database sorted by price.
 * **Formulation Warnings:** Flags potential differences in special formulations (e.g., fast-absorption optizorb).
 * **Doctor-Curated Alternates:** Allows authenticated doctors or pharmacists to manually curate and verify custom alternatives with detailed reasons.
 
-### 4. Medication Guide Generation (implement_D Glue)
+### 3. Medication Guide Generation (implement_D Glue)
 * **API Integration:** Connects with the `implement_D` Next.js guide service to generate detailed, printable, and audio-guided patient medication pamphlets for every drug in a prescription.
 
-### 5. Multilingual Audio & Accessibility
+### 4. Multilingual Audio & Accessibility
 * **Translational Pipeline:** Translates summaries and daily schedule tables to a user's selected language using fast Groq LPUs.
 * **High-Fidelity Text-To-Speech (TTS):** Generates spoken audio files using `edge-tts` (Azure Neural Voices) matched to local Indian dialects.
 * **Full Multilingual Support:** English, Hindi, Tamil, Telugu, Bengali, Marathi, Kannada, Malayalam, Gujarati, Punjabi, Odia, Assamese, Urdu, Nepali, Sanskrit, Konkani, Manipuri, Sindhi, Maithili, Dogri, Kashmiri, and Santali.
@@ -205,7 +198,6 @@ Sanjeevani utilizes SQLite (`sanjeevani.db`) with optimized indexes for sub-seco
 * `POST /api/auth/reset-password` - Updates hashed passwords securely (Admin/User action)
 
 ### 🩺 Scanning & OCR Analysis
-* `POST /api/analyze/medicine` - Extracts medicine packaging text, normalizes name, checks database, translates output, and yields Edge-TTS base64 audio.
 * `POST /api/analyze/prescription` - Verbatim OCR transcribe of prescription handwriting, segments patient/doctor/drugs, scans drug interactions, translates, and generates edge-TTS audio.
 
 ### 💊 Medicines & Alternatives
