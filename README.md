@@ -2,6 +2,35 @@
 
 Sanjeevani is an AI-powered, mobile-first healthcare accessibility platform designed to read medicine packaging and decipher handwritten prescriptions. By combining advanced vision models with deterministic pharmaceutical matching and high-fidelity text-to-speech, Sanjeevani translates medical jargon and handwritten notes into easy-to-understand daily schedules and audio summaries in any of the **22 scheduled languages of India**.
 
+## Med Guide: Production Deployment Vision
+
+Med Guide extends the earlier GenAI-powered personalised medication-guide work into a deployable, API-first healthcare service. Rather than operating as a standalone application, it is designed as an AI layer that can be embedded in the pharmacy and telemedicine workflows people already use.
+
+### The Need
+
+Patients often leave a consultation or pharmacy with prescriptions and medicine packs they cannot confidently interpret. Med Guide converts prescription and medicine data into personalised, multilingual, patient-friendly guidance, while fitting into existing digital-pharmacy workflows. The integration layer is intended to work with platforms such as **PharmEasy, Tata 1mg, Apollo Pharmacy, and Netmeds**, using their prescription, medicine-catalogue, and dispensing data where authorised.
+
+The service must also be safe and practical in real-world conditions: it should protect health data, meet applicable healthcare and **Digital Personal Data Protection (DPDP) Act** obligations, support pharmacist and doctor review, remain useful with low or intermittent connectivity, and use patient feedback to improve guide quality over time.
+
+### Why It Matters
+
+Moving from proof of concept to a reliable product is what enables national-scale impact. An official Med Guide deployment can support Ministry of Health initiatives, integrate with telemedicine services such as **eSanjeevani**, and be used by hospital and retail pharmacies at consultation or dispensing. Clear medication instructions in a patient's preferred Indian language can improve adherence, reduce avoidable medication errors and adverse drug events, and help patients and caregivers participate more confidently in treatment.
+
+### Target Deliverables
+
+1. **Production-ready patient application (Android and iOS):** a user-tested mobile experience for patients and caregivers, distributed through official app stores, that presents accessible medication schedules, warnings, multilingual explanations, and audio guidance.
+2. **Secure, scalable backend API and data pipeline:** highly available services that securely process authorised prescription requests, connect to trusted medicine data, apply clinical safety guardrails, and serve AI-generated guides at scale.
+3. **Pharmacist and doctor admin dashboard:** a web workspace for healthcare professionals to generate, review, print, and share medication guides during consultations or dispensing, with clear clinical accountability.
+4. **Telemedicine integration module:** a standard API and SDK that lets platforms such as eSanjeevani embed medication-guide generation and delivery directly in their existing patient journey.
+
+### Integration, Safety, and Continuous Improvement Principles
+
+* **API-first interoperability:** versioned, documented endpoints and SDKs for pharmacy, hospital, and telemedicine partners; no dependency on a single consumer application.
+* **Privacy by design:** consent-aware data handling, data minimisation, encryption in transit and at rest, role-based access, audit trails, and retention controls aligned with applicable law and partner agreements.
+* **Clinical safety:** evidence-backed drug data, structured guardrails for contraindications and interactions, clear escalation paths for uncertain results, and pharmacist/doctor review where a workflow requires it. Generated content supports—not replaces—professional medical advice.
+* **Inclusive, resilient access:** plain-language guides, support for Indian languages and audio, caregiver sharing, printable outputs, and offline-friendly caching or deferred sync for low-connectivity environments.
+* **Feedback-led quality:** allow patients and healthcare professionals to rate, correct, or flag guides; use de-identified, governed feedback to measure safety and usefulness and continuously improve the system.
+
 ---
 
 ## 🌟 Core Features & Detailed Functionalities
