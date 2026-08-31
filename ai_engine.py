@@ -623,15 +623,21 @@ def normalize_medicine_name(raw_name: str, medicine_df=None, dosage_form: str = 
     if os.path.exists(db_path):
         try:
             import sqlite3
-            # Extract first alphanumeric word for direct SQL filtering
+            # Extract first alphanumeric word for SQL filtering.
+            # raw_name_clean is NEVER interpolated into SQL — all queries use
+            # parameterized placeholders (?).  first_word is additionally
+            # restricted to [a-zA-Z0-9] characters before being passed as a
+            # bind parameter, making injection impossible.
             words = [w for w in re.split(r'[^a-zA-Z0-9]', raw_name_clean) if w]
             first_word = words[0] if words else raw_name_clean
+            # Belt-and-suspenders: strip any remaining non-alphanumeric chars
+            first_word = re.sub(r'[^a-zA-Z0-9]', '', first_word)
             
             if first_word and len(first_word) >= 3:
                 conn = sqlite3.connect(db_path)
                 conn.row_factory = sqlite3.Row
                 try:
-                    # Query candidate matches starting with the first word
+                    # Parameterized queries — no string interpolation of user input
                     rows = conn.execute(
                         "SELECT name, composition FROM medicines WHERE name LIKE ?",
                         (f"{first_word}%",)
