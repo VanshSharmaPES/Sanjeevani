@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  AlertTriangle,
   ArrowLeft,
   BadgeCheck,
   Building2,
@@ -314,7 +315,7 @@ export default function AlternativesPage() {
                 <Sparkles size={14} /> Smart Match
               </div>
               <h1 className="font-display text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-                Alternate Medicines
+                Substitute Medicines
               </h1>
               <p className="mt-3 max-w-2xl text-base text-muted-foreground">
                 Find same-composition medicine candidates with a clean clinician-facing review interface.
@@ -608,6 +609,19 @@ function AlternativeCard({
               ))}
             </div>
           )}
+          {alternate.safetyWarnings && alternate.safetyWarnings.length > 0 && (
+            <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-left">
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-amber-400">
+                <AlertTriangle size={14} className="text-amber-400" />
+                Safety Warnings
+              </p>
+              <ul className="mt-1.5 list-disc pl-4 space-y-1 text-xs text-muted-foreground">
+                {alternate.safetyWarnings.map((warning, wIdx) => (
+                  <li key={wIdx}>{warning}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:min-w-72">
@@ -621,7 +635,9 @@ function AlternativeCard({
           </div>
           <div className="rounded-2xl border border-border bg-background/40 p-4">
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Status</p>
-            <p className="mt-2 text-sm font-bold text-primary">Candidate found</p>
+            <p className={`mt-2 text-sm font-bold ${alternate.substitutionSafety === "doctor_curated" ? "text-emerald-400" : "text-amber-500"}`}>
+              {alternate.statusLabel}
+            </p>
             <p className="mt-1 text-xs text-muted-foreground">Confirm patient suitability before use.</p>
           </div>
         </div>
