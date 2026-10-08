@@ -9,6 +9,8 @@ import hashlib
 import tempfile
 from dotenv import load_dotenv
 from groq import Groq
+from local_ocr_model import local_vision_ocr
+import os
 from openai import OpenAI
 import asyncio
 import edge_tts
@@ -278,6 +280,14 @@ Cetrimide/Savlon = Cetrimide
 """
 
 
+class _GroqRemovedError(RuntimeError):
+    """Raised if any code path still tries to reach Groq/NVIDIA — these
+    providers have been fully decommissioned from this pipeline. If you see
+    this error, a call site is missing its USE_LOCAL_MODEL/USE_LOCAL_STAGE2
+    guard and needs to be patched to use the local model functions instead."""
+    pass
+
+
 class RotatingGroqClient:
     PLACEHOLDER_KEY_PARTS = (
         "your_groq_api_key",
@@ -373,6 +383,12 @@ class UnifiedAIClient:
             self.outer = outer
 
         def create(self, *args, **kwargs):
+            raise _GroqRemovedError(
+                "Groq/NVIDIA API calls are disabled — this pipeline runs fully "
+                "on local models. Ensure USE_LOCAL_MODEL=true and "
+                "USE_LOCAL_STAGE2=true are set, or patch the calling function "
+                "to use the local model bridge instead of client.chat.completions.create()."
+            )
             model = kwargs.get("model", "")
             is_nvidia_model = model.startswith("meta/llama") or "nemotron" in model
             
@@ -580,17 +596,20 @@ def _infer_salts_via_llm(medicine_name: str) -> list[str]:
         "If you do not recognize the medicine, return an empty list."
     )
     try:
-        response = client.chat.completions.create(
-            model=ANALYSIS_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.1,
-            response_format={"type": "json_object"}
-        )
-        content = response.choices[0].message.content.strip()
-        parsed = json.loads(content)
+        if os.getenv("USE_LOCAL_STAGE2", "false").lower() == "true":
+            parsed = _call_stage2_local(system_prompt, user_prompt)
+        else:
+            response = client.chat.completions.create(
+                model=ANALYSIS_MODEL,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.1,
+                response_format={"type": "json_object"}
+            )
+            content = response.choices[0].message.content.strip()
+            parsed = json.loads(content)
         if isinstance(parsed, dict) and "active_salts" in parsed:
             return [s.strip().title() for s in parsed["active_salts"] if s.strip()]
         return []
@@ -1000,12 +1019,17 @@ def _call_vision_model_json(image_bytes: bytes, system_prompt: str) -> str:
         return raw.strip()
 
 
-def _call_vision_model_freetext(image_bytes: bytes, system_prompt: str, user_prompt: str) -> str:
+USE_LOCAL_MODEL = os.getenv("USE_LOCAL_MODEL", "false").lower() == "true"
+
+def _call_vision_model_freetext(image_bytes: bytes, system_prompt: str, user_prompt: str, use_local_model: bool = False) -> str:
     """
     Vision OCR WITHOUT JSON constraint — critical for handwritten prescriptions.
     Free-form transcription gives much better accuracy for messy handwriting.
     Returns the raw transcribed text.
     """
+    if use_local_model and USE_LOCAL_MODEL:
+        return local_vision_ocr(image_bytes)
+
     processed_bytes, mime_type = _preprocess_image(image_bytes)
     image_base64 = base64.b64encode(processed_bytes).decode("utf-8")
 
@@ -1679,6 +1703,10 @@ RULES:
 6. Explicitly check for severe known drug interactions among the extracted medicines and add them to the 'interactions' array. If none exist, return an empty array.
 7. ALL text fields must be in English.
 """
+    if os.getenv("USE_LOCAL_STAGE2", "false").lower() == "true":
+        from local_analysis_model import local_prescription_analysis
+        return local_prescription_analysis(extracted_text, PRESCRIPTION_ANALYSIS_INSTRUCTION, schema)
+
     response = client.chat.completions.create(
         model=ANALYSIS_MODEL,
         messages=[
@@ -1742,6 +1770,15 @@ def _translate_text(text: str, target_language: str) -> str:
     if target_language == "English" or not text.strip():
         return text
     try:
+        if os.getenv("USE_LOCAL_STAGE2", "false").lower() == "true":
+            translate_system_prompt = (
+                f"You are a certified medical translator. "
+                f"Translate the following medical text to {target_language}. "
+                f"Keep all medicine names, dosages, and medical terms accurate. "
+                f"Return ONLY the translated text — no explanations, no English labels."
+            )
+            translated = _call_stage2_local_text(translate_system_prompt, text)
+            return translated if translated else text
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",  # Force Groq LPU speed for fast translation
             messages=[
@@ -1787,17 +1824,20 @@ def _translate_fields(fields_dict: dict, target_language: str) -> dict:
     user_prompt = f"Translate this JSON object:\n\n{json.dumps(to_translate)}"
     
     try:
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",  # Force Groq LPU speed
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.1,
-            response_format={"type": "json_object"}
-        )
-        content = response.choices[0].message.content.strip()
-        translated_data = json.loads(content)
+        if os.getenv("USE_LOCAL_STAGE2", "false").lower() == "true":
+            translated_data = _call_stage2_local(system_prompt, user_prompt)
+        else:
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",  # Force Groq LPU speed
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.1,
+                response_format={"type": "json_object"}
+            )
+            content = response.choices[0].message.content.strip()
+            translated_data = json.loads(content)
         
         res = fields_dict.copy()
         for k, v in translated_data.items():
@@ -1832,17 +1872,20 @@ def _translate_list(items_list: list[str], target_language: str) -> list[str]:
     user_prompt = f"List to translate:\n\n{json.dumps(items_list)}"
     
     try:
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",  # Force Groq LPU speed
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.1,
-            response_format={"type": "json_object"}
-        )
-        content = response.choices[0].message.content.strip()
-        parsed = json.loads(content)
+        if os.getenv("USE_LOCAL_STAGE2", "false").lower() == "true":
+            parsed = _call_stage2_local(system_prompt, user_prompt)
+        else:
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",  # Force Groq LPU speed
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.1,
+                response_format={"type": "json_object"}
+            )
+            content = response.choices[0].message.content.strip()
+            parsed = json.loads(content)
         if isinstance(parsed, dict) and "translated_items" in parsed:
             result = parsed["translated_items"]
             if len(result) == len(items_list):
@@ -2049,6 +2092,70 @@ If the image does not appear to be a medicine, return:
         return {"error": f"Scan Failed: {err_msg}"}, None
 
 
+def _call_stage2_local(system_prompt: str, user_prompt: str) -> dict:
+    """
+    Generic local Stage 2 call — replaces the repeated Groq
+    client.chat.completions.create(...) pattern. Returns a parsed dict.
+    """
+    from local_analysis_model import _tokenizer, _model
+    import torch as _torch
+    import re as _re
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
+    text = _tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    model_inputs = _tokenizer([text], return_tensors="pt").to(_model.device)
+
+    with _torch.no_grad():
+        generated_ids = _model.generate(**model_inputs, max_new_tokens=1024, do_sample=False)
+
+    generated_ids_trimmed = generated_ids[:, model_inputs["input_ids"].shape[1]:]
+    output_text = _tokenizer.batch_decode(generated_ids_trimmed, skip_special_tokens=True)[0]
+
+    json_match = _re.search(r"\{.*\}", output_text, _re.DOTALL)
+    if not json_match:
+        raise ValueError(f"No JSON found in local Stage 2 output: {output_text[:200]}")
+    result = json.loads(json_match.group(0))
+
+    # Apply deterministic frequency normalization to prevent contradictions
+    # like "Thrice a day" + "1-0-1" — the original bug this project fixed.
+    from local_analysis_model import normalize_frequency
+    if isinstance(result, dict):
+        if "frequency" in result:
+            result["frequency"] = normalize_frequency(result.get("frequency", ""), result.get("dosage", ""))
+        if "medicines" in result and isinstance(result["medicines"], list):
+            for med in result["medicines"]:
+                if isinstance(med, dict) and "frequency" in med:
+                    med["frequency"] = normalize_frequency(med.get("frequency", ""), med.get("dosage", ""))
+
+    return result
+
+
+def _call_stage2_local_text(system_prompt: str, user_prompt: str) -> str:
+    """
+    Like _call_stage2_local, but returns plain text (no JSON parsing) —
+    for functions like _generate_overall_advice that want free-form prose back.
+    """
+    from local_analysis_model import _tokenizer, _model
+    import torch as _torch
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
+    text = _tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    model_inputs = _tokenizer([text], return_tensors="pt").to(_model.device)
+
+    with _torch.no_grad():
+        generated_ids = _model.generate(**model_inputs, max_new_tokens=512, do_sample=False)
+
+    generated_ids_trimmed = generated_ids[:, model_inputs["input_ids"].shape[1]:]
+    output_text = _tokenizer.batch_decode(generated_ids_trimmed, skip_special_tokens=True)[0]
+    return output_text.strip()
+
+
 def _extract_prescription_metadata(extracted_text: str, examples: list = None) -> dict:
     """
     Extract patient, doctor, diagnosis info, and a list of raw medicine names from the prescription OCR text.
@@ -2090,6 +2197,8 @@ Extract the metadata and list the raw medicine names. Return ONLY a JSON object:
 }}
 """
     try:
+        if os.getenv("USE_LOCAL_STAGE2", "false").lower() == "true":
+            return _call_stage2_local(system_prompt, user_prompt)
         response = client.chat.completions.create(
             model=ANALYSIS_MODEL,
             messages=[
@@ -2156,17 +2265,20 @@ If no medicines are found, return an empty list:
 }}
 """
     try:
-        response = client.chat.completions.create(
-            model=ANALYSIS_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.1,
-            response_format={"type": "json_object"}
-        )
-        content = response.choices[0].message.content.strip()
-        parsed = json.loads(content)
+        if os.getenv("USE_LOCAL_STAGE2", "false").lower() == "true":
+            parsed = _call_stage2_local(system_prompt, user_prompt)
+        else:
+            response = client.chat.completions.create(
+                model=ANALYSIS_MODEL,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.1,
+                response_format={"type": "json_object"}
+            )
+            content = response.choices[0].message.content.strip()
+            parsed = json.loads(content)
         if isinstance(parsed, dict) and "medicines" in parsed:
             return parsed["medicines"]
         return []
@@ -2229,6 +2341,8 @@ Return ONLY a JSON object matching this structure:
 }}
 """
     try:
+        if os.getenv("USE_LOCAL_STAGE2", "false").lower() == "true":
+            return _call_stage2_local(system_prompt, user_prompt)
         response = client.chat.completions.create(
             model=ANALYSIS_MODEL,
             messages=[
@@ -2282,17 +2396,20 @@ If no severe interactions exist, return an empty list:
 }}
 """
     try:
-        response = client.chat.completions.create(
-            model=ANALYSIS_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.1,
-            response_format={"type": "json_object"}
-        )
-        content = response.choices[0].message.content.strip()
-        parsed = json.loads(content)
+        if os.getenv("USE_LOCAL_STAGE2", "false").lower() == "true":
+            parsed = _call_stage2_local(system_prompt, user_prompt)
+        else:
+            response = client.chat.completions.create(
+                model=ANALYSIS_MODEL,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.1,
+                response_format={"type": "json_object"}
+            )
+            content = response.choices[0].message.content.strip()
+            parsed = json.loads(content)
         return parsed.get("interactions", [])
     except Exception as e:
         _safe_print(f"[WARN] Error checking drug interactions: {e}")
@@ -2323,6 +2440,8 @@ AS NEEDED: (list medicines to take as needed, or None)
 General Advice: (1-2 sentences of general clinical advice)
 """
     try:
+        if os.getenv("USE_LOCAL_STAGE2", "false").lower() == "true":
+            return _call_stage2_local_text(system_prompt, user_prompt)
         response = client.chat.completions.create(
             model=ANALYSIS_MODEL,
             messages=[
@@ -2766,7 +2885,8 @@ def analyze_prescription_image(image_bytes: bytes, target_language: str = "Engli
             extracted_text = _call_vision_model_freetext(
                 image_bytes,
                 PRESCRIPTION_OCR_SYSTEM,
-                PRESCRIPTION_OCR_USER
+                PRESCRIPTION_OCR_USER,
+                use_local_model=True
             )
             _safe_print(f"[INFO] Prescription OCR extracted {len(extracted_text)} chars")
             _safe_print(f"[INFO] OCR preview: {extracted_text[:300].encode('ascii', errors='replace').decode('ascii')}")
@@ -3157,6 +3277,8 @@ def get_medicine_dosage_info(medicine_name: str, composition: str = "") -> dict:
         }}
         """
         
+        if os.getenv("USE_LOCAL_STAGE2", "false").lower() == "true":
+            return _validate_dosage_response(_call_stage2_local(system_prompt, user_prompt))
         response = client.chat.completions.create(
             model=ANALYSIS_MODEL,
             messages=[
@@ -3218,18 +3340,21 @@ def search_medicine_fallback_ai(query: str, dosage_form: str = None) -> dict | N
         }
         """
         
-        response = client.chat.completions.create(
-            model=ANALYSIS_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.1,
-            response_format={"type": "json_object"}
-        )
-        
-        content = response.choices[0].message.content.strip()
-        data = json.loads(content)
+        if os.getenv("USE_LOCAL_STAGE2", "false").lower() == "true":
+            data = _call_stage2_local(system_prompt, user_prompt)
+        else:
+            response = client.chat.completions.create(
+                model=ANALYSIS_MODEL,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.1,
+                response_format={"type": "json_object"}
+            )
+            
+            content = response.choices[0].message.content.strip()
+            data = json.loads(content)
         
         # Basic validation: ensure all keys are present
         required_keys = ["medicineName", "unit", "activeSalts", "uses", "sideEffects", "manufacturer"]
