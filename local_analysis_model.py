@@ -11,11 +11,14 @@ import json
 import re
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from dotenv import load_dotenv
+
+load_dotenv()
 
 os.environ["TORCHDYNAMO_DISABLE"] = "1"
 os.environ["PYTORCH_JIT"] = "0"
 
-STAGE2_MODEL_PATH = os.path.expanduser("~/sanjeevani_project/stage2_model")
+STAGE2_MODEL_PATH = os.getenv("STAGE2_MODEL", "Qwen/Qwen2.5-7B-Instruct")
 
 print("[local_analysis_model] Loading Stage 2 model (Qwen2.5-7B-Instruct)...")
 

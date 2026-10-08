@@ -12,12 +12,15 @@ from PIL import Image
 from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor, BitsAndBytesConfig
 from peft import PeftModel
 from qwen_vl_utils import process_vision_info
+from dotenv import load_dotenv
+
+load_dotenv()
 
 os.environ["TORCHDYNAMO_DISABLE"] = "1"
 os.environ["PYTORCH_JIT"] = "0"
 
-MODEL_CACHE_PATH = os.path.expanduser("~/sanjeevani_project/model_cache")
-ADAPTER_PATH = os.path.expanduser("~/sanjeevani_project/outputs_run3_augmented/final_model")
+MODEL_CACHE_PATH = os.getenv("BASE_VLM_MODEL", "Qwen/Qwen2.5-VL-32B-Instruct")
+ADAPTER_PATH = os.getenv("OCR_ADAPTER", "vanshshsharma/sanjeevani-rx-ocr-qwen25vl32b-lora")
 
 SYSTEM_INSTRUCTION = (
     "You are a medical prescription and medicine strip OCR and extraction system. "
