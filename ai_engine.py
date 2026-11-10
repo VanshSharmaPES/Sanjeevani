@@ -9,8 +9,6 @@ import hashlib
 import tempfile
 from dotenv import load_dotenv
 from groq import Groq
-from local_ocr_model import local_vision_ocr
-import os
 from openai import OpenAI
 import asyncio
 import edge_tts
@@ -280,14 +278,6 @@ Cetrimide/Savlon = Cetrimide
 """
 
 
-class _GroqRemovedError(RuntimeError):
-    """Raised if any code path still tries to reach Groq/NVIDIA — these
-    providers have been fully decommissioned from this pipeline. If you see
-    this error, a call site is missing its USE_LOCAL_MODEL/USE_LOCAL_STAGE2
-    guard and needs to be patched to use the local model functions instead."""
-    pass
-
-
 class RotatingGroqClient:
     PLACEHOLDER_KEY_PARTS = (
         "your_groq_api_key",
@@ -383,12 +373,6 @@ class UnifiedAIClient:
             self.outer = outer
 
         def create(self, *args, **kwargs):
-            raise _GroqRemovedError(
-                "Groq/NVIDIA API calls are disabled — this pipeline runs fully "
-                "on local models. Ensure USE_LOCAL_MODEL=true and "
-                "USE_LOCAL_STAGE2=true are set, or patch the calling function "
-                "to use the local model bridge instead of client.chat.completions.create()."
-            )
             model = kwargs.get("model", "")
             is_nvidia_model = model.startswith("meta/llama") or "nemotron" in model
             
@@ -1028,6 +1012,7 @@ def _call_vision_model_freetext(image_bytes: bytes, system_prompt: str, user_pro
     Returns the raw transcribed text.
     """
     if use_local_model and USE_LOCAL_MODEL:
+        from local_ocr_model import local_vision_ocr
         return local_vision_ocr(image_bytes)
 
     processed_bytes, mime_type = _preprocess_image(image_bytes)

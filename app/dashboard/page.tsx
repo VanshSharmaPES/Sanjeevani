@@ -305,7 +305,7 @@ const Dashboard = () => {
             {/* Left side: actions stacked */}
             <div className="lg:col-span-5 flex flex-col gap-6">
               <ActionCard
-                title="Alternate Medicines"
+                title="Substitue Medicine"
                 description="Find matching substitute medicines with the same active composition and review guidance."
                 icon={<Pill size={32} />}
                 variant="teal"
